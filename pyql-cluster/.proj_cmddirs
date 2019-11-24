@@ -1,0 +1,11 @@
+./.cmddir
+./apps/update/.cmddir
+./apps/.cmddir
+./apps/insert/.cmddir
+./apps/table/.cmddir
+./apps/internal/.cmddir
+./apps/select/.cmddir
+./apps/delete/.cmddir
+./dbs/.cmddir
+./dbs/database/.cmddir
+./dbs/database/tables/.cmddir
