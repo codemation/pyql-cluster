@@ -13,16 +13,24 @@ Scenarios for SYNC / RESYNC
 - Worker checks for any new change logs that were commited just before the table was paused, and also syncs these.
 - Worker sets new TB endpoint as inSync=True & unpauses TB
 - SYNC job is completed
+TODO: Endpoint state tracking
+- Job schedule - every minute - update table state via a worker
+- Job Event
+        Name: Update table inSync Endpoints lastModTime & Update state tables for updated table on cluster nodes.
+        Trigger:  Table Update - create job if a previously inSync node failed an update or a minute has passed since lastModTime
+        Job Action:  update latest time.time() on current InSync table endpoints & trigger table state update on cluster nodes.
 
-2.  
+TODO: Use JAWF to create tables required for PYQL-CLUSTER function
 
 """
 def run(server):
     from flask import request
     import requests
     from datetime import datetime
+    import time, uuid
     from random import randrange
     import json
+    server.clusterJobs = {'jobs': []}
 
     def update_state(cluster, endpoint, table):
         db = server.data['cluster']
@@ -90,7 +98,7 @@ def run(server):
         clusters = db.tables['clusters'].select('name')
         for cluster in clusters:
             update_cluster(cluster.values()[0])
-    def post_update_cluster_config(cluster, action, data=None):
+    def post_update_cluster_config(cluster, action, items, data=None):
         """
             invokes /cluster/<cluster>/config/<action>  on each cluster node
             which triggers update_clusters() on each node refreshing
@@ -101,7 +109,7 @@ def run(server):
         for endpoint in tableEndpoints['inSync']:
             endPointPath = endpoint['path']
             r = request.post(
-                f'{endPointPath}/cluster/{cluster}/config/{action}',
+                f'{endPointPath}/cluster/{cluster}/config/{action}/{items}',
                 headers={'Accept': 'application/json', "Content-Type": "application/json"},
                 data=data
             )        
@@ -109,9 +117,6 @@ def run(server):
     def get_endpoint_list(cluster):
         endpointList = [endpoint for endpoint in server.cluster[cluster]['endpoints']]
         return endpointList
-        #return server.data['cluster'].tables['endpoints'].select('path', where={
-        #    'cluster': cluster
-        #})
     def get_table_endpoints(cluster, table):
         tableEndpoints = {'inSync': {}, 'outOfSync': {}}
         for endpoint in server.cluster[cluster]['endpoints']:
@@ -175,11 +180,21 @@ def run(server):
             for endpoint in tableEndpoints['inSync']:
                 tb = server.cluster[cluster]['tables'][table]
                 db = get_db_name(cluster, endpoint)
-                r = requests.post(
-                    get_endpoint_url(endpoint, db, table, action),
-                    headers={'Accept': 'application/json', "Content-Type": "application/json"},
-                    data=data,
-                    timeout=0.5) 
+
+                def execute_request():
+                    return requests.post(
+                        get_endpoint_url(endpoint, db, table, action),
+                        headers={'Accept': 'application/json', "Content-Type": "application/json"},
+                        data=data,
+                        timeout=0.5)
+                # 2 Retries
+                for _ in range(2):
+                    r = execute_request()
+                    if not r.status_code == 200:
+                        continue
+                    else:
+                        break
+                 
                 if not r.status_code == 200:
                     failTrack.append(endpoint)
                     # start job to Retry for endpoint, or mark endpoint bad after testing
@@ -188,13 +203,40 @@ def run(server):
                     response, rc = r.json(), r.status_code
             # At least 1 success in endpoint db change, need to mark failed endpoints out of sync
             # and create a changelog for resync
+            def update_endpoint_time(override=False): 
+                # Update endpoint lastModTime
+                tableEndpoints = get_table_endpoints(cluster, table)
+                currentTime = time.time()
+                for endpoint in tableEndpoints['inSync']:
+                    if endpoint in failTrack:
+                        #Endpoint is not in sync
+                        continue
+                    if currentTime - tb['endpoints'][endpoint]['lastModTime'] > 60.0 or override:
+                        data = {
+                            'update': {
+                                'lastModTime': currentTime
+                                }, 
+                            'where': {
+                                'name': f'{endpoint}_{table}'
+                            }
+                        }
+                        job = {
+                            'job': 'updateTableModTime',
+                            'method': 'POST',
+                            'jobType': 'cluster',
+                            'path': '/cluster/pyql/table/state/update'
+                            'data': data
+                        }
+                        #post_request_tables(cluster, 'state', 'update', data)
+                        server.jobs.append(job)
             if len(failTrack) > 0 and len(failTrack) < len(tableEndpoints['inSync']):
                 for failedEndpoint in failTrack:
-                    if not server.cluster[cluster]['endpoints'][failedEndpoint]['state'] == 'new':
+                    if not tb['endpoints'][failedEndpoint]['state'] == 'new':
                         endPointPath = server.cluster[cluster]['endpoints'][failedEndpoint]['path']
 
                         # update sync status for table endpoint as outOfSync
                         statusData = {failedEndpoint: {'inSync': False}}
+                        #TODO - Check later if we can jobify this
                         post_update_table_conf(cluster, table,'sync','status' statusData)
 
                         # Write data to a change log for resyncing
@@ -205,15 +247,42 @@ def run(server):
                                 'endpoint': tb['endpoints'][failedEndpoint]['uuid'],
                                 'txn': {action: data }
                             })
+                        #TODO Create job for resync if failed
+                        server.jobs.append({
+                            'job': 'sync_table',
+                            'jobType': 'cluster',
+                            'cluster': cluster,
+                            'table': table
+                        })
+                 # At least 1 new sync failure - creating job to modtime on inSync table endpoints
+                 update_endpoint_time(True) 
+
             # All endpoints failed request - 
             elif len(failTrack) == len(tableEndpoints['inSync']):
                 return response, rc if rc is not None else r.status_code
             else:
                 # No InSync failures
+                update_endpoint_time()
                 pass
             # Update any previous out of sync table change-logs, if any
             for outOfSyncEndpoint in tableEndpoints['outOfSync']:
                 if not server.cluster[cluster]['endpoints'][failedEndpoint]['state'] == 'new':
+                    # Check duration of outOfSync, after GracePeriod, stop generating logs
+                    tbEndpoint = f'{outOfSyncEndpoint}_{table}'
+                    # 10 minute timeout
+                    lagTime = time.time() - server.cluster[cluster]['state'][tbEndpoint]['lastModTime']
+                    if lagTime > 600.0:
+                        continue
+                    # Retry table resync
+                    if lagTime > 300.0:
+                        #TODO Create job for resync if failed
+                        server.jobs.append({
+                            'job': 'sync_table',
+                            'jobType': 'cluster',
+                            'cluster': cluster,
+                            'table': table
+                        })
+                    #TODO - Check later if we can jobify this
                     post_write_to_change_logs(
                         cluster,
                         table, 
@@ -221,6 +290,7 @@ def run(server):
                             'endpoint': tb['endpoints'][outOfSyncEndpoint]['uuid'],
                             'txn': {action: data }
                         })
+
             return response, rc if rc is not None else r.status_code
         if tb['isPaused'] == False:
             return process_request()
@@ -231,7 +301,9 @@ def run(server):
             if tb['isPaused'] == False:
                 return process_request()
             else:
-                return {"message": "table is paused preventing changes, maybe an issue occured during sync cutover"}, 500
+                return {
+                    "message": "table is paused preventing changes, maybe an issue occured during sync cutover, try again later"
+                    }, 500
 
 
     @server.route('/cluster/<cluster>/table/<table>/select', methods=['GET','POST'])
@@ -370,11 +442,15 @@ def run(server):
             return message, 500
 
 
-    @server.route('/cluster/<cluster>/config/<action>', methods=['POST'])
-    def update_cluster_config(cluster, action):
+    @server.route('/cluster/<cluster>/config/<action>/<items>', methods=['POST'])
+    def update_cluster_config(cluster, action, items):
         if action == 'update':
-            update_cluster(cluster)
-            return server.cluster[cluster], 200
+            if items == 'cluster'
+                update_cluster(cluster)
+                return server.cluster[cluster], 200
+            elif items == 'endpoints':
+                update_endpoints(cluster)
+                return server.cluster[cluster], 200
         
 
     @server.route('/cluster/<clusterName>/join', methods=['GET','POST'])
@@ -479,23 +555,24 @@ def run(server):
                                 'state': loadState,
                                 'inSync': syncState,
                                 'uuid': uuid, # used for syncing logs 
-                                'lastModTime': 'never'
+                                'lastModTime': 0.0
                             }
                             post_request_tables(clusterName, 'state', 'insert', data)
                             update_state(cluster, config['name'], config['database'])
                     # Add sync_table job for each table in cluster
                     jobsToRun.append({
                         'job': 'sync_table',
+                        'jobType': 'cluster',
                         'cluster': clusterName,
                         'table': table
                         })
             # Trigger in-memory refresh from DB's on each cluster node.
-            post_update_cluster_config(cluster, 'update')
+            post_update_cluster_config(cluster, 'update', 'cluster')
 
             # Create Jobs to SYNCing table
             #TODO add as global jobs table, so work can be split up among other nodes
             for job in jobsToRun:
-                server.job.append(job)
+                server.jobs.append(job)
             return server.cluster[cluster], 200
 
     def post_cluster_tables_config_sync(cluster, table=None):
@@ -535,5 +612,75 @@ def run(server):
         else:
             post_cluster_tables_config_sync(cluster)
 
+    def cluster_job_manager(cluster, action, job=None):
+        if action == 'add' and if not job == None:
+            jobToRun = job
+            jobToRun['cluster'] = cluster if not 'cluster' in job else job['cluster']
+            for endpoint in server.cluster[cluster]['endpoints']:
+                endpointPath = server.cluster[cluster]['endpoints'][endpoint]['path']
+                r = requests.post(
+                    f'{endpoint}/cluster/jobs',
+                    method='POST',
+                    data = {
+                        uuid.uuid1(): jobToRun
+                        }
+                    )
+    def post_cluster_job_update_status(cluster, uuid, status):
+        for endpoint in server.cluster[cluster]['endpoints']:
+            endpointPath = server.cluster[cluster]['endpoints'][endpoint]['path']
+            r = requests.post(
+                f'{endpoint}/cluster/job/{uuid}/{status}',
+                method='POST'
+            )
+        
+    @server.route('/cluster/job')
+    def cluster_jobs(uuid):
+        """
+            Used by workers to pull a job from cluster job queue
+        """
+        if len(server.clusterJobs['jobs']) > 0:
+            uuid = server.clusterJobs['jobs'].pop(0)
+            post_cluster_job_update_status(
+                server.clusterJobs[uuid]['cluster'], 
+                uuid,
+                'running'
+                )
+            return server.clusterJobs[uuid], 200
+        else:
+            return {"message": f"no jobs to process at this time"}, 200
+
+    @server.route('/cluster/job/<uuid>/<status>', methods='POST')
+    def cluster_job_update(job, status):
+        if status == 'running':
+            if uuid in server.clusterJobs['jobs']:
+                index = server.clusterJobs['jobs'].index(uuid)
+                server.clusterJobs['jobs'].pop(index)
+            if uuid in server.clusterJobs:
+                server.clusterJobs['status'] = status
+
     
+    @server.route('/cluster/jobs', methods=['POST'])
+    def cluster_jobs():
+        """
+            used for adding jobs to clusterJobs queue.
+        """
+        job = request.get_json()
+        for uuid in job:
+            server.clusterJobs[uuid]=job[uuid]
+            server.clusterJobs['jobs'].append(uuid)
+    @server.route('/cluster/jobs/add', methods=['POST'])
+    def cluster_jobs_add():
+        """
+            meant to be used by node workers which will load jobs into cluster job queue
+            to avoiding delays from locking during change operations
+            For Example:
+            # Load a job into node job queue
+            server.jobs.append({'job': 'job-name', ...})
+        """
+        job = request.get_json()
+        if 'cluster' in job:
+            cluster_job_manager(job['cluster'],'add', job)
+            return {"message": f"job {job} added to cluster queue"}
+        else:
+            return {"message": f"job {job} missing 'cluster' key required for running into cluster queue"}
     
