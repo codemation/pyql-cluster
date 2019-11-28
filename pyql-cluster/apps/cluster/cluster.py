@@ -31,7 +31,9 @@ def run(server):
     from random import randrange
     import json
     server.clusterJobs = {'jobs': []}
+    server.cronJobs = {}
 
+    @server.route('/cluster/<cluster>/endpoint/<endpoint>/table/<table>/updateState', methods=['POST'])
     def update_state(cluster, endpoint, table):
         db = server.data['cluster']
         tbEndpoint = f'{endpoint}_{table}'
@@ -43,6 +45,7 @@ def run(server):
                 }
         )
         server.cluster[cluster]['state'][tbEndpoint] = state
+        return server.cluster[cluster]['state'][tbEndpoint]
 
 
     def update_tables(cluster, endpoint, database):
@@ -220,12 +223,19 @@ def run(server):
                                 'name': f'{endpoint}_{table}'
                             }
                         }
+                        updateStateJob = {
+                            'job': 'updateTableState',
+                            'jobType': 'cluster',
+                            'method': 'POST',
+                            'path': f'/cluster/{cluster}/endpoint/{endpoint}/table/{table}/updateState'
+                        }
                         job = {
                             'job': 'updateTableModTime',
                             'method': 'POST',
                             'jobType': 'cluster',
                             'path': '/cluster/pyql/table/state/update'
                             'data': data
+                            'runAfter': updateStateJob
                         }
                         #post_request_tables(cluster, 'state', 'update', data)
                         server.jobs.append(job)
@@ -442,6 +452,22 @@ def run(server):
             return message, 500
 
 
+
+    @server.route('/clusters/<action>', methods=['POST'])
+    def clusters_action(action):
+        """
+            /clusters/updateAll used to trigger /clusters/update on each cluster node.
+        """
+        if action == 'update':
+            update_clusters()
+            return {'message': f"clusters {' '.join(server.cluster.keys())} updated"}, 200
+        elif action == 'updateAll':
+            endpoints = get_table_endpoints('pyql', 'state')['inSync']
+            for endpoint in endpoints:
+                r = request.post(f'{endpoint['path']}/clusters/update')
+        return {"message": f"invalid action {action} for /clusters/"}, 400
+
+
     @server.route('/cluster/<cluster>/config/<action>/<items>', methods=['POST'])
     def update_cluster_config(cluster, action, items):
         if action == 'update':
@@ -451,6 +477,9 @@ def run(server):
             elif items == 'endpoints':
                 update_endpoints(cluster)
                 return server.cluster[cluster], 200
+            else:
+                pass
+        return {"message": f"invalid action {action} or item {item} provided"}, 400
         
 
     @server.route('/cluster/<clusterName>/join', methods=['GET','POST'])
@@ -684,3 +713,75 @@ def run(server):
         else:
             return {"message": f"job {job} missing 'cluster' key required for running into cluster queue"}
     
+    @server.route('/clusters/cron/job/add', methods=['POST'])
+    def add_cron_job():
+        """
+            Expected input:
+        {
+        'name': 'updateState_cron'
+        'job': {
+            'job': 'updateState',
+            'jobType': 'cluster',
+            'method': 'POST'
+            'path': '/clusters/updateAll'
+        },
+        'interval': 30.0,
+        'lastRunTime': time.time(),
+        'status': 'queued'
+        }
+        """
+        cron = request.get_json()
+        server.cronJobs[cron['name']] = cron
+    
+
+    def cron_job_update_all(cron, data=None):
+        config = request.get_json() if data == None else data
+        endpoints = get_table_endpoints('pyql', 'state')['inSync']
+        for endpoint in endpoints:
+            r = request.post(f'{endpoint['path']}/clusters/cron/job/{cron}/update', data=config)
+        return r.message, r.status_code
+
+    @server.route('/clusters/cron/job/<cron>/<action>', methods=['POST'])
+    def cron_job_action(cron, action):
+        if action == 'update':
+            if cron in server.cronJobs:
+                config = request.get_json()
+                for key,value in config.items():
+                    if key in server.cronJobs[cron]:
+                        server.cronJobs[cron][key] = value
+                return {"message": f"updated {cron} with {config}"}, 200 
+        elif action == 'updateAll':
+            config = request.get_json()
+            endpoints = get_table_endpoints('pyql', 'state')['inSync']
+            for endpoint in endpoints:
+                r = request.post(f'{endpoint['path']}/clusters/cron/job/{cron}/update', data=config)
+            return r.message, r.status_code
+        else:
+            pass
+
+    @server.route('/clusters/cron/job')
+    def cron_job():
+        queuedJobs = {}
+        for cron in server.cronJobs:
+            job = server.cronJobs[cron]
+            if not job['status'] == 'running':
+                if time.time() - job['lastRunTime'] > job['interval']:
+                    cron_job_update_all(
+                        job['name'], 
+                        {
+                            'status': 'running',
+                            'lastRunTime': time.time()
+                        })
+                    cron_job_update_all(
+                        job['name'], 
+                        {
+                            'status': 'queued',
+                            'lastRunTime': time.time()
+                        })
+                    server.jobs.append(job['job'])
+                    return {"message": f"started job {job['name']}"},200
+                else:
+                    queuedTime = time.time() - job['lastRunTime']
+                    queuedJobs[job['name']] = f'starts in {job['interval'] - queuedTime} seconds'
+        return {"message": f"no jobs to start", 'queuedJobs': queuedJobs}, 200
+

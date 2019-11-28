@@ -1,4 +1,7 @@
-import sys, time, requests, json
+import sys, time, requests, json, os
+
+clusterSvcName = 'http://localhost:8090' # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
+nodePath = 'http://localhost:8080'
 
 def probe(path, method='GET', data=None):
     """
@@ -24,16 +27,36 @@ def get_requirement(job):
                 return json.loads(job['jobRequires'][req]['json'])
     else:
         return None
-    
-def get_and_run_job(path):
+
+"""
+expeceted job structure
+    job = {
+        'job': 'updateTableModTime',
+        'jobType': 'cluster',
+        'method': 'POST',
+        'path': '/cluster/pyql/table/state/update'
+        'data': {..}
+    }
+""" 
+def add_job_cluster_queue(job):
+    message, rc = probe(f'{clusterSvcName}/cluster/jobs', 'POST', job)
+    if rc == 200:
+        print(f"added {job['job']} to cluster jobs queue")
+    else:
+        print(f"error adding {job['job']} to cluster jobs queue, error: {message}")
+
+def get_and_process_job(path):
     job, rc = probe(endpoint)
     if not "message" in job:
-        # Jobs pulled
-        print(f"preparing to run {job}")
-        # check for job requirements
-        result, rc = probe(job['path'], job['method'], get_requirement(job))
-        return result, rc
-    return job, rc
+        if job['jobType'] == 'cluster':
+            #Distribute to cluster job queue
+            message, rc = add_job_cluster_queue(job)
+        elif job['jobType']  == 'node':
+            message, rc = probe(f'{nodePath}/{job['path']}', job['method'], job['data'])
+        else:
+            message, rc =  f'{job['job']} is missing jobType field'), 200
+        return message,rc
+    return job,rc
 if __name__=='__main__':
     args = sys.argv
     if len(args) > 3:
@@ -42,5 +65,5 @@ if __name__=='__main__':
         while True:
             time.sleep(1)
             if delay < time.time() - start:
-                result, rc = get_and_run_job(jobpath)
+                result, rc = get_and_process_job(jobpath)
                 start = time.time()
