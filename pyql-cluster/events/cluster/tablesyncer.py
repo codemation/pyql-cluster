@@ -84,16 +84,16 @@ def sync_cluster_table_logs(cluster, table, uuid, endpointPath):
 
 
 def sync_cluster_table(cluster, table):
-    clusterSvcName = 'http://localhost:8090' # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
-    probe(f'{clusterSvcName}/cluster/{cluster}/sync', method='POST', data={'table': table})
+    """
+        checks for 'new' state endpoints in each cluster table and creates table in endpoint database
+    """
+    return probe(f'{clusterSvcName}/cluster/{cluster}/sync', method='POST', data={'table': table})
+
 def sync_status(cluster, table, method='GET', data=None):
-    clusterSvcName = 'http://localhost:8090' # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
     return probe(f'{clusterSvcName}/cluster/{cluster}/table/{table}/sync/status', method=method, data=data)
 def get_table_endpoint_state(cluster, table, endpoints=[])
-    clusterSvcName = 'http://localhost:8090' # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
     return probe(f'{clusterSvcName}/cluster/{cluster}/table/{table}/state/get', method='POST', data={'endpoints': endpoints})
 def create_table(table):
-    clusterSvcName = 'http://localhost:8090' # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
     return probe(f'{clusterSvcName}/cluster/{cluster}/table/{table}/state/get', method='POST', data={'endpoints': endpoints})
 def drop_table(table):
     pass
@@ -118,6 +118,8 @@ def sync_table_job(cluster, table):
     for endpoint in syncStatus['endpoints']:
         if syncStatus['endpoints'][endpoint]['inSync'] == False
             endpointsToSync.append((endpoint, syncStatus['endpoints'][endpoint]['path']))
+
+    # check current state of  table endpoints
     stateCheck = get_table_endpoint_state(cluster, table, [ep[0] for ep in endpointsToSync])
 
     # Sync Cluster Table Config
@@ -154,14 +156,6 @@ def get_and_run_job(path):
         # Jobs pulled
         print(f"preparing to run {job}")
         if job['job'] == 'sync_table':
-            """ 
-                Job requires
-                {
-                    'job': 'sync_table',
-                    'cluster': clusterName,
-                    'table': tableName
-                }
-            """
             sync_table_job(job['cluster'], job['table'])
             #TODO Add exception handling here.
             result = f'completed job {job}'

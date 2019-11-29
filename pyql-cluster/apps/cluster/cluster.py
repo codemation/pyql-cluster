@@ -30,7 +30,7 @@ def run(server):
     import time, uuid
     from random import randrange
     import json
-    server.clusterJobs = {'jobs': []}
+    server.clusterJobs = {'jobs': [], 'syncjobs': []}
     server.cronJobs = {}
 
     @server.route('/cluster/<cluster>/endpoint/<endpoint>/table/<table>/updateState', methods=['POST'])
@@ -260,7 +260,7 @@ def run(server):
                         #TODO Create job for resync if failed
                         server.jobs.append({
                             'job': 'sync_table',
-                            'jobType': 'cluster',
+                            'jobType': 'tablesync',
                             'cluster': cluster,
                             'table': table
                         })
@@ -643,49 +643,61 @@ def run(server):
 
     def cluster_job_manager(cluster, action, job=None):
         if action == 'add' and if not job == None:
-            jobToRun = job
-            jobToRun['cluster'] = cluster if not 'cluster' in job else job['cluster']
-            for endpoint in server.cluster[cluster]['endpoints']:
-                endpointPath = server.cluster[cluster]['endpoints'][endpoint]['path']
+            for endpoint in server.cluster['pyql']['endpoints']:
+                endpointPath = server.cluster['pyql']['endpoints'][endpoint]['path']
                 r = requests.post(
                     f'{endpoint}/cluster/jobs',
                     method='POST',
                     data = {
-                        uuid.uuid1(): jobToRun
+                        uuid.uuid1(): job
                         }
                     )
-    def post_cluster_job_update_status(cluster, uuid, status):
-        for endpoint in server.cluster[cluster]['endpoints']:
-            endpointPath = server.cluster[cluster]['endpoints'][endpoint]['path']
+    def post_cluster_job_update_status(jobType, uuid, status):
+        for endpoint in server.cluster['pyql']['endpoints']:
+            endpointPath = server.cluster['pyql']['endpoints'][endpoint]['path']
             r = requests.post(
-                f'{endpoint}/cluster/job/{uuid}/{status}',
+                f'{endpoint}/cluster/{jobType}/{uuid}/{status}',
                 method='POST'
             )
-        
-    @server.route('/cluster/job')
-    def cluster_jobs(uuid):
+    @server.route('/cluster/jobqueue/<jobtype>')
+    def cluster_syncjob(jobtype):
         """
-            Used by workers to pull a job from cluster job queue
+            Used by jobworkers or tablesyncers to pull jobs from clusters job queues
+            jobtype = 'job|syncjob'
         """
-        if len(server.clusterJobs['jobs']) > 0:
-            uuid = server.clusterJobs['jobs'].pop(0)
-            post_cluster_job_update_status(
-                server.clusterJobs[uuid]['cluster'], 
-                uuid,
-                'running'
-                )
+        queue = f'{jobtype}s'
+        if len(server.clusterJobs[queue]) > 0:
+            uuid = server.clusterJobs[queue].pop(0)
+            post_cluster_job_update_status(jobtype, uuid, 'running')
             return server.clusterJobs[uuid], 200
         else:
             return {"message": f"no jobs to process at this time"}, 200
 
-    @server.route('/cluster/job/<uuid>/<status>', methods='POST')
-    def cluster_job_update(job, status):
+    @server.route('/cluster/<jobtype>/<uuid>/<status>', methods='POST')
+    def cluster_job_update(jobtype, job, status):
         if status == 'running':
-            if uuid in server.clusterJobs['jobs']:
-                index = server.clusterJobs['jobs'].index(uuid)
-                server.clusterJobs['jobs'].pop(index)
+            if uuid in server.clusterJobs[f'{jobtype}s']:
+                index = server.clusterJobs[f'{jobtype}s'].index(uuid)
+                server.clusterJobs[f'{jobtype}s'].pop(index)
             if uuid in server.clusterJobs:
-                server.clusterJobs['status'] = status
+                server.clusterJobs[uuid]['status'] = status
+        """
+
+            if jobtype == 'job':
+                if uuid in server.clusterJobs['jobs']:
+                    index = server.clusterJobs['jobs'].index(uuid)
+                    server.clusterJobs['jobs'].pop(index)
+                if uuid in server.clusterJobs:
+                    server.clusterJobs[uuid]['status'] = status
+            elif jobtype == 'syncjobs':
+                if uuid in server.clusterJobs['syncjobs']:
+                    index = server.clusterJobs['syncjobs'].index(uuid)
+                    server.clusterJobs['jobs'].pop(index)
+                if uuid in server.clusterJobs:
+                    server.clusterJobs[uuid]['status'] = status
+            else:
+        """
+                
 
     
     @server.route('/cluster/jobs', methods=['POST'])
@@ -695,8 +707,10 @@ def run(server):
         """
         job = request.get_json()
         for uuid in job:
+            jobType = job[uuid]['jobType']
             server.clusterJobs[uuid]=job[uuid]
-            server.clusterJobs['jobs'].append(uuid)
+            server.clusterJobs[jobType].append(uuid)
+
     @server.route('/cluster/jobs/add', methods=['POST'])
     def cluster_jobs_add():
         """
@@ -707,7 +721,7 @@ def run(server):
             server.jobs.append({'job': 'job-name', ...})
         """
         job = request.get_json()
-        if 'cluster' in job:
+        if job['jobType'] == 'cluster' or job['jobType'] == 'tablesync':
             cluster_job_manager(job['cluster'],'add', job)
             return {"message": f"job {job} added to cluster queue"}
         else:

@@ -38,21 +38,23 @@ expeceted job structure
         'data': {..}
     }
 """ 
-def add_job_cluster_queue(job):
-    message, rc = probe(f'{clusterSvcName}/cluster/jobs', 'POST', job)
+def add_job_to_queue(path, job):
+    message, rc = probe(f'{clusterSvcName}{path}, 'POST', job)
     if rc == 200:
-        print(f"added {job['job']} to cluster jobs queue")
+        print(f"added {job['job']} to {path} queue")
     else:
-        print(f"error adding {job['job']} to cluster jobs queue, error: {message}")
+        print(f"error adding {job['job']} to {path} queue, error: {message}")
 
 def get_and_process_job(path):
     job, rc = probe(endpoint)
     if not "message" in job:
         if job['jobType'] == 'cluster':
             #Distribute to cluster job queue
-            message, rc = add_job_cluster_queue(job)
-        elif job['jobType']  == 'node':
+            message, rc = add_job_to_queue('/cluster/jobs', job)
+        elif job['jobType'] == 'node':
             message, rc = probe(f'{nodePath}/{job['path']}', job['method'], job['data'])
+        elif job['jobType'] == 'tablesync':
+            message, rc = add_job_to_queue('/cluster/syncjobs', job)
         else:
             message, rc =  f'{job['job']} is missing jobType field'), 200
         return message,rc
