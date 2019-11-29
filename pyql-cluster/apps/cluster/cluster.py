@@ -20,7 +20,7 @@ TODO: Endpoint state tracking
         Trigger:  Table Update - create job if a previously inSync node failed an update or a minute has passed since lastModTime
         Job Action:  update latest time.time() on current InSync table endpoints & trigger table state update on cluster nodes.
 
-TODO: Use JAWF to create tables required for PYQL-CLUSTER function
+TODO: Use JAWF to create tables required for PYQL-CLUSTER function <--NEXT TO DO
 
 """
 def run(server):
@@ -32,6 +32,50 @@ def run(server):
     import json
     server.clusterJobs = {'jobs': [], 'syncjobs': []}
     server.cronJobs = {}
+
+    uuidCheck = server.data['cluster'].tables['pyql'].select('uuid', where={'database': 'cluster'})
+    if len(uuidCheck) > 0:
+        dbuuid = uuidCheck[0]
+    else:
+        dbuuid = uuid.uuid1()
+        server.data['cluster'].tables['pyql'].insert({
+            'uuid': dbuuid,
+            'database': 'cluster', 
+            'lastModTime': time.time()
+        }) 
+
+    joinClusterJob = {
+        "job": "joinCluster",
+        "jobType": "cluster",
+        "method": "POST",
+        "path": "/cluster/pyql/join",
+        "data": {
+            "name": "pyql-master-01",
+            "path": "127.0.0.1:8080",
+            "database": {
+                'name': "cluster",
+                'uuid': dbuuid
+            },
+            "tables": [
+                {
+                    "clusters": json.dumps(server.get_table_func('cluster', 'clusters'))
+                },
+                {
+                    "endpoints": json.dumps(server.get_table_func('cluster', 'endpoints'))
+                },
+                {
+                    "databases": json.dumps(server.get_table_func('cluster', 'databases'))
+                },
+                {
+                    "tables": json.dumps(server.get_table_func('cluster', 'tables'))
+                },
+                {
+                    "state": json.dumps(server.get_table_func('cluster', 'state'))
+                },
+            ]
+        }
+    }
+    server.jobs.append(joinClusterJob)
 
     @server.route('/cluster/<cluster>/endpoint/<endpoint>/table/<table>/updateState', methods=['POST'])
     def update_state(cluster, endpoint, table):

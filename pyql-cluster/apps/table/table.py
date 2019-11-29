@@ -24,7 +24,7 @@ def run(server):
     def get_table_func(database,table):
         message, rc = server.check_db_table_exist(database,table)
         if rc == 200:
-            table = server.data[os.environ['DB_NAME']].tables[table]
+            table = server.data[database].tables[table]
             response = {
                 table.name: {
                     "columns": [ {
@@ -37,6 +37,7 @@ def run(server):
             return response, 200
         else:
             return message, rc
+    server.get_table_func = get_table_func
     @server.route('/db/<database>/table/create', methods=['POST'])
     def create_table_func(database):
         if database in server.data:

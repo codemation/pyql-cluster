@@ -24,8 +24,8 @@ def run(server):
         setup.run(server)
         from dbs import setup as db_setup # TOO DOO -Change func name later
         db_setup.run(server) # TOO DOO - Change func name later
-        #from events import setup as event_setup
-        #event_setup.run(server)
+        from events import setup as event_setup
+        event_setup.run(server)
 
     except Exception as e:
         print("Project may not have any apps configured or apps setup.py cannot be found")
