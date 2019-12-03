@@ -1,6 +1,6 @@
 import sys, time, requests, json, os
 
-clusterSvcName = os.environ['PYQL_CLUSTER_SVC'] # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
+clusterSvcName = f'http://{os.environ['PYQL_CLUSTER_SVC']}' # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
 nodePath = f'http://{os.environ["PYQL_NODE"]}:{os.environ["PYQL_PORT"]}'
 
 def probe(path, method='GET', data=None):

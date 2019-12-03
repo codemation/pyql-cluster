@@ -12,9 +12,11 @@ if __name__ == '__main__':
     print(sys.argv)
     nodeName = sys.argv[1]
     port = sys.argv[2]
+    cluster = sys.argv[3]
     if not port == None:
         os.environ['PYQL_NODE'] = nodeName
         os.environ['PYQL_PORT'] = port
+        os.environ['PYQL_CLUSTER_SVC'] = cluster
         main(port)
         
             

@@ -43,14 +43,14 @@ def run(server):
             'database': 'cluster', 
             'lastModTime': time.time()
         }) 
-
+    os.environ['HOSTNAME'] = 'dev-server01'
     joinClusterJob = {
         "job": "joinCluster",
         "jobType": "node",
         "method": "POST",
         "path": "/cluster/pyql/join",
         "data": {
-            "name": "pyql-master-01",
+            "name": os.environ['HOSTNAME'],
             "path": os.environ['PYQL_CLUSTER_SVC'],
             "database": {
                 'name': "cluster",
@@ -212,7 +212,7 @@ def run(server):
             print(f'###state {state}')
             tb['endpoints'][endpoint] = {
                 'inSync': state['inSync'],
-                'path': f'{state["path"]}/db/{database}/table/{tb["name"]}'
+                'path': f'http://{state["path"]}/db/{database}/table/{tb["name"]}'
             }
                 
     def update_databases(cluster, endpoint, tables=True):
@@ -303,7 +303,7 @@ def run(server):
         assert False, f"No DB found with {cluster} endpoint {endpoint}"
     def get_endpoint_url(cluster, endpoint, db, table, action, **kw):
         endPointPath = server.cluster[cluster]['endpoints'][endpoint]['path']
-        print(f'http://{endPointPath}/db/{db}/table/{table}/{action}')
+        print(f'{endPointPath}/db/{db}/table/{table}/{action}')
         return f'http://{endPointPath}/db/{db}/table/{table}/{action}'
 
     def post_write_to_change_logs(cluster, table, data=None):
@@ -798,7 +798,7 @@ def run(server):
                 endpointPath = server.cluster[cluster]['endpoints'][endpoint]['path']
                 if tb['endpoinsts'][endpoint]['state'] == 'new':
                     r = requests.post(
-                        '{endpointPath}/db/{database}/table/create',
+                        'http://{endpointPath}/db/{database}/table/create',
                         headers={'Accept': 'application/json', "Content-Type": "application/json"},
                         data=json.loads(tb['config'])
                     )
@@ -829,7 +829,7 @@ def run(server):
             for endpoint in server.cluster['pyql']['endpoints']:
                 endpointPath = server.cluster['pyql']['endpoints'][endpoint]['path']
                 r = requests.post(
-                    f'{endpoint}/cluster/jobs',
+                    f'http://{endpoint}/cluster/jobs',
                     method='POST',
                     data = {
                         uuid.uuid1(): job
@@ -839,7 +839,7 @@ def run(server):
         for endpoint in server.cluster['pyql']['endpoints']:
             endpointPath = server.cluster['pyql']['endpoints'][endpoint]['path']
             r = requests.post(
-                f'{endpoint}/cluster/{jobType}/{uuid}/{status}',
+                f'http://{endpoint}/cluster/{jobType}/{uuid}/{status}',
                 method='POST'
             )
     @server.route('/cluster/jobqueue/<jobtype>')
