@@ -1,7 +1,7 @@
 # table
 def run(server):
     from flask import request
-    import os
+    import os, json
 
     @server.route('/db/<database>/tables')
     def get_all_tables_func(database):

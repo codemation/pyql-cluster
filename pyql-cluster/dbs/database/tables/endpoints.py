@@ -1,12 +1,12 @@
-
 def db_attach(server):
     import os
-    db = server.data[os.environ['DB_NAME']]
+    db = server.data['cluster']
     db.create_table(
-        'nodes',
+        'endpoints',
         [
-            ('name', str),
-            ('lastUpdateTime', str)
+            ('name', str, 'UNIQUE NOT NULL'),
+            ('path', str),
+            ('cluster', str)
         ],
         'name'
     )

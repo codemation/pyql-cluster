@@ -1,7 +1,16 @@
 
 def run(server):
     pass # apps start here
-
+    def check_db_table_exist(database,table):
+        if database in server.data:
+            if table in server.data[database].tables:
+                return "OK", 200
+            else:
+                return {'status': 404, 'message': f'table with name {table} not found in database {database}'}, 404   
+        else:
+            print(f'database with name {database} not found')
+            return {'status': 404, 'message': f'database with name {database} not found'}, 404
+    server.check_db_table_exist = check_db_table_exist
             
     from apps.select import select
     select.run(server)            

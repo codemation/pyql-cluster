@@ -1,17 +1,17 @@
 import sys, time, requests, json, os
 
-clusterSvcName = 'http://localhost:8090' # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
+clusterSvcName = 'http://localhost:8080' # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
 nodePath = 'http://localhost:8080'
 
 def probe(path, method='GET', data=None):
     """
         default staring is http://localhost:8080
     """
-    url = f'{path}'
-    if method == 'GET' 
+    url = f'{nodePath}{path}' if not 'http' in path else path
+    if method == 'GET':
         r = requests.get(url, headers={'Accept': 'application/json'})
     else:
-        r = request.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=data)
+        r = requests.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data))
     try:
         return r.json(),r.status_code
     except:
@@ -39,30 +39,35 @@ expeceted job structure
     }
 """ 
 def add_job_to_queue(path, job):
-    message, rc = probe(f'{clusterSvcName}{path}, 'POST', job)
+    message, rc = probe(f'{clusterSvcName}{path}', 'POST', job)
+    print(message)
     if rc == 200:
         print(f"added {job['job']} to {path} queue")
     else:
         print(f"error adding {job['job']} to {path} queue, error: {message}")
 
 def get_and_process_job(path):
-    job, rc = probe(endpoint)
+    job, rc = probe(path)
     if not "message" in job:
         if job['jobType'] == 'cluster':
             #Distribute to cluster job queue
-            message, rc = add_job_to_queue('/cluster/jobs', job)
+            print(f"adding job {job} to cluster queue")
+            message, rc = add_job_to_queue('/cluster/jobs/add', job)
         elif job['jobType'] == 'node':
-            message, rc = probe(f'{nodePath}/{job['path']}', job['method'], job['data'])
+            message, rc = probe(f"{nodePath}{job['path']}", job['method'], job['data'])
         elif job['jobType'] == 'tablesync':
             message, rc = add_job_to_queue('/cluster/syncjobs', job)
         else:
-            message, rc =  f'{job['job']} is missing jobType field'), 200
+            message, rc =  f"{job['job']} is missing jobType field", 200
         return message,rc
     return job,rc
-if __name__=='__main__':
+print(__name__)
+if __name__== '__main__':
     args = sys.argv
-    if len(args) > 3:
+    print(len(args))
+    if len(args) > 2:
         jobpath, delay  = args[1], float(args[2])
+        print(f"starting worker for monitoring {jobpath} with delay of {delay}")
         start = delay
         while True:
             time.sleep(1)

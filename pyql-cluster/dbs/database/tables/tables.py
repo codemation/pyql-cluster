@@ -1,6 +1,6 @@
 def db_attach(server):
     import os
-    db = server.data[os.environ['DB_NAME']]
+    db = server.data['cluster']
     # Example 
     # db.create_table(
     #    'users', # table-name
@@ -17,11 +17,12 @@ def db_attach(server):
     #
     db.create_table(
        'tables', [
-           ('name': str), 
-           ('database': str), 
-           ('cluster': str),
-           ('mirrored': bool),
-           ('consistency': str),
+            ('name', str, 'NOT NULL'),
+            ('database', str),
+            ('cluster', str),
+            ('config', str),
+            ('isPaused', bool)
+       ],
         'name'
     )
     pass # Enter db.create_table statement here

@@ -4,7 +4,7 @@ def run(server):
     @server.route('/internal/db/attach')
     def database_attach():
         config=dict()
-        os.environ['DB_NAME'] = 'joshdb'
+        os.environ['DB_NAME'] = 'cluster'
         with open('.cmddir', 'r') as projDir:
             for projectPath in projDir:
                 dbName = os.getenv('DB_NAME').rstrip()
@@ -12,6 +12,7 @@ def run(server):
                 config['database'] = f'{projectPath}dbs/database/{dbName}'
         #USE ENV PATH for PYQL library or /pyql/
         #sys.path.append('/pyql/' if os.getenv('PYQL_PATH') == None else os.getenv('PYQL_PATH'))
+        #try:
         from pyql import data
         import sqlite3
         from . import setup

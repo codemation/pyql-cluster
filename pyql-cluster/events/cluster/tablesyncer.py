@@ -1,6 +1,6 @@
 import sys, time, requests, json
 
-clusterSvcName = 'http://localhost:8090' # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
+clusterSvcName = 'http://localhost:8080' # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
 
 def probe(path, method='GET', data=None):
     """
