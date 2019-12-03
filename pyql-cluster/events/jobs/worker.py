@@ -1,12 +1,9 @@
 import sys, time, requests, json, os
 
-clusterSvcName = 'http://localhost:8080' # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
-nodePath = 'http://localhost:8080'
+clusterSvcName = os.environ['PYQL_CLUSTER_SVC'] # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
+nodePath = f'http://{os.environ["PYQL_NODE"]}:{os.environ["PYQL_PORT"]}'
 
 def probe(path, method='GET', data=None):
-    """
-        default staring is http://localhost:8080
-    """
     url = f'{nodePath}{path}' if not 'http' in path else path
     if method == 'GET':
         r = requests.get(url, headers={'Accept': 'application/json'})

@@ -26,7 +26,7 @@ def run(server):
         'status': 'queued'
     }
     # Add Cron job to /clusters/cron/job/add
-    r = request.post('https://localhost:8080/clusters/cron/job/add', data=updateStateCron)
+    r = request.post(f'{os.environ['PYQL_CLUSTER_SVC']}/clusters/cron/job/add', data=updateStateCron)
 
     # Worker to trigger refresh of cronjob status - if interval is reached server will create a job
     subprocess.Popen(['python', f'{path}cron.py', '/clusters/cron/job', '16.0'])

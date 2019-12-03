@@ -1,10 +1,7 @@
-import sys, time, requests
+import sys, time, requests, os
 
 def probe(endpoint):
-    """
-        default staring is http://localhost:8080
-    """
-    url = f'http://localhost:8080{endpoint}'
+    url = f'http://{os.environ["PYQL_NODE"]}:{os.environ["PYQL_PORT"]}{endpoint}'
     r = requests.get(url, headers={'Accept': 'application/json'})
     try:
         return r.json(),r.status_code

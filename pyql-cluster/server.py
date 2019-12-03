@@ -1,7 +1,20 @@
 
 from flask import Flask
+import os
+os.environ['PYQL_CLUSTER_SVC'] = 'http://localhost:8080'
 app = Flask(__name__)
-import setup
-setup.run(app)
-app.run('0.0.0.0','8080', debug=True)
+def main(port):
+    import setup
+    setup.run(app)
+    app.run('0.0.0.0', port, debug=True)
+if __name__ == '__main__':
+    import sys
+    print(sys.argv)
+    nodeName = sys.argv[1]
+    port = sys.argv[2]
+    if not port == None:
+        os.environ['PYQL_NODE'] = nodeName
+        os.environ['PYQL_PORT'] = port
+        main(port)
+        
             

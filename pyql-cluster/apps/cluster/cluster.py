@@ -29,7 +29,7 @@ def run(server):
     from datetime import datetime
     import time, uuid
     from random import randrange
-    import json
+    import json, os
     server.clusterJobs = {'jobs': [], 'syncjobs': []}
     server.cronJobs = {}
 
@@ -51,7 +51,7 @@ def run(server):
         "path": "/cluster/pyql/join",
         "data": {
             "name": "pyql-master-01",
-            "path": "127.0.0.1:8080",
+            "path": os.environ['PYQL_CLUSTER_SVC'],
             "database": {
                 'name': "cluster",
                 'uuid': dbuuid
@@ -130,7 +130,7 @@ def run(server):
             'tables': get_tables_data,
             'state': get_state_data
         }
-        localhost = 'http://localhost:8080'
+        localhost = f'http://localhost:{os.environ["PYQL_PORT"]}'
         for table in ['clusters', 'endpoints', 'databases']:
             execute_request(
                 localhost, 
@@ -277,7 +277,7 @@ def run(server):
             endpointList = [endpoint for endpoint in server.cluster[cluster]['endpoints']]
             return endpointList
         else:
-            return ['http://localhost:8080']
+            return [os.environ['PYQL_CLUSTER_SVC']]
     def get_table_endpoints(cluster, table):
         print(f"get_table_endpoints for {cluster} {table}")
         tableEndpoints = {'inSync': {}, 'outOfSync': {}}
@@ -290,7 +290,8 @@ def run(server):
                 else:
                     tableEndpoints['outOfSync'][endpoint] = server.cluster[cluster]['endpoints'][endpoint]
         else:
-            tableEndpoints['inSync']['temp'] =  {'path':'http://localhost:8080'}
+            print("This should never happen")
+            tableEndpoints['inSync']['temp'] =  {'path': os.environ['PYQL_CLUSTER_SVC']}
         print(f"finished get_table_endpoints {tableEndpoints}")
         return tableEndpoints
 

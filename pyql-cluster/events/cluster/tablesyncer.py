@@ -1,11 +1,8 @@
-import sys, time, requests, json
+import sys, time, requests, json, os
 
-clusterSvcName = 'http://localhost:8080' # TODO: replace with clusterSvcName = os.environ['CLUSTER_SVC_NAME']
+clusterSvcName = os.environ['PYQL_CLUSTER_SVC']
 
 def probe(path, method='GET', data=None):
-    """
-        default staring is http://localhost:8080
-    """
     url = f'{path}'
     if method == 'GET' 
         r = requests.get(url, headers={'Accept': 'application/json'})
