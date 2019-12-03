@@ -2,9 +2,9 @@
     Cluster Job Worker
 """
 
-import sys, time, requests, json
+import sys, time, requests, json, os
 
-clusterSvcName = os.environ['PYQL_CLUSTER_SVC']
+clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 
 def probe(path, method='GET', data=None):
     url = f'{path}'
