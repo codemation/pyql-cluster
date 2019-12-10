@@ -5,6 +5,8 @@ def db_attach(server):
        'databases', [
             ('name', str, 'NOT NULL'),
             ('cluster', str),
+            ('dbname', str),
+            ('uuid', str),
             ('endpoint', str)
        ],
         'name'

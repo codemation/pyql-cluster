@@ -9,7 +9,7 @@ clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 
 def probe(path, method='GET', data=None):
     url = f'{path}'
-    if method == 'GET' 
+    if method == 'GET':
         r = requests.get(url, headers={'Accept': 'application/json'})
     else:
         r = request.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=data)

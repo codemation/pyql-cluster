@@ -7,8 +7,6 @@ def run(server):
         if db.type == 'sqlite':
             result = db.get(f"SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
             tables = [t[0] for t in result]
-            print(tables)
-            print(database)
             if database == 'cluster':
                 clusterTables = ['clusters', 'endpoints', 'databases', 'tables', 'state', 'pyql']
                 for index, check in enumerate(clusterTables):

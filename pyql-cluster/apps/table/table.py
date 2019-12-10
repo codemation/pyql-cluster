@@ -20,6 +20,8 @@ def run(server):
             return {"tables": tablesConfig}, 200
         else:
             return {"message": f"no database with name {database} attached to endpoint"}
+
+
     @server.route('/db/<database>/table/<table>')
     def get_table_func(database,table):
         message, rc = server.check_db_table_exist(database,table)
@@ -38,6 +40,7 @@ def run(server):
         else:
             return message, rc
     server.get_table_func = get_table_func
+
     @server.route('/db/<database>/table/create', methods=['POST'])
     def create_table_func(database):
         if database in server.data:
@@ -68,6 +71,7 @@ def run(server):
                                     columns,
                                     tableConfig[tableName]["primaryKey"]
                                     )
+                                server.actions['cache_enable'](database, tableName)
                                 return {"message": f"""table {tableName} created successfully """}, 200
                             else:
                                 return f"""provided primaryKey {tableConfig[tableName]["primaryKey"]} is not a column with "columns": {colNames} """
@@ -77,5 +81,3 @@ def run(server):
                         return f"""missing new table config {'"columns": [{"name": "<name>", "type": "<type>", "mods": "<mods>"}, ..]'}""", 400
                 else:
                     return f"""table {tableName} already exists """, 400
-
-#   

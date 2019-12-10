@@ -6,3 +6,6 @@ def run(server):
 
     from events.jobs import jobs
     jobs.run(server)
+
+    from events.cluster import cluster
+    cluster.run(server)

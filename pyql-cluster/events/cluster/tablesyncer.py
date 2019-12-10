@@ -4,10 +4,10 @@ clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 
 def probe(path, method='GET', data=None):
     url = f'{path}'
-    if method == 'GET' 
+    if method == 'GET':
         r = requests.get(url, headers={'Accept': 'application/json'})
     else:
-        r = request.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=data)
+        r = requests.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data))
     try:
         return r.json(),r.status_code
     except:
@@ -24,6 +24,10 @@ def table_copy(cluster, table, endpointPath):
         for row in tableCopy:
             probe(f'{endpointPath}/insert', method='POST', data=row)
         print(f"initial table copy of {table} in cluster {cluster} completed, need to sync changes now")
+def table_sync(cluster, table, endpointPath):
+    """
+        used by tables which are "loaded" to compare existing data & 
+    """
 def table_cutover(cluster, table, action):
     """
         pause / resume table operations 
@@ -60,21 +64,23 @@ def sync_cluster_table_logs(cluster, table, uuid, endpointPath):
     index = 0
     while True:
         logsToSync, rc = probe(
-            f'/cluster/{cluster}/tablelogs/{table}/{uuid}', 
-            data={'count': 5, 'startFromIndex': index})
+            f'{clusterSvcName}/cluster/{cluster}/tablelogs/{table}/{uuid}',
+            method='POST', 
+            data={'count': 5, 'startFromIndex': index}
+            )
         if rc == 200:
             for log in logsToSync['txns']:
                 if 'endpoint' == uuid:
                     for action in log['txn']:
                         probe(f'{endpointPath}/{action}', method='POST', data=log['txn'][action])
             if logsToSync['totalTxns'] - len(totalTxns['txns']+index) > 0:
-                index = index + len(totalTxns['txns']
+                index = index + len(totalTxns['txns'])
                 continue
             else:
                 print(f'completed log replay of {table} in cluster {cluster}')
                 break
         else:
-            print(f'error in log replay of {table} in cluster {cluster} {rc.message} {rc.status_code}')
+            print(f'error in log replay of {table} in cluster {cluster} error: {logsToSync} {rc}')
             break
     
 
@@ -88,7 +94,7 @@ def sync_cluster_table(cluster, table):
 
 def sync_status(cluster, table, method='GET', data=None):
     return probe(f'{clusterSvcName}/cluster/{cluster}/table/{table}/sync/status', method=method, data=data)
-def get_table_endpoint_state(cluster, table, endpoints=[])
+def get_table_endpoint_state(cluster, table, endpoints=[]):
     return probe(f'{clusterSvcName}/cluster/{cluster}/table/{table}/state/get', method='POST', data={'endpoints': endpoints})
 def create_table(table):
     return probe(f'{clusterSvcName}/cluster/{cluster}/table/{table}/state/get', method='POST', data={'endpoints': endpoints})
@@ -97,6 +103,7 @@ def drop_table(table):
 
 def get_job_requirement(job):
     #TODO - convert table config from json string to dict via json.loads
+    pass
 
 def sync_table_job(cluster, table):
     """
@@ -110,18 +117,39 @@ def sync_table_job(cluster, table):
         - SYNC job is completed
     """
     # check sync status by GET to /cluster/<cluster>/table/<table>/sync/status
-    syncStatus = sync_status(cluster, table)
+    syncStatus, rc = sync_status(cluster, table)
+    if not rc == 200:
+        return {"message": f"error checking sync/status of {cluster} {table} {syncStatus}"}, rc
+    """
+    Value returned from syncStatus
+            {
+        "inSync": {
+            "dev-server02": {
+            "cluster": "pyql",
+            "name": "dev-server02",
+            "path": "192.168.3.33:8080"
+            }
+        },
+        "outOfSync": {
+            "dev-server01": {
+            "cluster": "pyql",
+            "name": "dev-server01",
+            "path": "192.168.122.100"
+            }
+        }
+        }
+    """
     endpointsToSync = []
-    for endpoint in syncStatus['endpoints']:
-        if syncStatus['endpoints'][endpoint]['inSync'] == False
-            endpointsToSync.append((endpoint, syncStatus['endpoints'][endpoint]['path']))
+    print(syncStatus)
+    for endpoint in syncStatus['outOfSync']:
+        endpointsToSync.append((endpoint, syncStatus['outOfSync'][endpoint]['path']))
 
-    # check current state of  table endpoints
-    stateCheck = get_table_endpoint_state(cluster, table, [ep[0] for ep in endpointsToSync])
+    # check current state of table endpoints
+    stateCheck, rc = get_table_endpoint_state(cluster, table, [ep[0] for ep in endpointsToSync])
 
     # Sync Cluster Table Config
     sync_cluster_table(cluster,table)
-
+    print(f"stateCheck {stateCheck}")
     for endpoint in endpointsToSync:
         # Check if table is fresh 
         if stateCheck[endpoint[0]]['state'] == 'new': # Never loaded, needs to be initialize
@@ -133,16 +161,23 @@ def sync_table_job(cluster, table):
 
             # Worker completes initial insertions from select * of TB.
             table_copy(cluster, table, endpointPath)
+        else:
+            # compare last update time of out of sync table endpoints
+            pass
+
 
         # Worker starts to pull changes from change logs
         uuid = stateCheck[endpoint[0]]['uuid']
-        sync_cluster_table_logs(cluster, table, uuid)
+        outOfSyncPath = stateCheck[endpoint[0]]['path']
+        sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
         # Worker completes pull of change logs & issues a cutover by pausing table.
         table_cutover(cluster, table, 'start')
         # Worker checks for any new change logs that were commited just before the table was paused, and also syncs these
-        sync_cluster_table_logs(cluster, table, uuid)
+        sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
         # Worker sets new TB endpoint as inSync=True & unpauses TB
-        sync_status(cluster, table, 'POST', {endpoint: {'inSync': True}})
+        setInSync = {endpoint[0]: {'inSync': True}}
+        statusResult, rc = sync_status(cluster, table, 'POST', data=setInSync)
+        print(f"marking outOfSync endpoint {endpoint[0]} table {table} in {cluster} as {setInSync}")
         table_cutover(cluster, table, 'stop')
         # SYNC job is completed for endpoint
         print(f'finished syncing {endpoint} for table {table} in cluster {cluster}')
@@ -161,11 +196,11 @@ def get_and_run_job(path):
     return job, rc
 if __name__=='__main__':
     args = sys.argv
-    if len(args) > 3:
+    if len(args) > 1:
         jobpath, delay  = args[1], float(args[2])
         start = delay
         while True:
             time.sleep(1)
             if delay < time.time() - start:
-                result, rc = get_and_run_job(jobpath)
+                result, rc = get_and_run_job(f'{clusterSvcName}{jobpath}')
                 start = time.time()

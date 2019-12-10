@@ -42,10 +42,12 @@ def add_job_to_queue(path, job):
         print(f"added {job['job']} to {path} queue")
     else:
         print(f"error adding {job['job']} to {path} queue, error: {message}")
+    return message,rc
 
 def get_and_process_job(path):
     job, rc = probe(path)
     if not "message" in job:
+        print(f"pulled {job} with {path} with rc {rc}")
         if job['jobType'] == 'cluster':
             #Distribute to cluster job queue
             print(f"adding job {job} to cluster queue")
@@ -53,7 +55,8 @@ def get_and_process_job(path):
         elif job['jobType'] == 'node':
             message, rc = probe(f"{nodePath}{job['path']}", job['method'], job['data'])
         elif job['jobType'] == 'tablesync':
-            message, rc = add_job_to_queue('/cluster/syncjobs', job)
+            print(f"adding job {job} to tablesync queue")
+            message, rc = add_job_to_queue('/cluster/syncjobs/add', job)
         else:
             message, rc =  f"{job['job']} is missing jobType field", 200
         return message,rc
