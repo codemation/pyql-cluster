@@ -41,7 +41,7 @@ def run(server):
                     elif action == 'cancel':
                         del cache['txns'][txnId]
                     else:
-                        return {'message': f"{action} is not a valid action, use /commit or /cancel}"}, 400
+                        return {'message': f"{action} is not a valid action, use /commit or /cancel"}, 400
                 else:
                     return {
                         'message': f"{txnId} is not valid transaction id for db {database} table {table}"
