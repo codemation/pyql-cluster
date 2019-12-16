@@ -32,6 +32,7 @@ def run(server):
     from apps.cluster import asyncrequest
 
     server.clusterJobs = {'jobs': [], 'syncjobs': []}
+    server.quorum = {'status': True, 'nodes': []}
     server.cronJobs = {}
 
     uuidCheck = server.data['cluster'].tables['pyql'].select('uuid', where={'database': 'cluster'})
@@ -169,7 +170,31 @@ def run(server):
                     print(r.text)
         update_clusters()
         
-        
+    @server.route('/cluster/pyql/quorum', methods=['GET', 'POST'])
+    def cluster_quorum():
+        if request.method == 'POST':
+            epRequests = {}
+            tableEndpoints = get_table_endpoints('pyql', 'clusters')
+            epList = []
+            for epType in tableEndpoints:
+                for endpoint in tableEndpoints[epType]:
+                    epList.append(endpoint)
+                    endPointPath = tableEndpoints['inSync'][endpoint]['path']
+                    endPointPath = f'http://{endPointPath}/cluster/pyql/quorum'
+                    epRequests[endpoint] = {'path': endPointPath}
+            epResults = asyncrequest.async_request(epRequests)
+            inQuorum = []
+            for endpoint in epResults:
+                if epResults[endpoint]['status'] == 200:
+                    inQuorum.append(endpoint)
+            if float(len(inQuorum) / len(epList)) >= float(2/3):
+                server.quorum['status'] = True
+            else:
+                server.quorum['status'] = False
+            server.quorum['nodes'] = inQuorum
+            return {"message": server.quorum},200
+        else:
+            return {'message':'OK'}, 200
 
     @server.route('/cluster/<cluster>/endpoint/<endpoint>/table/<table>/updateState', methods=['POST'])
     def update_state(cluster, endpoint, table):
@@ -353,7 +378,7 @@ def run(server):
     def get_endpoint_url(cluster, endpoint, db, table, action, **kw):
         endPointPath = server.cluster[cluster]['endpoints'][endpoint]['path']
         if 'cache' in kw:
-            return f'http://{endPointPath}/db/{db}/cache/{table}/{action}/{str(uuid.uuid1())}'
+            return f'http://{endPointPath}/db/{db}/cache/{table}/{action}/{kw["cache"]}'
         else:
             return f'http://{endPointPath}/db/{db}/table/{table}/{action}'
 
@@ -377,7 +402,8 @@ def run(server):
                 ]
             }
         """
-
+        if server.quorum == False:
+            return f"quorum was not available for writing {cluster} {table} changelog", 500
         tableEndpoints = get_table_endpoints('pyql', 'tables')
         data = request.get_json() if data == None else data
         epRequests = {}
@@ -407,6 +433,11 @@ def run(server):
         """
             current primary use is for updating sync status of a table & triggering db 
         """
+        if server.quorum['status'] == False:
+            return {
+                "message": f"cluster pyql is not in quorum",
+                "error": f"quorum was not available"}, 500
+
         jobsToRun = []
         if conf == 'sync' and action == 'status':
             for endpoint in data:
@@ -430,10 +461,6 @@ def run(server):
                 jobsToRun.append(job)
 
         tableEndpoints = get_table_endpoints('pyql', 'state')
-        total = 0
-        quorum = 0
-        for endpoint in tableEndpoints['outOfSync']:
-            total+=1
         epRequests = {}
         for endpoint in tableEndpoints['inSync']:
             total+=1
@@ -447,19 +474,11 @@ def run(server):
                 data=json.dumps(data)
             )
         """
-        for endpoint in tableEndpoints['inSync']:
-            if asyncResults[endpoint]['status'] == 200:
-                quorum+=1
-        quorumAcheived = quorum / total 
-        if quorumAcheived >= 2.0 / 3.0:
-            # create job to update tables
-            for job in jobsToRun:
-                server.jobs.append(job)
-            return {"message": f"updated {table} in {cluster} with {data}"}, 200
-        else:
-            return {
-                "message": f"quorum of {quorumAcheived} in {table} when attempting to set {data} in state table",
-                "error": f"quorum was not reached"}, 500
+        # create job to update tables
+        for job in jobsToRun:
+            server.jobs.append(job)
+        return {"message": f"updated {table} in {cluster} with {data}"}, 200
+
 
     def post_request_tables(cluster, table, action, requestData=None, **kw):
         """
@@ -477,11 +496,13 @@ def run(server):
         def process_request():
             endpointResponse = {}
             epRequests = {}
+            changeLogs = {'txns': []}
+            requestUuid = uuid.uuid1()
             for endpoint in tableEndpoints['inSync']:
                 tb = server.cluster[cluster]['tables'][table]
                 db = get_db_name(cluster, endpoint)
                 epRequests[endpoint] = {
-                    'path': get_endpoint_url(cluster, endpoint, db, table, action, cache=True),
+                    'path': get_endpoint_url(cluster, endpoint, db, table, action, cache=requestUuid),
                     'data': json.dumps(requestData)
                 }
             asyncResults = asyncrequest.async_request(epRequests, 'POST')
@@ -501,7 +522,6 @@ def run(server):
                         break
             """
             for endpoint in tableEndpoints['inSync']:
-
                 if not asyncResults[endpoint]['status'] == 200:
                     failTrack.append(endpoint)
                     # start job to Retry for endpoint, or mark endpoint bad after testing
@@ -510,8 +530,6 @@ def run(server):
                 else:
                     endpointResponse[endpoint] = asyncResults[endpoint]['content']
                     response, rc = asyncResults[endpoint]['status'], asyncResults[endpoint]['status']
-            # At least 1 success in endpoint db change, need to mark failed endpoints out of sync
-            # and create a changelog for resync
             def update_endpoint_time(override=False): 
                 # Update endpoint lastModTime
                 tableEndpoints = get_table_endpoints(cluster, table)
@@ -547,12 +565,17 @@ def run(server):
                         #post_request_tables(cluster, 'state', 'update', data)
                         #server.jobs.append(job) #TODO update later
             transTime = time.time()
+            # At least 1 success in endpoint db change, need to mark failed endpoints out of sync
+            # and create a changelog for resync
             if len(failTrack) > 0 and len(failTrack) < len(tableEndpoints['inSync']):
                 # At least 1 successful response & at least 1 failure to update of inSync endpoints
-                mesage, rc = post_update_table_conf(cluster, table,'sync','status', statusData)
                 statusData = {failedEndpoint: {'inSync': False} for failedEndpoint in failTrack}
-                #TODO - Only update sync status if in quorum - check quorum state
-                post_update_table_conf(cluster, table,'sync','status', statusData)
+                mesage, rc = post_update_table_conf(cluster, table,'sync','status', statusData)
+                
+                if not rc == 200:
+                    message = f"canceling request, internal error preventing sync status update on each cluster node"
+                    #TODO - need to rollback and cancel cached requests for inSync & not failTracked endpoints
+                    return message, 500
 
                 for failedEndpoint in failTrack:
                     if not tb['endpoints'][failedEndpoint]['state'] == 'new':
@@ -584,15 +607,10 @@ def run(server):
                         #TODO - need special handling for PYQL cluster state table as this table requires quorum for normal use.
                         #TODO - maybe use special queue for writing transaction logs to each cluster node, avoid blocking.
 
-                        mesage, rc = post_update_table_conf(cluster, table,'sync','status', statusData)
-
                         # Write data to a change log for resyncing
-                        #TODO If still in quorum
-                        post_write_to_change_logs(
-                            cluster,
-                            table, 
-                            {
+                        changeLogs['txns'].append({
                                 'endpoint': tb['endpoints'][failedEndpoint]['uuid'],
+                                'txnUuid': requestUuid,
                                 'timestamp': transTime,
                                 'txn': {action: data }
                             })
@@ -604,7 +622,7 @@ def run(server):
                             'table': table
                         })
                  # At least 1 new sync failure - creating job to modtime on inSync table endpoints
-                update_endpoint_time(True)
+                #update_endpoint_time(True) #TODO Check if I need this still
 
             # All endpoints failed request - 
             elif len(failTrack) == len(tableEndpoints['inSync']):
@@ -613,7 +631,7 @@ def run(server):
             else:
                 # No InSync failures
                 print(f"post_request_tables no inSync failures")
-                update_endpoint_time()
+                #update_endpoint_time()#TODO Check if I need this still
                 pass
             # Update any previous out of sync table change-logs, if any
             print(f"post_request_tables need to update logs of any outOfSync endpoinsts {tableEndpoints['outOfSync']} {tb}")
@@ -643,18 +661,24 @@ def run(server):
                         })
                     #TODO - Check later if we can jobify this
                     print(f"outOfSyncEndpoint {tbEndpoint} starting to write to db logs")
-                    post_write_to_change_logs(
-                        cluster,
-                        table, 
-                        {
+                    changeLogs['txns'].append({
                             'endpoint': tb['endpoints'][tbEndpoint]['uuid'],
+                            'txnUuid': requestUuid,
                             'timestamp': transTime,
                             'txn': {action: requestData }
                         })
                 else:
                     print(f"post_request_tables  table is new {tb['endpoints'][tbEndpoint]['state']}")
-                
+            
+
             details = {'message': response, 'endpointStatus': tb['endpoints']} if 'details' in kw else response
+            if len(changeLogs['txns']) > 0:
+                result, rc = post_write_to_change_logs(
+                    cluster,
+                    table,
+                    changeLogs
+                )
+                #TODO - may need further handling for if a node failed to write log - log sync between pyql nodes
             return response, 200
         if tb['isPaused'] == False:
             print(f"table {table} is not paused, processing")
@@ -777,7 +801,7 @@ def run(server):
         print(f"finished cluster_table_status in {time.time()-timeStart}")
         return {"message": f'{conf}/{action} is not a valid for tables'}, 400
 
-    @server.route(f'/cluster/<cluster>/tablelogs/<table>', methods=['POST'])
+    @server.route('/cluster/<cluster>/tablelogs/<table>', methods=['POST'])
     def cluster_table_endpoint_logs(cluster, table):
         if request.method == 'POST':
             """

@@ -31,7 +31,11 @@ def run(server):
     #r = requests.post(f'http://{os.environ["PYQL_CLUSTER_SVC"]}/clusters/cron/job/add', data=json.dumps(updateStateCron))
 
     # Worker to trigger refresh of cronjob status - if interval is reached server will create a job
-    subprocess.Popen(['python', f'{path}cron.py', '/clusters/cron/job', '16.0'])
+    #subprocess.Popen(['python', f'{path}cron.py', '/clusters/cron/job', 'GET', '16.0']) #TODO - Check what I need this for
+
+    # Quorum Checker
+    
+    subprocess.Popen(['python', f'{path}cron.py', '/cluster/pyql/quorum','POST', '2.0', '10'])
 
     # Create Table Sync Workers
     subprocess.Popen(['python', f'{path}tablesyncer.py', '/cluster/jobqueue/syncjob', '10.0'])
