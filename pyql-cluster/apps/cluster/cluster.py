@@ -174,14 +174,13 @@ def run(server):
     def cluster_quorum():
         if request.method == 'POST':
             epRequests = {}
-            tableEndpoints = get_table_endpoints('pyql', 'clusters')
+            tableEndpoints = server.cluster['pyql']['endpoints']
             epList = []
-            for epType in tableEndpoints:
-                for endpoint in tableEndpoints[epType]:
-                    epList.append(endpoint)
-                    endPointPath = tableEndpoints['inSync'][endpoint]['path']
-                    endPointPath = f'http://{endPointPath}/cluster/pyql/quorum'
-                    epRequests[endpoint] = {'path': endPointPath}
+            for endpoint in tableEndpoints:
+                epList.append(endpoint)
+                endPointPath = tableEndpoints[endpoint]['path']
+                endPointPath = f'http://{endPointPath}/cluster/pyql/quorum'
+                epRequests[endpoint] = {'path': endPointPath}
             epResults = asyncrequest.async_request(epRequests)
             inQuorum = []
             for endpoint in epResults:
