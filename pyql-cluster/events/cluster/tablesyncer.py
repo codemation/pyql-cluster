@@ -162,7 +162,12 @@ def sync_table_job(cluster, table):
             # Worker completes initial insertions from select * of TB.
             table_copy(cluster, table, endpointPath)
         else:
-            # compare last update time of out of sync table endpoints
+            # compare last update time of out of sync table endpointsf'http://{endPointPath}/cluster/{cluster}/config/{action}/{items}'
+            clusterState, rc = probe(
+                f'http://{clusterSvcName}/cluster/{cluster}/config/update/endpoints',
+                'POST',
+                None
+                )
             pass
 
 

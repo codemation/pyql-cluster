@@ -21,3 +21,6 @@ def attach_tables(server):
     from dbs.database.tables import state
     state.db_attach(server)
             
+    from dbs.database.tables import transactions
+    transactions.db_attach(server)
+            

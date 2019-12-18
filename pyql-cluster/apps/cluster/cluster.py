@@ -75,6 +75,9 @@ def run(server):
                 {
                     "state": server.get_table_func('cluster', 'state')
                 },
+                {
+                    "transactions": server.get_table_func('cluster', 'transactions')
+                }
             ]
         }
     }
@@ -505,21 +508,6 @@ def run(server):
                     'data': json.dumps(requestData)
                 }
             asyncResults = asyncrequest.async_request(epRequests, 'POST')
-            """
-                def execute_request():
-                    return requests.post(
-                        get_endpoint_url(cluster, endpoint, db, table, action, cache=True),
-                        headers={'Accept': 'application/json', "Content-Type": "application/json"},
-                        data=json.dumps(requestData),
-                        timeout=0.5)
-
-                for _ in range(2):
-                    r = execute_request()
-                    if not r.status_code == 200:
-                        continue
-                    else:
-                        break
-            """
             for endpoint in tableEndpoints['inSync']:
                 if not asyncResults[endpoint]['status'] == 200:
                     failTrack.append(endpoint)
@@ -605,15 +593,23 @@ def run(server):
                         #  and then update in-memory endpoint used by get_table_endpoints() so future requests avoid it
                         #TODO - need special handling for PYQL cluster state table as this table requires quorum for normal use.
                         #TODO - maybe use special queue for writing transaction logs to each cluster node, avoid blocking.
+                        
+                        # Prevent writing transaction logs for failed transaction log changes
+                        if cluster == 'pyql':
+                            if table == 'transactions':
+                                continue
 
                         # Write data to a change log for resyncing
                         changeLogs['txns'].append({
                                 'endpoint': tb['endpoints'][failedEndpoint]['uuid'],
-                                'txnUuid': requestUuid,
+                                'uuid': requestUuid,
+                                'table': table,
+                                'cluster': cluster,
                                 'timestamp': transTime,
-                                'txn': {action: data }
+                                'txn': {action: requestData}
                             })
                         #TODO Create job for resync if failed
+
                         server.jobs.append({
                             'job': 'sync_table',
                             'jobType': 'tablesync',
@@ -659,12 +655,18 @@ def run(server):
                             'table': table
                         })
                     #TODO - Check later if we can jobify this
-                    print(f"outOfSyncEndpoint {tbEndpoint} starting to write to db logs")
+                    # Prevent writing transaction logs for failed transaction log changes
+                    if cluster == 'pyql':
+                        if table == 'transactions':
+                            continue
+                    print(f"outOfSyncEndpoint {tbEndpoint} need to write to db logs")
                     changeLogs['txns'].append({
                             'endpoint': tb['endpoints'][tbEndpoint]['uuid'],
-                            'txnUuid': requestUuid,
+                            'uuid': requestUuid,
+                            'table': table,
+                            'cluster': cluster,
                             'timestamp': transTime,
-                            'txn': {action: requestData }
+                            'txn': {action: requestData}
                         })
                 else:
                     print(f"post_request_tables  table is new {tb['endpoints'][tbEndpoint]['state']}")
@@ -677,6 +679,11 @@ def run(server):
                     table,
                     changeLogs
                 )
+                #TODO - Better solution - maintain transactions table for transactoins, table sync and logic is already available
+                for txn in changeLogs['txns']:
+                    post_request_tables('pyql','transactions','insert', txn)
+
+
                 #TODO - may need further handling for if a node failed to write log - log sync between pyql nodes
             return response, 200
         if tb['isPaused'] == False:
@@ -696,11 +703,8 @@ def run(server):
     @server.route('/cluster/<cluster>/table/<table>/select', methods=['GET','POST'])
     def cluster_table_select(cluster, table):
         if request.method == 'GET':
-            #endPointList = get_endpoint_list(cluster)
-            endPointList = []
             tableEndpoints = get_table_endpoints(cluster, table)
-            for endpoint in tableEndpoints['inSync']:
-                endPointList.append(endpoint)
+            endPointList = [endpoint for endpoint in tableEndpoints['inSync']]
             if len(endPointList) > 0:
                 endpoint = endPointList[randrange(len(endPointList))]
                 db = get_db_name(cluster, endpoint)
@@ -808,20 +812,18 @@ def run(server):
                 data = {
                     'txns':[
                         {
-                            'endpoint': 'uuid',
-                            'txnUuid': 'txnuuid-xxdk--dfdkd', 
-                            'txn': {
-                                'update': {
-                                    'set': {'name': 'new'}, 
-                                    'where': {'key': 1}
-                                }
-                            }
+                            'endpoint': tb['endpoints'][tbEndpoint]['uuid'],
+                            'txnUuid': requestUuid,
+                            'timestamp': transTime,
+                            'txn': {action: requestData }
                         },
                         ....
                     ]
                 }
             """
             newLogs = request.get_json()
+            
+
             responses = []
             errors = []
             for newLog in newLogs['txns']:
@@ -836,7 +838,16 @@ def run(server):
             return {"messages": responses, 'errors': errors}, 200
     @server.route(f'/cluster/<cluster>/tablelogs/<table>/<endpoint>', methods=['POST'])
     def get_cluster_table_endpoint_logs(cluster, table, endpoint):
+        #TODO - Decide if I need this func anymore - transactions can be directly queried via /table/<table>/select
         """
+            querying transactions pyql table
+           ('endpoint', str), 
+           ('uuid', str),
+           ('table', str), 
+           ('cluster', str),
+           ('timestamp', float),
+           ('txn', str)
+
             {
                 'count': 5,
                 'startFromIndex': 0 
@@ -916,7 +927,7 @@ def run(server):
             jobsToRun = []
 
             #check if pyql is bootstrapped
-            if not 'pyql' in server.cluster:
+            if not 'pyql' in server.cluster and clusterName == 'pyql':
                 bootstrap_pyql_cluster(config)
 
             if not clusterName in server.cluster:
