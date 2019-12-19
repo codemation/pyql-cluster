@@ -1,6 +1,6 @@
 def run(server):
     from flask import request
-    import os, uuid
+    import os, uuid, time
     server.cache = {}
 
     @server.route('/db/<database>/cache/<table>/enable', methods=['POST'])
@@ -37,6 +37,16 @@ def run(server):
                         response, rc = server.actions[action](database, table, cache['txns'][txnId]['txn'])
                         if rc == 200:
                             del cache['txns'][txnId]
+                            setParams = {
+                                'set': {
+                                    'lastTxnUuid': txnId,
+                                    'lastModTime': float(time.time())
+                                    },
+                                'where': {
+                                    'table': table
+                                }
+                            }
+                            server.data[database].tables['pyql'].update(setParams)
                         return response, rc
                     elif action == 'cancel':
                         del cache['txns'][txnId]

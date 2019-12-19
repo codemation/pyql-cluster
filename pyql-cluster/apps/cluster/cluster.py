@@ -379,6 +379,9 @@ def run(server):
 
     def get_endpoint_url(cluster, endpoint, db, table, action, **kw):
         endPointPath = server.cluster[cluster]['endpoints'][endpoint]['path']
+        if 'commit' in kw:
+            #/db/<database>/cache/<table>/txn/<action>
+            return f'http://{endPointPath}/db/{db}/cache/{table}/txn/commit'
         if 'cache' in kw:
             return f'http://{endPointPath}/db/{db}/cache/{table}/{action}/{kw["cache"]}'
         else:
@@ -507,6 +510,7 @@ def run(server):
                     'path': get_endpoint_url(cluster, endpoint, db, table, action, cache=requestUuid),
                     'data': json.dumps(requestData)
                 }
+
             asyncResults = asyncrequest.async_request(epRequests, 'POST')
             for endpoint in tableEndpoints['inSync']:
                 if not asyncResults[endpoint]['status'] == 200:
@@ -674,17 +678,27 @@ def run(server):
 
             details = {'message': response, 'endpointStatus': tb['endpoints']} if 'details' in kw else response
             if len(changeLogs['txns']) > 0:
+                """
+                #TODO - Delete this later
                 result, rc = post_write_to_change_logs(
                     cluster,
                     table,
                     changeLogs
                 )
-                #TODO - Better solution - maintain transactions table for transactoins, table sync and logic is already available
+                """
+                # Better solution - maintain transactions table for transactoins, table sync and logic is already available
                 for txn in changeLogs['txns']:
                     post_request_tables('pyql','transactions','insert', txn)
 
-
-                #TODO - may need further handling for if a node failed to write log - log sync between pyql nodes
+            # Commit cached commands  
+            epCommitRequests = {}
+            for endpoint in endpointResponse:
+                db = get_db_name(cluster, endpoint)
+                epRequests[endpoint] = {
+                    'path': get_endpoint_url(cluster, endpoint, db, table, action, commit=True),
+                    'data': json.dumps(endpointResponse[endpoint])
+                }
+            asyncResults = asyncrequest.async_request(epCommitRequests, 'POST')
             return response, 200
         if tb['isPaused'] == False:
             print(f"table {table} is not paused, processing")
@@ -700,33 +714,34 @@ def run(server):
                     }, 500
 
 
+    def table_select(cluster, table, data=None, method='GET'):
+        tableEndpoints = get_table_endpoints(cluster, table)
+        endPointList = [endpoint for endpoint in tableEndpoints['inSync']]
+        if not len(endPointList) > 0:
+            return {"status": 500, "message": f"no endpoints found in cluster {cluster}"}
+        endpoint = endPointList[randrange(len(endPointList))]
+        db = get_db_name(cluster, endpoint)
+        data = request.get_json() if data == None else data
+        if method == 'GET':
+            r = requests.get(
+                get_endpoint_url(cluster, endpoint, db, table, 'select'),
+                    headers={'Accept': 'application/json'}
+                    )
+        else:
+            r = requests.post(
+                get_endpoint_url(cluster, endpoint, db, table, 'select'),
+                headers={'Accept': 'application/json', "Content-Type": "application/json"}, 
+                data=json.dumps(data)
+                )
+        return r.json(), r.status_code
+
+
     @server.route('/cluster/<cluster>/table/<table>/select', methods=['GET','POST'])
     def cluster_table_select(cluster, table):
         if request.method == 'GET':
-            tableEndpoints = get_table_endpoints(cluster, table)
-            endPointList = [endpoint for endpoint in tableEndpoints['inSync']]
-            if len(endPointList) > 0:
-                endpoint = endPointList[randrange(len(endPointList))]
-                db = get_db_name(cluster, endpoint)
-                r = requests.get(get_endpoint_url(cluster, endpoint, db, table, 'select'),
-                    headers={'Accept': 'application/json'})
-                return r.json(), r.status_code
-            else:
-                return {"status": 500, "message": f"no endpoints found in cluster {cluster}"}
+            return table_select(cluster, table)
         else:
-            endPointList = get_endpoint_list(cluster)
-            if len(endPointList) > 0:
-                endpoint = endPointList[randrange(len(endPointList))]
-                db = get_db_name(cluster, endpoint)
-                try:
-                    data = request.get_json()
-                except Exception as e:
-                    return {"message": f"{repr(e)} - missing expected input or incorrect input"}, 400
-                r = requests.post(get_endpoint_url(cluster, endpoint, db, table, 'select'),
-                    headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data))
-                return r.json(), r.status_code
-            else:
-                return {"status": 500, "message": f"no endpoints found in cluster {cluster}"}
+            return table_select(cluster, table, request.get_json(), 'POST')
 
     @server.route('/cluster/<cluster>/table/<table>/update', methods=['POST'])
     def cluster_table_update(cluster, table):
@@ -813,7 +828,7 @@ def run(server):
                     'txns':[
                         {
                             'endpoint': tb['endpoints'][tbEndpoint]['uuid'],
-                            'txnUuid': requestUuid,
+                            'uuid': requestUuid,
                             'timestamp': transTime,
                             'txn': {action: requestData }
                         },
@@ -836,42 +851,60 @@ def run(server):
                     print(repr(e))
                     errors.append(str(repr(e)))
             return {"messages": responses, 'errors': errors}, 200
-    @server.route(f'/cluster/<cluster>/tablelogs/<table>/<endpoint>', methods=['POST'])
-    def get_cluster_table_endpoint_logs(cluster, table, endpoint):
-        #TODO - Decide if I need this func anymore - transactions can be directly queried via /table/<table>/select
-        """
-            querying transactions pyql table
-           ('endpoint', str), 
-           ('uuid', str),
-           ('table', str), 
-           ('cluster', str),
-           ('timestamp', float),
-           ('txn', str)
-
-            {
-                'count': 5,
-                'startFromIndex': 0 
+    @server.route(f'/cluster/<cluster>/tablelogs/<table>/<endpoint>/<action>', methods=['GET','POST'])
+    def get_cluster_table_endpoint_logs(cluster, table, endpoint, action):
+        if request.method == 'GET':
+            if action == 'count':
+                selQuery = ['uuid']
+            if action == 'getAll':
+                selQuery = ['*']
+            clusterTableEndpointTxns = {
+                'select': selQuery,
+                'where': {
+                    'endpoint': endpoint,
+                    'cluster': cluster,
+                    'table': table
+                    }
             }
-        """
-        logRequest = request.get_json()
-        txns = []
-        offset = logRequest['startFromIndex']+logRequest['count']-1
-        try:
-            with open(f'{cluster}_{table}_{endpoint}_tx.logs', 'r') as changeLogs:
-                for ind, line in enumerate(changeLogs):
-                    if ind >= logRequest['startFromIndex'] and ind <= offset:
-                        txns.append(json.loads(line))
-            return {
-                'totalTxns': len([i for i,v in enumerate(changeLogs)]),
-                'requested': logRequest['count'],
-                'txns': txns
-                }
-        except Exception as e:
-            print(repr(e))
-            message = f'Exception encountered trying to open file: {cluster}_{table}_{endpoint}_tx.logs'
-            return message, 500
-
-
+            response, rc = table_select(
+                cluster, 
+                table, 
+                clusterTableEndpointTxns,
+                'POST'
+                )
+            if not rc == 200:
+                return response, rc
+            if action == 'count':
+                return {"availableTxns": len(response)}, rc
+            elif actoin == 'getAll':
+                return {'txns': response}, rc
+            else:
+                return {"message": f"get_cluster_table_endpoint_logs -invalid action provided"}, 400
+        if request.method == 'POST':
+            if action == 'commit':
+                """
+                    expects input 
+                    {'txns': ['uuid1', 'uuid2', 'uuid3']}
+                """
+                # get list of commited txns
+                commitedTxns = request.get_json()
+                for txn in commitedTxns['txns']:
+                    deleteTxn = {
+                        'where': {
+                            'endpoint': endpoint,
+                            'cluster': cluster,
+                            'table': table,
+                            'uuid': txn
+                        }
+                    }
+                    resp, rc = post_request_tables(cluster, table, 'delete', deleteTxn)
+                    if not rc == 200:
+                        print("something abnormal happened when commiting txnlog {txn}")
+                cleanUpCheck, rc = get_cluster_table_endpoint_logs(cluster, table, endpoint, 'count')
+                if cleanUpCheck['availableTxns'] > 0:
+                    print(f"something abnormal happened during commiting txnlogs {commitedTxns['txns']}")
+                    print(f"get_cluster_table_endpoint_logs - cleanUpCheck expected 0, {cleanUpCheck['availableTxns']} found")
+                return {"message": f"successfully commited txns"}, 200
 
     @server.route('/clusters/<action>', methods=['POST'])
     def clusters_action(action):

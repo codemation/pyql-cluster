@@ -12,18 +12,17 @@ def probe(path, method='GET', data=None):
         return r.json(),r.status_code
     except:
         return r.text, r.status_code
-def table_select(cluster, table, path):
+def table_select(path):
     tableSelect, rc = probe(f'{path}')
     if rc == 200:
         return tableSelect
 def table_copy(cluster, table, endpointPath):
     sourcePath = f'{clusterSvcName}/cluster/{cluster}/table/{table}/select'
-    syncPath = f'{endpointPath}/select'
-    if not len(table_select(cluster, table, syncPath)) == 0:
-        tableCopy = table_select(cluster, table, sourcePath)
-        for row in tableCopy:
-            probe(f'{endpointPath}/insert', method='POST', data=row)
-        print(f"initial table copy of {table} in cluster {cluster} completed, need to sync changes now")
+    tableCopy = table_select(sourcePath)
+    #/db/<database>/table/<table>/sync
+    response, rc = probe(f'{endpointPath}/sync', method='POST', data=tableCopy)
+    print(f"initial table copy of {table} in cluster {cluster} completed, need to sync changes now")
+    return response, rc
 def table_sync(cluster, table, endpointPath):
     """
         used by tables which are "loaded" to compare existing data & 
@@ -39,52 +38,54 @@ def set_table_state(cluster, table, state):
         Expected: {endpoint: {'state': 'new|loaded'}}
     """
     probe(f'{clusterSvcName}/cluster/{cluster}/table/{table}/state/set', method='POST', data=state)
+def check_for_table_logs(cluster, table, uuid):
+    #/cluster/<cluster>/tablelogs/<table>/<endpoint>/count
+    return probe(
+        f'{clusterSvcName}/cluster/{cluster}/tablelogs/{table}/{uuid}/count')
+    
 def sync_cluster_table_logs(cluster, table, uuid, endpointPath):
     """
-        Expected input:
+           ('endpoint', str), 
+           ('uuid', str),
+           ('table', str), 
+           ('cluster', str),
+           ('timestamp', float),
+           ('txn', str)
+        Expected Response from /cluster/{cluster}/tablelogs/{table}/{uuid}/getAll
         {
-            'count': 5,
-            'startFromIndex': 0 
-        }
-        Expected Response from /cluster/{cluster}/tablelogs/{table}/{uuid}
-        {
-                'totalTxns': len([i for i,v in enumerate(changeLogs)]),
-                'requested': logRequest['count'],
-                'txns': [{
-                    'endpoint': 'uuid', 
-                    'txn': {
-                        'update': {
-                            'set': {'name': 'new'}, 
-                            'where': {'key': 1}
-                        }
-                    }]
-                }
+            'data': [
+
+            ]
         }
     """
-    index = 0
-    while True:
-        logsToSync, rc = probe(
-            f'{clusterSvcName}/cluster/{cluster}/tablelogs/{table}/{uuid}',
-            method='POST', 
-            data={'count': 5, 'startFromIndex': index}
-            )
-        if rc == 200:
-            for log in logsToSync['txns']:
-                if 'endpoint' == uuid:
-                    for action in log['txn']:
-                        probe(f'{endpointPath}/{action}', method='POST', data=log['txn'][action])
-            if logsToSync['totalTxns'] - len(totalTxns['txns']+index) > 0:
-                index = index + len(totalTxns['txns'])
-                continue
+    #/cluster/<cluster>/tablelogs/<table>/<endpoint>/count
+    logsToSync, rc = probe(
+        f'{clusterSvcName}/cluster/{cluster}/tablelogs/{table}/{uuid}/getAll',
+    )
+    if not rc == 200:
+        print(f"sync_cluster_table_logs - error when pulling logs - {logsToSync} {rc}")
+        return
+    commitedLogs = []
+    for txn in logsToSync['data']:
+        if not uuid == txn['endpoint']:
+            print(f"this should not have happened, pulled logs for {uuid}")
+        for action in txn['txn']:
+            message, rc = probe(f'{endpointPath}/{action}', method='POST', data=txn['txn'][action])
+            if rc == 200:
+                commitedLogs.append(txn['uuid'])
             else:
-                print(f'completed log replay of {table} in cluster {cluster}')
-                break
-        else:
-            print(f'error in log replay of {table} in cluster {cluster} error: {logsToSync} {rc}')
-            break
-    
-
-
+                print(f"this should not have happened, commiting logs for {uuid} {message} {rc}")
+    # confirm txns are applied & remove from txns table
+    #/cluster/<cluster>/tablelogs/<table>/<endpoint>/commit - POST
+    if len(commitedLogs) > 0:
+        commitResult, rc = probe(
+            f'{clusterSvcName}/cluster/{cluster}/tablelogs/{table}/{uuid}/commit',
+            'POST',
+            {'txns': commitedLogs}
+        )
+    message = f"sync_cluster_table_logs completed for {cluster} {table}"
+    print(message)
+    return {"message": message}, 200
 
 def sync_cluster_table(cluster, table):
     """
@@ -150,41 +151,44 @@ def sync_table_job(cluster, table):
     # Sync Cluster Table Config
     sync_cluster_table(cluster,table)
     print(f"stateCheck {stateCheck}")
+    uuid = stateCheck[endpoint[0]]['uuid']
+
     for endpoint in endpointsToSync:
         # Check if table is fresh 
-        if stateCheck[endpoint[0]]['state'] == 'new': # Never loaded, needs to be initialize
+        def load_table():
             endpointPath = endpoint[1]
-
             # Issue POST to /cluster/<cluster>/table/<table>/state/set -> loaded 
             state = {endpoint: {'state': 'loaded'}}
             set_table_state(cluster, table, state)
-
             # Worker completes initial insertions from select * of TB.
             table_copy(cluster, table, endpointPath)
+
+        if stateCheck[endpoint[0]]['state'] == 'new': # Never loaded, needs to be initialize
+            load_table()
         else:
-            # compare last update time of out of sync table endpointsf'http://{endPointPath}/cluster/{cluster}/config/{action}/{items}'
-            clusterState, rc = probe(
-                f'http://{clusterSvcName}/cluster/{cluster}/config/update/endpoints',
-                'POST',
-                None
-                )
-            pass
-
-
+            # Check for un-commited logs - otherwise full resync needs to occur.
+            count, rc = check_for_table_logs(cluster, table, uuid)
+            if rc == 200:
+                if count['availableTxns'] > 0:
+                    pass
+                else:
+                    # Need to reload table - drop / load
+                    load_table()
+                    
         # Worker starts to pull changes from change logs
-        uuid = stateCheck[endpoint[0]]['uuid']
+        
         outOfSyncPath = stateCheck[endpoint[0]]['path']
         sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
-        # Worker completes pull of change logs & issues a cutover by pausing table.
+        print("# Worker completes pull of change logs & issues a cutover by pausing table.")
         table_cutover(cluster, table, 'start')
-        # Worker checks for any new change logs that were commited just before the table was paused, and also syncs these
+        print("# Worker checks for any new change logs that were commited just before the table was paused, and also syncs these")
         sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
-        # Worker sets new TB endpoint as inSync=True & unpauses TB
+        print("# Worker sets new TB endpoint as inSync=True & unpauses TB")
         setInSync = {endpoint[0]: {'inSync': True}}
         statusResult, rc = sync_status(cluster, table, 'POST', data=setInSync)
         print(f"marking outOfSync endpoint {endpoint[0]} table {table} in {cluster} as {setInSync}")
         table_cutover(cluster, table, 'stop')
-        # SYNC job is completed for endpoint
+        print ("# SYNC job is completed for endpoint")
         print(f'finished syncing {endpoint} for table {table} in cluster {cluster}')
     
 def get_and_run_job(path):
