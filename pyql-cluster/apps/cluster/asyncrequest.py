@@ -5,24 +5,29 @@ from aiohttp import ClientSession
 async def async_get_request(session, url):
     for urlId, config in url.items():
         #print(f"{url} started")
-        async with session.get(
-            config['path'] if 'http' in config['path'] else f"http://{config['path']}",
-            headers={'Accept': 'application/json', 'Content-Type': 'application/json'}
-            ) as r:
-            jsonBody = await r.json()
-        #print(f"{url} completed")
-        return urlId, {'content': jsonBody, 'status': r.status}
+        try:
+            async with session.get(
+                config['path'] if 'http' in config['path'] else f"http://{config['path']}",
+                headers={'Accept': 'application/json', 'Content-Type': 'application/json'}
+                ) as r:
+                jsonBody = await r.json()
+            #print(f"{url} completed")
+            return urlId, {'content': jsonBody, 'status': r.status}
+        except Exception as e:
+            return urlId, {'content': str(repr(e)), 'status': 400}
 async def async_post_request(session, url):
     for urlId, config in url.items():
         #print(f"{url} started")
-        async with session.post(
-            config['path'] if 'http' in config['path'] else f"http://{config['path']}",
-            headers={'Accept': 'application/json', "Content-Type": "application/json"},
-            json=config['data'] if 'data' in config else None
-        ) as r:
-            jsonBody = await r.json()
-        #print(f"{url} completed")
-        return urlId, {'content': jsonBody, 'status': r.status}
+        try:
+            async with session.post(
+                config['path'] if 'http' in config['path'] else f"http://{config['path']}",
+                headers={'Accept': 'application/json', "Content-Type": "application/json"},
+                json=config['data'] if 'data' in config else None
+            ) as r:
+                jsonBody = await r.json()
+            return urlId, {'content': jsonBody, 'status': r.status}
+        except Exception as e:
+            return urlId, {'content': str(repr(e)), 'status': 400}
 
 async def async_request_pool(urls, method):
     async with ClientSession() as session:

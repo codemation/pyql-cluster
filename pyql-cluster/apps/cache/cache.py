@@ -1,6 +1,6 @@
 def run(server):
     from flask import request
-    import os, uuid, time
+    import os, uuid, time, json
     server.cache = {}
 
     @server.route('/db/<database>/cache/<table>/enable', methods=['POST'])
@@ -27,6 +27,8 @@ def run(server):
             method for managing txns - canceling / commiting
         """
         transaction = request.get_json()
+        print(f"cache_txn_manage - received {action} requeest for {transaction}")
+        print(type(transaction))
         if database in server.cache and table in server.cache[database]['tables']:
             tb = server.data[database].tables[table]
             cache = server.cache[database]['tables'][table]
@@ -34,7 +36,10 @@ def run(server):
                 txnId = transaction['txn']
                 if txnId in cache['txns']:
                     if action == 'commit':
-                        response, rc = server.actions[action](database, table, cache['txns'][txnId]['txn'])
+                        cachedAction = cache['txns'][txnId]['type']
+                        cachedTxn = cache['txns'][txnId]['txn']
+                        print(f"cache_txn_manage - commiting {cachedTxn} type {type(cachedTxn)}")
+                        response, rc = server.actions[cachedAction](database, table, cachedTxn)
                         if rc == 200:
                             del cache['txns'][txnId]
                             setParams = {
@@ -43,11 +48,15 @@ def run(server):
                                     'lastModTime': float(time.time())
                                     },
                                 'where': {
-                                    'table': table
+                                    'tableName': table
                                 }
                             }
-                            server.data[database].tables['pyql'].update(setParams)
-                        return response, rc
+                            server.data[database].tables['pyql'].update(
+                                **setParams['set'],
+                                where=setParams['where']
+                            )
+                        print(f"cache commit response {response} {rc}")
+                        return {"message": response, "status": rc}, rc
                     elif action == 'cancel':
                         del cache['txns'][txnId]
                     else:
@@ -65,6 +74,7 @@ def run(server):
     @server.route('/db/<database>/cache/<table>/<action>/<txuuid>', methods=['POST'])
     def cache_action(database, table, action,txuuid):
         transaction = request.get_json()
+        print(f"#cache_action {action} {transaction}")
         if database in server.cache and table in server.cache[database]['tables']:
             tb = server.data[database].tables[table]
             cache = server.cache[database]['tables'][table]

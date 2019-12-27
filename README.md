@@ -33,7 +33,4 @@ Manager for multiple pyql-rest endpoints to allow for read-replicas &amp; db mir
 
     There should be a delay in time between pyql-cluster-node-02 creation & "Ready" state which ensures this new nodes is not used by "service-name" until it has joined cluster.
     
-    This scaled pyql cluster endpoint also has its own "cluster" db with matching tables "clusters", "endpoints", 
-
-5. 
-
+    This scaled pyql cluster endpoint also has its own "cluster" db with matching tables "clusters", "endpoints", "databases", "tables", but there is not any data inside these tables yet. 

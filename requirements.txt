@@ -1,0 +1,4 @@
+jawf
+pyql-db
+requests
+aiohttp

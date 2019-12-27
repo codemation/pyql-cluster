@@ -8,6 +8,7 @@ def run(server):
         if rc == 200:
             if request.method == 'GET':
                 response = server.data[database].tables[table].select('*')
+                print(f"table {table} select - response {response}")
                 return {"status": 200, "data": response}, 200
             else:
                 params = request.get_json()
@@ -17,8 +18,10 @@ def run(server):
                         *params['select'], 
                         where=params['where'] if 'where' in params else {}
                         )
-                    return {"status": 200, "data": response}, 200
+                    print(f"table {table} select - response {response}")
+                    return {"data": response}, 200
                 else:
+                    print(f"table {table} select - missing selection")
                     return "missing selection", 400
         else: 
             return message, rc

@@ -9,14 +9,15 @@ def db_attach(server):
     db.create_table(
        'transactions', 
        [
+           ('txNumber', int, 'AUTOINCREMENT'),
            ('endpoint', str), 
            ('uuid', str),
-           ('table', str), 
+           ('tableName', str), 
            ('cluster', str),
            ('timestamp', float),
            ('txn', str)
        ],
-       'endpoint'
+       'txNumber'
     )
     pass # Enter db.create_table statement here
             

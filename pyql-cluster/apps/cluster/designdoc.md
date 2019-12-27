@@ -65,6 +65,14 @@ Cluster:
 
 ### Solution:
 
+State updates should require a quorum of 2/3 of pyql cluster nodes
+
+| Total Nodes | Quorum Requirement |
+|     1       |          1         |
+|     2       |          2         |
+|     3       |          2         |
+|     4       |          3         |
+|     5       |          4         |
+|     6       |          4         |
 
 
-    

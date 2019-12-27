@@ -44,15 +44,18 @@ def run(server):
     @server.route('/db/<database>/table/<table>/sync', methods=['POST'])
     def sync_table_func(database, table):
         if not database in server.data or not table in server.data[database].tables:
-            return {'message': f"{database} or {table} not found"}, 400
+            message = f"{database} or {table} not found"
+            print(messages)
+            return {'message': message}, 400
         dataToSync = request.get_json()
         tableConfig, _ = get_table_func(database, table)
         server.data[database].run(f'drop table {table}')
         message, rc = create_table_func(database, tableConfig)
-        if not rc == 200:
-            return {"message": message}, rc
+        print(f"table /sync create_table_func response {message} {rc}")
+        #if not rc == 200:
+        #    return {"message": message}, rc
         for row in dataToSync['data']:
-            server.data[database].tables[table].insert(row)
+            server.data[database].tables[table].insert(**row)
         return {"message": f"{database} {table} sync successful"}, 200
 
 
@@ -64,35 +67,34 @@ def run(server):
             convert = {'str': str, 'int': int, 'blob': bytes, 'float': float, 'bool': bool}
             columns = []
             for tableName in tableConfig:
-                if not tableName in db.tables:
-                    if "columns" in tableConfig[tableName]:
-                        for col in tableConfig[tableName]["columns"]:
-                            if col['type'] in convert:
-                                columns.append(
-                                    (
-                                        col['name'],
-                                        convert[col['type']],
-                                        col['mods']
-                                    )
+                if tableName in db.tables:
+                    print(f"""table {tableName} already exists - trying anyway""")
+                if "columns" in tableConfig[tableName]:
+                    for col in tableConfig[tableName]["columns"]:
+                        if col['type'] in convert:
+                            columns.append(
+                                (
+                                    col['name'],
+                                    convert[col['type']],
+                                    col['mods']
                                 )
-                            else:
-                                f"""invalid type {col['type']} provided in column {col['name']}. use: {convert}""", 400
-                        colNames = [c[0] for c in columns]
-                        if "primaryKey" in tableConfig[tableName]:
-                            if tableConfig[tableName]["primaryKey"] in colNames:
-                                # All required table configuration has been provided, Creating table.
-                                db.create_table(
-                                    tableName, 
-                                    columns,
-                                    tableConfig[tableName]["primaryKey"]
-                                    )
-                                server.actions['cache_enable'](database, tableName)
-                                return {"message": f"""table {tableName} created successfully """}, 200
-                            else:
-                                return f"""provided primaryKey {tableConfig[tableName]["primaryKey"]} is not a column with "columns": {colNames} """
+                            )
                         else:
-                            return f"""missing new table config "primaryKey": <column_name> """,  400
+                            f"""invalid type {col['type']} provided in column {col['name']}. use: {convert}""", 400
+                    colNames = [c[0] for c in columns]
+                    if "primaryKey" in tableConfig[tableName]:
+                        if tableConfig[tableName]["primaryKey"] in colNames:
+                            # All required table configuration has been provided, Creating table.
+                            db.create_table(
+                                tableName, 
+                                columns,
+                                tableConfig[tableName]["primaryKey"]
+                                )
+                            server.actions['cache_enable'](database, tableName)
+                            return {"message": f"""table {tableName} created successfully """}, 200
+                        else:
+                            return f"""provided primaryKey {tableConfig[tableName]["primaryKey"]} is not a column with "columns": {colNames} """
                     else:
-                        return f"""missing new table config {'"columns": [{"name": "<name>", "type": "<type>", "mods": "<mods>"}, ..]'}""", 400
+                        return f"""missing new table config "primaryKey": <column_name> """,  400
                 else:
-                    return f"""table {tableName} already exists """, 400
+                    return f"""missing new table config {'"columns": [{"name": "<name>", "type": "<type>", "mods": "<mods>"}, ..]'}""", 400
