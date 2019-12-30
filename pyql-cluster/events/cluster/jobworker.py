@@ -32,14 +32,18 @@ def get_and_process_job(path):
             if job['config']['jobType'] == 'cluster':
                 print(f'cluster jobworker - running {job["config"]["path"]}')
                 set_job_status(job['id'],'running', message=f"starting {job['config']['job']}")
-                message, rc = probe(f'{clusterSvcName}{job["config"]["path"]}', job['config']['method'], job['config']['data'])
-                if rc == 200:
-                    if 'runAfter' in job:
-                        message2, rc2 = process_job(job['runAfter'])
-                        message = {'message': message, 'runAfter': message2}
-                    set_job_status(job['id'],'finished')
-                else:
-                    set_job_status(job['id'],'queued', lastError=message)
+                try:
+                    message, rc = probe(f'{clusterSvcName}{job["config"]["path"]}', job['config']['method'], job['config']['data'])
+                    if rc == 200:
+                        if 'runAfter' in job:
+                            message2, rc2 = process_job(job['runAfter'])
+                            message = {'message': message, 'runAfter': message2}
+                        set_job_status(job['id'],'finished')
+                    else:
+                        set_job_status(job['id'],'queued')
+                except Exception as e:
+                    set_job_status(job['id'],'queued', lastError=str(repr(e)))
+
             else:
                 set_job_status(job['id'],'queued') #TODO - Should fail job
                 message, rc =  f'{job["id"]} is missing jobType field', 200

@@ -278,7 +278,7 @@ def run(server):
             # Update State Table if cluster is 'pyql'
             if cluster == 'pyql':
                 for ind, table in enumerate(tables):
-                    if table['name'] == 'state': #TODO - refactor to remove duplicate code
+                    if table['name'] == 'state':
                         update_tables_work(table)
                         tables.pop(ind)
             for table in tables:
@@ -992,7 +992,7 @@ def run(server):
             post_update_cluster_config(clusterName, 'update', 'cluster')
 
             # Create Jobs to SYNCing table
-            def wait_on_jobs(curInd, jobList):
+            def wait_on_jobs(curInd, jobList, waitingOn=None):
                 if len(jobList) > curInd + 1:
                     jobList[curInd]['nextJob'] = wait_on_jobs(curInd+1, jobList)
                 if curInd == 0:
@@ -1001,7 +1001,15 @@ def run(server):
                 
             if len(jobsToRun) > 0:
                 if clusterName == 'pyql':
-                    startJobId = wait_on_jobs(0, jobsToRun)
+                    order = ['clusters', 'endpoints', 'databases', 'tables', 'state', 'transactions', 'jobs']
+                    jobsToRunOrdered = []
+                    while len(order) > 0:
+                        for job in jobsToRun:
+                            if job['table'] == order[0]:
+                                order.pop(0)
+                                jobsToRunOrdered.append(job)
+
+                    startJobId = wait_on_jobs(0, jobsToRunOrdered)
                     print(f"join_cluster finished - job {startJobId} started for pyql cluster table sync")
                 else:
                     for job in jobsToRun:
@@ -1019,13 +1027,14 @@ def run(server):
                 endpoint = server.cluster[cluster]['databases'][database]['endpoint']
                 endpointPath = server.cluster[cluster]['endpoints'][endpoint]['path']
                 tableEndpoint = f'{endpoint}{table}'
+                dbName = get_db_name(cluster, endpoint)
                 if tb['endpoints'][tableEndpoint]['state'] == 'new':
                     r = requests.post(
-                        'http://{endpointPath}/db/{database}/table/create',
+                        f'http://{endpointPath}/db/{dbName}/table/create',
                         headers={'Accept': 'application/json', "Content-Type": "application/json"},
                         data=json.dumps(tb['config'])
                     )
-                    print(f'{r.message} {r.status_code}')
+                    print(f'{r.json()} {r.status_code}')
         if table == None:
             for table in server.cluster[cluster]['tables']:
                 table_config_sync(table)

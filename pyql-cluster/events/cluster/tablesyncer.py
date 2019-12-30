@@ -74,9 +74,19 @@ def sync_cluster_table_logs(cluster, table, uuid, endpointPath):
         }
     """
     #/cluster/<cluster>/tablelogs/<table>/<endpoint>/count
-    logsToSync, rc = probe(
-        f'{clusterSvcName}/cluster/{cluster}/tablelogs/{table}/{uuid}/getAll',
-    )
+    tryCount = 0
+    while True:
+        try:
+            logsToSync, rc = probe(
+                f'{clusterSvcName}/cluster/{cluster}/tablelogs/{table}/{uuid}/getAll',
+            )
+            break
+        except Exception as e:
+            tryCount+=1
+            if tryCount <= 2:
+                print(f"Encountered exception trying to to pull tablelogs, retry # {tryCount}")
+                continue
+            break
     if not rc == 200:
         print(f"tablesyncer - #SYNC sync_cluster_table_logs - error when pulling logs - {logsToSync} {rc}")
         return
@@ -123,6 +133,11 @@ def drop_table(table):
 def get_job_requirement(job):
     #TODO - convert table config from json string to dict via json.loads
     pass
+def log_exception(job, table, e):
+    message = f"tablesyncer {job} {table} - #SYNC Worker - ecountered exception when syncing tablelogs "
+    print(message)
+    print(f"tablesyncer {job} {table} - #SYNC Worker Exception: {repr(r)}")
+    return message
 
 def sync_table_job(cluster, table, job=None):
     """
@@ -164,6 +179,8 @@ def sync_table_job(cluster, table, job=None):
     print(syncStatus)
     for endpoint in syncStatus['outOfSync']:
         endpointsToSync.append((endpoint, syncStatus['outOfSync'][endpoint]))
+    if len(endpointsToSync) == 0:
+        return {"message": f"no endpoints to sync in cluster {cluster} table {table}"}, 200
 
     # check current state of table endpoints
     stateCheck, rc = get_table_endpoint_state(cluster, table, [ep[0] for ep in endpointsToSync])
@@ -182,42 +199,54 @@ def sync_table_job(cluster, table, job=None):
             set_table_state(cluster, table, state)
             # Worker completes initial insertions from select * of TB.
             table_copy(cluster, table, endpointPath)
+        try:
+            if stateCheck[endpoint[0]]['state'] == 'new': # Never loaded, needs to be initialize
+                print(f"tablesyncer {job} {table} - #SYNC table {table} never loaded, needs to be initialize")
+                load_table()
+            else:
+                # Check for un-commited logs - otherwise full resync needs to occur.
+                print(f"tablesyncer {job} {table} - #SYNC table {table} never loaded, needs to be initialize")
+                count, rc = check_for_table_logs(cluster, table, uuid)
+                if rc == 200:
+                    if count['availableTxns'] > 0:
+                        pass
+                    else:
+                        print(f"tablesyncer {job} {table} - #SYNC Need to reload table {table} - drop / load")
+                        # Need to reload table - drop / load
+                        load_table()
+                        
+            print(f"tablesyncer {job} {table} - #SYNC Worker starts to pull changes from change logs")
+            
+            outOfSyncPath = stateCheck[endpoint[0]]['path']
+            sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
+        except Exception as e:
+            return log_exception(job, table, e), 500
 
-        if stateCheck[endpoint[0]]['state'] == 'new': # Never loaded, needs to be initialize
-            print(f"tablesyncer {job} {table} - #SYNC table {table} never loaded, needs to be initialize")
-            load_table()
-        else:
-            # Check for un-commited logs - otherwise full resync needs to occur.
-            print(f"tablesyncer {job} {table} - #SYNC table {table} never loaded, needs to be initialize")
-            count, rc = check_for_table_logs(cluster, table, uuid)
-            if rc == 200:
-                if count['availableTxns'] > 0:
-                    pass
-                else:
-                    print(f"tablesyncer {job} {table} - #SYNC Need to reload table {table} - drop / load")
-                    # Need to reload table - drop / load
-                    load_table()
-                    
-        print(f"tablesyncer {job} {table} - #SYNC Worker starts to pull changes from change logs")
-        
-        outOfSyncPath = stateCheck[endpoint[0]]['path']
-        sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
+            
         print(f"tablesyncer {job} {table} - #SYNC Worker completes pull of change logs & issues a cutover by pausing table.")
         message, rc = table_cutover(cluster, table, 'start')
-        print(f"tablesyncer {job} {table} - #SYNC Worker checks for any new change logs that were commited just before the table was paused, and also syncs these")
-        sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
-        print(f"tablesyncer {job} {table} - #SYNC Worker sets new TB endpoint as inSync=True & unpauses TB")
-        setInSync = {endpoint[0]: {'inSync': True}}
-        statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
-        print(f"tablesyncer {job} {table} - #SYNC set {table} {setInSync} result: {statusResult} {rc}")
-        print(f"tablesyncer {job} {table} - #SYNC marking outOfSync endpoint {endpoint[0]} table {table} in {cluster} as {setInSync}")
-        if table == 'state':
+        try:
+            print(f"tablesyncer {job} {table} - #SYNC Worker checks for any new change logs that were commited just before the table was paused, and also syncs these")
             sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
-        
-        #TODO - need to use /cluster/<cluster>/tableconf/<table>/<conf>/<action>', methods=['POST'] for updating DB InSync state
-        # I should do this during the blackout but after last sync
+            print(f"tablesyncer {job} {table} - #SYNC Worker sets new TB endpoint as inSync=True")
+            setInSync = {endpoint[0]: {'inSync': True}}
+            statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
+            print(f"tablesyncer {job} {table} - #SYNC set {table} {setInSync} result: {statusResult} {rc}")
+            print(f"tablesyncer {job} {table} - #SYNC marking outOfSync endpoint {endpoint[0]} table {table} in {cluster} as {setInSync}")
+            #if table == 'state':
+            #    sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
+            #setInSync = {endpoint[0]: {'inSync': True}}
+            #statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
+        except Exception as e:
+            print(f"tablesyncer {job} {table} - #SYNC Worker rolling back pause / inSync")
+            setInSync = {endpoint[0]: {'inSync': False}}
+            statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
+            #UnPause
+            message, rc = table_cutover(cluster, table, 'stop')
+            return log_exception(job, table, e), 500
 
-
+        # Un-Pause
+        print(f"tablesyncer {job} {table} - #SYNC Worker -  completes cutover by un-pausing table")
         message, rc = table_cutover(cluster, table, 'stop')
         message = f'tablesyncer {job} {table} - #SYNC finished syncing {endpoint[0]} for table {table} in cluster {cluster}'
         print(message)
@@ -231,8 +260,12 @@ def get_and_run_job(path):
         if job['config']['jobType'] == 'tablesync':
             table = job['config']['table']
             set_job_status(job['id'],'running', message=f'tablesyncer - #SYNC starting sync_table_job for table {table}')
-            result = sync_table_job(job['config']['cluster'], job['config']['table'],job['id'])
-            print(f"tablesyncer - #SYNC get_and_run_job result {result}")
+            result, rc = sync_table_job(job['config']['cluster'], job['config']['table'],job['id'])
+            print(f"tablesyncer - #SYNC get_and_run_job result {result} {rc}")
+            if not rc == 200:
+                set_job_status(job['id'],'queued', node=None)
+                return "job-requeued", 500
+
             set_job_status(job['id'],'finished')
             if 'nextJob' in job['config']:
                 set_job_status(job['config']['nextJob'],'queued')
