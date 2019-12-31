@@ -16,10 +16,10 @@ def probe(path, method='GET', data=None):
         return r.json(),r.status_code
     except:
         return r.text, r.status_code
-def set_job_status(jobId, status, **kwargs):
+def set_job_status(jobId, jobtype, status, **kwargs):
     # Need to mark job finished/queued - # Using - /cluster/<jobtype>/<uuid>/<status>
     return probe(
-        f"{clusterSvcName}/cluster/syncjob/{jobId}/{status}",
+        f"{clusterSvcName}/cluster/{jobtype}/{jobId}/{status}",
         'POST',
         kwargs
         )
@@ -29,23 +29,24 @@ def get_and_process_job(path):
     def process_job(job, rc):
         if rc == 200 and not 'message' in job:
             print(f"job pulled {job}")
-            if job['config']['jobType'] == 'cluster':
+            if job['config']['jobType'] == 'cluster' or  job['config']['jobType'] == 'cron':
                 print(f'cluster jobworker - running {job["config"]["path"]}')
-                set_job_status(job['id'],'running', message=f"starting {job['config']['job']}")
+                set_job_status(job['id'],job['config']['jobType'],'running', message=f"starting {job['config']['job']}")
                 try:
+                    job['config']['data'] == None if not 'data' in job['config'] else job['config']['data']
                     message, rc = probe(f'{clusterSvcName}{job["config"]["path"]}', job['config']['method'], job['config']['data'])
                     if rc == 200:
                         if 'runAfter' in job:
                             message2, rc2 = process_job(job['runAfter'])
                             message = {'message': message, 'runAfter': message2}
-                        set_job_status(job['id'],'finished')
+                        set_job_status(job['id'], job['config']['jobType'],'finished')
                     else:
-                        set_job_status(job['id'],'queued')
+                        set_job_status(job['id'], job['config']['jobType'],'queued')
                 except Exception as e:
-                    set_job_status(job['id'],'queued', lastError=str(repr(e)))
-
+                    print(repr(e))
+                    set_job_status(job['id'], job['config']['jobType'],'queued', lastError=str(repr(e)))
             else:
-                set_job_status(job['id'],'queued') #TODO - Should fail job
+                set_job_status(job['id'],job['config']['jobType'], 'queued') #TODO - Should fail job
                 message, rc =  f'{job["id"]} is missing jobType field', 200
                 print(message)
             return message,rc

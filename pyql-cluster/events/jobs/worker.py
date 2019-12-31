@@ -68,9 +68,11 @@ if __name__== '__main__':
     if len(args) > 2:
         jobpath, delay  = args[1], float(args[2])
         print(f"starting worker for monitoring {jobpath} with delay of {delay}")
-        start = delay
+        start = time.time() - delay + 2
         while True:
-            time.sleep(1)
-            if delay < time.time() - start:
+            delayed = time.time() - start
+            if delay < delayed:
                 result, rc = get_and_process_job(jobpath)
                 start = time.time()
+                continue
+            time.sleep(delay - delayed)

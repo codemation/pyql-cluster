@@ -1,6 +1,7 @@
 def run(server):
     from flask import request
     import os, uuid, time, json
+    log = server.log
     server.cache = {}
 
     @server.route('/db/<database>/cache/<table>/enable', methods=['POST'])
@@ -27,8 +28,6 @@ def run(server):
             method for managing txns - canceling / commiting
         """
         transaction = request.get_json()
-        print(f"cache_txn_manage - received {action} requeest for {transaction}")
-        print(type(transaction))
         if database in server.cache and table in server.cache[database]['tables']:
             tb = server.data[database].tables[table]
             cache = server.cache[database]['tables'][table]
@@ -38,7 +37,6 @@ def run(server):
                     if action == 'commit':
                         cachedAction = cache['txns'][txnId]['type']
                         cachedTxn = cache['txns'][txnId]['txn']
-                        print(f"cache_txn_manage - commiting {cachedTxn} type {type(cachedTxn)}")
                         response, rc = server.actions[cachedAction](database, table, cachedTxn)
                         if rc == 200:
                             del cache['txns'][txnId]
@@ -55,7 +53,6 @@ def run(server):
                                 **setParams['set'],
                                 where=setParams['where']
                             )
-                        print(f"cache commit response {response} {rc}")
                         return {"message": response, "status": rc}, rc
                     elif action == 'cancel':
                         del cache['txns'][txnId]
@@ -74,7 +71,6 @@ def run(server):
     @server.route('/db/<database>/cache/<table>/<action>/<txuuid>', methods=['POST'])
     def cache_action(database, table, action,txuuid):
         transaction = request.get_json()
-        print(f"#cache_action {action} {transaction}")
         if database in server.cache and table in server.cache[database]['tables']:
             tb = server.data[database].tables[table]
             cache = server.cache[database]['tables'][table]
@@ -83,4 +79,4 @@ def run(server):
                 "type": action,
                 "txn": transaction
             }
-            return {"txn": txnUuid}
+            return {"txn": txnUuid}, 200

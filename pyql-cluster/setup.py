@@ -22,7 +22,8 @@ def run(server):
         print("encountered exception when checking projPath")
         print(repr(e))
     
-
+    from logs import setup as log_setup
+    log_setup.run(server)
     from dbs import setup as db_setup # TOO DOO -Change func name later
     db_setup.run(server) # TOO DOO - Change func name later
     from apps import setup

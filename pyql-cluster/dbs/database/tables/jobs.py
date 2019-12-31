@@ -9,6 +9,7 @@ def db_attach(server):
            ('node', str),
            ('config', str),
            ('start_time', str),
+           ('next_run_time', str),
            ('lastError', str)
        ],
        'id'

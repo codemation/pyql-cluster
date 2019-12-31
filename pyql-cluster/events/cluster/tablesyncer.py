@@ -250,7 +250,7 @@ def sync_table_job(cluster, table, job=None):
         message, rc = table_cutover(cluster, table, 'stop')
         message = f'tablesyncer {job} {table} - #SYNC finished syncing {endpoint[0]} for table {table} in cluster {cluster}'
         print(message)
-        return {"message": message}, 200
+    return {"message": message}, 200
     
 def get_and_run_job(path):
     job, rc = probe(path,'POST', {'node': os.environ['PYQL_NODE']})

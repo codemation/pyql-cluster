@@ -1,6 +1,7 @@
 # internal
 def run(server):
     import os
+    log = server.log
 
     def db_check(database):
         db = server.data[database]
@@ -10,19 +11,20 @@ def run(server):
             if database == 'cluster':
                 clusterTables = ['clusters', 'endpoints', 'databases', 'tables', 'state', 'pyql']
                 for index, check in enumerate(clusterTables):
-                    print(f"checking {check}")
+                    log.info(f"checking {check}")
                     if not check in tables:
-                        print(f"missing {check}")
-                        return {'message': f"missing table {check} in database {database}"}, 500
+                        error = f"missing table {check} in database {database}"
+                        log.error(warning)
+                        return {'message': error}, 500
                     
                     
             for r in result:
-                print(r)
+                log.info(f"db_check - found {r}")
             pass
             #tables = db.tables:
         else:    
             tables = db.run('show tables')
-            print(f"db_check result: {tables}")
+            log.info(f"db_check result: {tables}")
             for table in tables:
                 if not table[0] in server.data[database].tables:
                     server.data[database].load_tables()
@@ -31,12 +33,10 @@ def run(server):
 
     @server.route('/internal/job')
     def internal_job_queue():
-        print(server.jobs)
         return server.jobs.pop(0) if len(server.jobs) > 0 else {"status": 200, "message": "no jobs in queue"}, 200 
     @server.route('/internal/jobs')
     def internal_list_job_queue():
         return {'jobs': server.jobs}, 200
-
     @server.route('/internal/db/check')
     def internal_db_check():
         messages = []

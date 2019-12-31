@@ -2,6 +2,7 @@
 def run(server):
     from flask import request
     import os, json
+    log = server.log
 
     @server.route('/db/<database>/tables')
     def get_all_tables_func(database):
@@ -44,16 +45,14 @@ def run(server):
     @server.route('/db/<database>/table/<table>/sync', methods=['POST'])
     def sync_table_func(database, table):
         if not database in server.data or not table in server.data[database].tables:
-            message = f"{database} or {table} not found"
-            print(messages)
+            message = f"{database} or {table} not found in memory"
+            log.error(messages)
             return {'message': message}, 400
         dataToSync = request.get_json()
         tableConfig, _ = get_table_func(database, table)
         server.data[database].run(f'drop table {table}')
         message, rc = create_table_func(database, tableConfig)
-        print(f"table /sync create_table_func response {message} {rc}")
-        #if not rc == 200:
-        #    return {"message": message}, rc
+        log.info(f"table /sync create_table_func response {message} {rc}")
         for row in dataToSync['data']:
             server.data[database].tables[table].insert(**row)
         return {"message": f"{database} {table} sync successful"}, 200
@@ -68,7 +67,7 @@ def run(server):
             columns = []
             for tableName in tableConfig:
                 if tableName in db.tables:
-                    print(f"""table {tableName} already exists - trying anyway""")
+                    log.warning(f"""table {tableName} already exists - trying anyway""")
                 if "columns" in tableConfig[tableName]:
                     for col in tableConfig[tableName]["columns"]:
                         if col['type'] in convert:

@@ -16,8 +16,8 @@ if __name__=='__main__':
             time.sleep(1)
             if delay < time.time() - start:
                 message, rc = probe(endpoint)
-                print(rc)
+                print(f"checker.py probe rc -  {rc}")
                 if not rc == 200:
                     message, rc = probe(action)
-                    print(message, rc)
+                    print(f"checker.py probe rc -({message} {rc}")
                 start = time.time()
