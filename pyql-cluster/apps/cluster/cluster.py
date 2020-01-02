@@ -569,7 +569,7 @@ def run(server):
 
             # All endpoints failed request - 
             elif len(failTrack) == len(tableEndpoints['inSync']):
-                log.error(f"All endpoints failed request {failTrack} {error} {rc} using {requestData} thus will not update logs")
+                log.error(f"All endpoints failed request {failTrack} using {requestData} thus will not update logs")
                 return {"message": error}, rc if rc is not None else r.status_code
             else:
                 # No InSync failures
@@ -1038,21 +1038,29 @@ def run(server):
             return {"message": warning}, 200
         while True:
             jobSelect = {
-                'select': ['id', 'next_run_time'], 
+                'select': ['id', 'next_run_time', 'node'], 
                 'where':{
                     'status': 'queued',
-                    'type': queue,
-                    'node': None
+                    'type': queue
                 }
             }
+            if not jobtype == 'cron':
+                jobSelect['where']['node'] = None
+
             jobList, rc = table_select('pyql', 'jobs', jobSelect, 'POST')
             jobList = jobList['data']
+
 
             for i, job in enumerate(jobList):
                 if not job['next_run_time'] == None:
                     #Removes queued job from list if next_run_time is still in future 
                     if not float(job['next_run_time']) < float(time.time()):
                         jobList.pop(i)
+                    if not job['node'] == None:
+                        if time.time() - float(job['next_run_time']) > 120.0:
+                            log.error(f"job # {job['id']} may be stuck / inconsistent, updating to requeue")
+                            jobUpdate = {'set': {'node': None}, 'where': {'id': job['id']}}
+                            post_request_tables('pyql', 'jobs', 'update', jobUpdate)
 
             if not len(jobList) > 0:
                 info = f"queue {queue} - no jobs to process at this time"
@@ -1090,7 +1098,11 @@ def run(server):
             if jobtype == 'cron':
                 cronSelect = {'select': ['id', 'config'], 'where': {'id': uuid}}
                 job = table_select('pyql', 'jobs', cronSelect, 'POST')[0]['data'][0]
-                updateFrom['set'] = {'node': None, 'status': 'queued', 'next_run_time': str(time.time()+ job['config']['interval'])}
+                updateFrom['set'] = {
+                    'node': None, 
+                    'status': 'queued',
+                    'start_time': None, 
+                    'next_run_time': str(time.time()+ job['config']['interval'])}
                 return post_request_tables('pyql', 'jobs', 'update', updateFrom) 
             return post_request_tables('pyql', 'jobs', 'delete', updateFrom)
         if status == 'running' or status == 'queued':
@@ -1100,10 +1112,12 @@ def run(server):
                     updateSet[k] = v
                     continue
                 updateSet['lastError'][k] = v
-            updateSet['lastError'] = updateSet['lastError']
             updateWhere = {'set': updateSet, 'where': {'id': uuid}}
             if status =='queued':
                 updateWhere['set']['node'] = None
+                updateWhere['set']['start_time'] = None
+            else:
+                updateWhere['set']['start_time'] = str(time.time())
             return post_request_tables('pyql', 'jobs', 'update', updateWhere)
 
 

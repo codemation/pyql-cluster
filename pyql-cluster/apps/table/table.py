@@ -52,8 +52,9 @@ def run(server):
         tableConfig, _ = get_table_func(database, table)
         server.data[database].run(f'drop table {table}')
         message, rc = create_table_func(database, tableConfig)
-        log.info(f"table /sync create_table_func response {message} {rc}")
+        log.warning(f"table /sync create_table_func response {message} {rc}")
         for row in dataToSync['data']:
+            log.warning(f"table sync insert row - {row}")
             server.data[database].tables[table].insert(**row)
         return {"message": f"{database} {table} sync successful"}, 200
 
