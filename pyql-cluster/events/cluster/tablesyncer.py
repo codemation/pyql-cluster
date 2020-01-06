@@ -13,7 +13,6 @@ def probe(path, method='GET', data=None):
     except:
         return r.text, r.status_code
 def set_job_status(jobId, status, **kwargs):
-    # OUTDATED - Need to mark job finished/queued - /cluster/jobmgr/<jobType>/<uuid>/<status>
     # Using - /cluster/<jobtype>/<uuid>/<status>
     return probe(
         f"{clusterSvcName}/cluster/syncjob/{jobId}/{status}",

@@ -23,27 +23,34 @@ def set_job_status(jobId, jobtype, status, **kwargs):
         'POST',
         kwargs
         )
+def log(log):
+    print(f"{os.environ['HOSTNAME']} jobworker - {log}")
 
 def get_and_process_job(path):
     job, rc = probe(path,'POST', {'node': os.environ['PYQL_NODE']})
     def process_job(job, rc):
         if rc == 200 and not 'message' in job:
-            print(f"job pulled {job}")
+            log(f"job pulled {job}")
             if job['config']['jobType'] == 'cluster' or  job['config']['jobType'] == 'cron':
-                print(f'cluster jobworker - running {job["config"]["path"]}')
+                log(f'cluster jobworker - running {job["config"]["path"]}')
                 set_job_status(job['id'],job['config']['jobType'],'running', message=f"starting {job['config']['job']}")
                 try:
                     job['config']['data'] == None if not 'data' in job['config'] else job['config']['data']
-                    message, rc = probe(f'{clusterSvcName}{job["config"]["path"]}', job['config']['method'], job['config']['data'])
+                    url = f"{clusterSvcName if not 'node' in job['config'] else job['config']['node']}{job['config']['path']}"
+                    message, rc = probe(url, job['config']['method'], job['config']['data'])
                     if rc == 200:
                         if 'runAfter' in job:
                             message2, rc2 = process_job(job['runAfter'])
                             message = {'message': message, 'runAfter': message2}
+                        log(f"job {job} response {message} rc {rc} marking finished")
                         set_job_status(job['id'], job['config']['jobType'],'finished')
+                        if 'nextJob' in job['config']:
+                            set_job_status(job['config']['nextJob'], 'jobs','queued')
                     else:
+                        log(f"job {job} response {message} rc {rc}")
                         set_job_status(job['id'], job['config']['jobType'],'queued')
                 except Exception as e:
-                    print(repr(e))
+                    log(f"Exception when proceessing job {job} {repr(e)}")
                     set_job_status(job['id'], job['config']['jobType'],'queued', lastError=str(repr(e)))
             else:
                 set_job_status(job['id'],job['config']['jobType'], 'queued') #TODO - Should fail job

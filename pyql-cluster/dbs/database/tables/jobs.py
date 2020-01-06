@@ -3,7 +3,8 @@ def db_attach(server):
     db = server.data['cluster']
     db.create_table(
        'jobs', [
-           ('id', str, 'UNIQUE'), 
+           ('id', str, 'UNIQUE'),
+           ('name', str, 'UNIQUE'),
            ('type', str), #tablesync - cluster
            ('status', str), # QUEUED, RUNNING, WAITING
            ('node', str),
