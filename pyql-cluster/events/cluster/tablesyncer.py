@@ -284,5 +284,8 @@ if __name__=='__main__':
         while True:
             time.sleep(1)
             if delay < time.time() - start:
-                result, rc = get_and_run_job(f'{clusterSvcName}{jobpath}')
+                try:
+                    result, rc = get_and_run_job(f'{clusterSvcName}{jobpath}')
+                except Exception as e:
+                    print(f"tablesyncer exception when pulling / running job")
                 start = time.time()
