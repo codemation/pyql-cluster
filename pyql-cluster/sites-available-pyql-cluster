@@ -6,6 +6,6 @@ server {
 
     location / {
         include uwsgi_params;
-        uwsgi_pass unix:/pyql-cluster/pyql.sock;
+        uwsgi_pass unix:/pyql-cluster/pyql-cluster/pyql.sock;
     }
 }
