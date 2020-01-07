@@ -9,9 +9,9 @@ RUN pip install -r requirements.txt
 
 RUN git clone https://github.com/codemation/pyql-cluster.git
 
-WORKDIR /pyql-cluster
+WORKDIR /pyql-cluster/pyql-custer/
 
-RUN cp sites-available-pyql-cluster /etc/nginx/sites-available/ && \
+RUN cp /pyql-cluster/pyql-cluster/sites-available-pyql-cluster /etc/nginx/sites-available/ && \
     ln -s /etc/nginx/sites-available/sites-available-pyql-cluster /etc/nginx/sites-enabled
 
 EXPOSE 80
