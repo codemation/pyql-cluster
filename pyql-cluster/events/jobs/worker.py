@@ -72,7 +72,10 @@ if __name__== '__main__':
         while True:
             delayed = time.time() - start
             if delay < delayed:
-                result, rc = get_and_process_job(jobpath)
+                try:
+                    result, rc = get_and_process_job(jobpath)
+                except Exception as e:
+                    print(repr(e))
                 start = time.time()
                 continue
             time.sleep(delay - delayed)
