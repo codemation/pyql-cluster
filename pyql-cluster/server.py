@@ -24,5 +24,9 @@ if __name__ == '__main__':
         os.environ['PYQL_CLUSTER_SVC'] = cluster
         os.environ['PYQL_CLUSTER_ACTION'] = clusterAction
         main(port)
+else:
+    # For loading when triggered by uWSGI
+    import setup
+    setup.run(app)
         
             
