@@ -36,8 +36,13 @@ expeceted job structure
     }
 """ 
 def add_job_to_queue(path, job):
-    message, rc = probe(f'{clusterSvcName}{path}', 'POST', job)
-    print(message)
+    try:
+        message, rc = probe(f'{clusterSvcName}{path}', 'POST', job)
+    except Exception as e:
+        message = f"{os.environ['HOSTNAME']} worker.py encountered exception {repr(e)} with {clusterSvcName}{path} for  job {job}"
+        rc = 500
+        print(message)
+    
     if rc == 200:
         print(f"added {job['job']} to {path} queue")
     else:
