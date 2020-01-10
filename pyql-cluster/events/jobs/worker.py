@@ -4,11 +4,10 @@ clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}' # TODO: replace with
 nodePath = f'http://{os.environ["PYQL_NODE"]}:{os.environ["PYQL_PORT"]}'
 
 def probe(path, method='GET', data=None):
-    url = f'{nodePath}{path}' if not 'http' in path else path
     if method == 'GET':
-        r = requests.get(url, headers={'Accept': 'application/json'})
+        r = requests.get(path, headers={'Accept': 'application/json'})
     else:
-        r = requests.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data))
+        r = requests.post(path, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data))
     try:
         return r.json(),r.status_code
     except:
