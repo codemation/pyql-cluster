@@ -59,22 +59,22 @@ def get_and_process_job(path):
             if job['jobType'] == 'cluster':
                 #Distribute to cluster job queue
                 print(f"adding job {job} to cluster queue")
-                message, rc = add_job_to_queue('/cluster/jobs/add', job)
+                message, rc = add_job_to_queue(f'{clusterSvcName}/cluster/jobs/add', job)
             elif job['jobType'] == 'node':
                 message, rc = probe(f"{nodePath}{job['path']}", job['method'], job['data'])
             elif job['jobType'] == 'tablesync':
                 print(f"adding job {job} to tablesync queue")
-                message, rc = add_job_to_queue('/cluster/syncjobs/add', job)
+                message, rc = add_job_to_queue(f'{clusterSvcName}/cluster/syncjobs/add', job)
             else:
                 message, rc =  f"{job['job']} is missing jobType field", 200
             try:
-                probe(f'/internal/job/{jobId}/finished', 'POST')
+                probe(f'{nodePath}/internal/job/{jobId}/finished', 'POST')
             except Exception as e:
                 print(f"{os.environ['HOSTNAME']} worker.py encountered exception finishing job, need to cleanup {jobId} later")
-                probe(f'/internal/job/{jobId}/queued', 'POST')
+                probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST')
         except Exception as e:
             print(f"{os.environ['HOSTNAME']} worker.py encountered exception hanlding job {job} - add back to queue")
-            probe(f'/internal/job/{jobId}/queued', 'POST')
+            probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST')
         return message,rc
     return job,rc
 print(__name__)
