@@ -68,13 +68,13 @@ def get_and_process_job(path):
             else:
                 message, rc =  f"{job['job']} is missing jobType field", 200
             try:
-                probe(f'{nodePath}/internal/job/{jobId}/finished', 'POST')
+                probe(f'/internal/job/{jobId}/finished', 'POST')
             except Exception as e:
                 print(f"{os.environ['HOSTNAME']} worker.py encountered exception finishing job, need to cleanup {jobId} later")
-                probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST')
+                probe(f'/internal/job/{jobId}/queued', 'POST')
         except Exception as e:
             print(f"{os.environ['HOSTNAME']} worker.py encountered exception hanlding job {job} - add back to queue")
-            probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST')
+            probe(f'/internal/job/{jobId}/queued', 'POST')
         return message,rc
     return job,rc
 print(__name__)
