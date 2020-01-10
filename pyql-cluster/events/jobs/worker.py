@@ -66,10 +66,10 @@ def get_and_process_job(path):
                 probe(f'{nodePath}/internal/job/{jobId}/finished', 'POST')
             except Exception as e:
                 print(f"{os.environ['HOSTNAME']} worker.py encountered exception finishing job, need to cleanup {jobId} later")
+                probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST')
         except Exception as e:
             print(f"{os.environ['HOSTNAME']} worker.py encountered exception hanlding job {job} - add back to queue")
-
-
+            probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST')
         return message,rc
     return job,rc
 print(__name__)
