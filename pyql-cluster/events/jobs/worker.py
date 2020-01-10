@@ -49,7 +49,7 @@ def add_job_to_queue(path, job):
     return message,rc
 
 def get_and_process_job(path):
-    job, rc = probe(path)
+    job, rc = probe(f'{nodePath}{path}')
     if not "message" in job:
         jobId = job['id']
         job = job['config']
