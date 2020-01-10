@@ -1,7 +1,7 @@
 
 from flask import Flask
 import os
-os.environ['PYQL_CLUSTER_SVC'] = 'http://localhost:8080'
+#os.environ['PYQL_CLUSTER_SVC'] = 'http://localhost:8080'
 app = Flask(__name__)
 def main(port):
     import setup
