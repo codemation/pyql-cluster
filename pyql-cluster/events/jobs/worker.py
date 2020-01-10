@@ -47,18 +47,29 @@ def add_job_to_queue(path, job):
 def get_and_process_job(path):
     job, rc = probe(path)
     if not "message" in job:
+        jobId = job['id']
+        job = job['config']
         print(f"pulled {job} with {path} with rc {rc}")
-        if job['jobType'] == 'cluster':
-            #Distribute to cluster job queue
-            print(f"adding job {job} to cluster queue")
-            message, rc = add_job_to_queue('/cluster/jobs/add', job)
-        elif job['jobType'] == 'node':
-            message, rc = probe(f"{nodePath}{job['path']}", job['method'], job['data'])
-        elif job['jobType'] == 'tablesync':
-            print(f"adding job {job} to tablesync queue")
-            message, rc = add_job_to_queue('/cluster/syncjobs/add', job)
-        else:
-            message, rc =  f"{job['job']} is missing jobType field", 200
+        try:
+            if job['jobType'] == 'cluster':
+                #Distribute to cluster job queue
+                print(f"adding job {job} to cluster queue")
+                message, rc = add_job_to_queue('/cluster/jobs/add', job)
+            elif job['jobType'] == 'node':
+                message, rc = probe(f"{nodePath}{job['path']}", job['method'], job['data'])
+            elif job['jobType'] == 'tablesync':
+                print(f"adding job {job} to tablesync queue")
+                message, rc = add_job_to_queue('/cluster/syncjobs/add', job)
+            else:
+                message, rc =  f"{job['job']} is missing jobType field", 200
+            try:
+                probe(f'{nodePath}/internal/job/{jobId}/finished', 'POST')
+            except Exception as e:
+                print(f"{os.environ['HOSTNAME']} worker.py encountered exception finishing job, need to cleanup {jobId} later")
+        except Exception as e:
+            print(f"{os.environ['HOSTNAME']} worker.py encountered exception hanlding job {job} - add back to queue")
+
+
         return message,rc
     return job,rc
 print(__name__)
@@ -68,7 +79,7 @@ if __name__== '__main__':
     if len(args) > 2:
         jobpath, delay  = args[1], float(args[2])
         print(f"starting worker for monitoring {jobpath} with delay of {delay}")
-        start = time.time()
+        start = time.time() - 5
         while True:
             delayed = time.time() - start
             if delay < delayed:

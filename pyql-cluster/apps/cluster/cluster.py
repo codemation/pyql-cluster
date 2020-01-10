@@ -14,12 +14,16 @@ def run(server):
 
     log = server.log
 
-    server.clusterJobs = {'jobs': [], 'syncjobs': []}
-    server.quorum = {'status': True, 'nodes': []}
-    server.cronJobs = {}
+    class cluster:
+        """
+            object used for quickly referencing tables
+            clusters, endpoints, databases, tables, state
+        """
+        def __init__(self, dbname):
+            for table in server.data[dbname].tables:
+                setattr(self, table, server.data[dbname].tables[table])
 
-    #Ready check
-    server.ready = False
+    server.clusters = cluster('cluster')
 
     uuidCheck = server.data['cluster'].tables['pyql'].select('uuid', where={'database': 'cluster'})
     if len(uuidCheck) > 0:
@@ -136,6 +140,8 @@ def run(server):
                 'name': f'{config["name"]}{table}',
                 'state': 'loaded',
                 'inSync': True,
+                'tableName': table,
+                'cluster': 'pyql',
                 'uuid': config['database']['uuid'], # used for syncing logs 
                 'lastModTime': time.time()
             }
@@ -182,7 +188,6 @@ def run(server):
                     'insert',
                     data['state'](name)
                 )
-        update_clusters()
     
     @server.route('/cluster/pyql/state/<action>', methods=['GET','POST'])
     def cluster_state(action):
@@ -196,18 +201,22 @@ def run(server):
     @server.route('/cluster/pyql/ready', methods=['POST', 'GET'])
     def cluster_ready(ready=None):
         if request.method == 'GET':
-            if server.ready == True:
-                return {"ready": server.ready}, 200
-            else:
-                return {"ready": server.ready}, 400
+            ready = server.clusters.quorum.select(
+                'ready',
+                where={'node': os.environ['HOSTNAME']}
+            )
+            return ready[0], 200
         else:
             """
                 expects:
                 ready =  {'ready': True|False}
             """
             ready = request.get_json() if ready == None else ready
-            server.ready = ready['ready']
-            return {"ready": server.ready}, 200
+            updateSet = {
+                'set': {'ready': ready['ready']}, 'where': {'node': os.environ['HOSTNAME']}
+            }
+            server.clusters.quorum.update(**updateSet['set'], where=updateSet['where'])
+            return ready, 200
 
 
 
@@ -216,20 +225,21 @@ def run(server):
         return cluster_quorum(check=True)
 
     @server.route('/cluster/pyql/quorum', methods=['GET', 'POST'])
-    def cluster_quorum(check=False):
+    def cluster_quorum(check=False, get=False):
         if request.method == 'POST' or check == True:
-            if not 'pyql' in server.cluster:
+            pyqlEndpoints = server.clusters.endpoints.select('*', where={'cluster': 'pyql'})
+            if not len(pyqlEndpoints) > 0:
                 warning = f"{os.environ['HOSTNAME']} - pyql node is still syncing"
                 log.warning(warning)
                 return {"message": warning}, 200
             epRequests = {}
-            tableEndpoints = server.cluster['pyql']['endpoints']
             epList = []
-            for endpoint in tableEndpoints:
-                epList.append(endpoint)
-                endPointPath = tableEndpoints[endpoint]['path']
+            for endpoint in pyqlEndpoints:
+                epList.append(endpoint['name'])
+                endPointPath = endpoint['path']
                 endPointPath = f'http://{endPointPath}/cluster/pyql/quorum'
-                epRequests[endpoint] = {'path': endPointPath, 'data': None}
+                epRequests[endpoint['name']] = {'path': endPointPath, 'data': None}
+
             if len(epList) == 0:
                 return {"message": f"pyql node {os.environ['HOSTNAME']} is still syncing"}, 200
             try:
@@ -240,191 +250,68 @@ def run(server):
             for endpoint in epResults:
                 if epResults[endpoint]['status'] == 200:
                     inQuorum.append(endpoint)
-
+            isNodeInQuorum = None
             if float(len(inQuorum) / len(epList)) >= float(2/3):
-                server.quorum['status'] = True
+                isNodeInQuorum = True
+                #server.quorum['status'] = True
             else:
-                server.quorum['status'] = False
-            server.quorum['nodes'] = inQuorum
-            return {"message": server.quorum},200
-        else:
-            return {'message':'OK', 'quorum': server.quorum['nodes'], 'inQuorum': server.quorum['status']}, 200
-
-    @server.route('/cluster/<cluster>/endpoint/<endpoint>/table/<table>/updateState', methods=['POST'])
-    def update_state(cluster, endpoint, table):
-        db = server.data['cluster']
-        tbEndpoint = f'{endpoint}{table}'
-        state = db.tables['state'].select('*', where={'name': tbEndpoint})
-        try:
-            if len(state) == 1:
-                server.cluster[cluster]['tables']['state'][tbEndpoint] = state[0] if type(state) == list else state
-                path = server.cluster[cluster]['endpoints'][endpoint]['path']
-                server.cluster[cluster]['tables']['state'][tbEndpoint]['path'] = path
-        except Exception as e:
-            log.exception(f"Encountered exception during update_state {state}")
-
-    @server.route('/cluster/<cluster>/endpoint/<endpoint>/db/<database>/table/<table>/update')
-    def update_tables(cluster, endpoint, database, table=None):
-        """
-            Updates the in-memory table state configuration
-        """
-        db = server.data['cluster']
-        def update_tables_work(tableToWorkOn):
-            if tableToWorkOn['name'] in server.cluster[cluster]['tables']:
-                tb = server.cluster[cluster]['tables'][tableToWorkOn['name']]
-                for tbKey, tbVal in tableToWorkOn.items():
-                    # update values if they are different
-                    tb[tbKey] = tableToWorkOn[tbKey] if not tableToWorkOn[tbKey] == tb[tbKey] else tb[tbKey]
-            else:
-                # Assign table as it did not exist yet.
-                server.cluster[cluster]['tables'][tableToWorkOn['name']] = tableToWorkOn
-            tb = server.cluster[cluster]['tables'][tableToWorkOn['name']]
-            if not 'endpoints' in tb:
-                tb['endpoints'] = {}
-            update_state(cluster, endpoint, tableToWorkOn['name'])
-            state = server.cluster[cluster]['tables']['state'][f'{endpoint}{tableToWorkOn["name"]}']
-            dbName = database.split(f'{endpoint}_')[1]
-            inSyncState = state['inSync']
-            # prevent refresh of inSync value - occurs if endpoint was marked inSync = False and db update not yet completed 
-            if state['name'] in tb['endpoints'] and 'ignoreInSync' in tb['endpoints'][state['name']]:
-                if tb['endpoints'][state['name']]['ignoreInSync'] == True:
-                    inSyncState = tb['endpoints'][state['name']]['inSync']
-            tb['endpoints'][state['name']] = {
-                'inSync': state['inSync'],
-                'state': state['state'],
-                'uuid':  state['uuid'],
-                'lastModTime': state['lastModTime'],
-                'path': f'http://{state["path"]}/db/{dbName}/table/{tb["name"]}'
-            }
-
-        if table is not None:
-            tableSelect = db.tables['tables'].select(
-            '*', 
-            where={
-                'cluster': cluster,
-                'name': table
-                }
-            )[0]
-            update_tables_work(tableSelect)
-        else:
-            tables = db.tables['tables'].select(
-                '*', where={
-                        'cluster': cluster
-                        }
+                isNodeInQuorum = False
+            server.clusters.quorum.update(
+                    **{'inQuorum': isNodeInQuorum, 'nodes': {'nodes': inQuorum}}, 
+                    where={'node': os.environ['HOSTNAME']}
                     )
-            # Update State Table if cluster is 'pyql'
-            if cluster == 'pyql':
-                for ind, table in enumerate(tables):
-                    if table['name'] == 'state':
-                        update_tables_work(table)
-                        tables.pop(ind)
-            for table in tables:
-                update_tables_work(table)
-                
-    def update_databases(cluster, endpoint, tables=True):
-        db = server.data['cluster']
-        databases = db.tables['databases'].select('*', where={'cluster': cluster, 'endpoint': endpoint})
-        for database in databases:
-            server.cluster[cluster]['databases'][database['name']] = database
-            if tables == True:
-                update_tables(cluster, endpoint, database['name'])
-
-    def update_endpoints(cluster, databases=True):
-        db = server.data['cluster']
-        endpoints = db.tables['endpoints'].select('*', where={'cluster': cluster})
-        for endpoint in endpoints:
-            server.cluster[cluster]['endpoints'][endpoint['name']] = endpoint
-            if databases == True:
-                update_databases(cluster, endpoint['name'])
-
-    def update_cluster(cluster, endpoints=True):
-        if server.cluster is not None:
-            db = server.data['cluster']
-            server.cluster[cluster] = db.tables['clusters'].select(
-                '*',
-                where={'name': cluster}
-            )[0]
-            server.cluster[cluster]['endpoints'] = dict()
-            server.cluster[cluster]['databases'] = dict()
-            server.cluster[cluster]['tables'] = dict()
-            if endpoints == True:
-                update_endpoints(cluster)
-
-    def update_clusters():
-        server.cluster= dict()
-        db = server.data['cluster']
-        clusters = db.tables['clusters'].select('name')
-        for cluster in clusters:
-            for _, name in cluster.items():
-                update_cluster(name)
-    def post_update_cluster_config(cluster, action, items, data=None):
-        """
-            invokes /cluster/<cluster>/config/<action>  on each cluster node
-            which triggers update_clusters() on each node refreshing
-            in-memory config
-        """
-        tableEndpoints = get_table_endpoints('pyql', 'clusters')
-        data = request.get_json() if data == None else data
-        epRequests = {}
-        for endpoint in tableEndpoints['inSync']:
-            endPointPath = tableEndpoints['inSync'][endpoint]['path']
-            endPointPath = f'http://{endPointPath}/cluster/{cluster}/config/{action}/{items}'
-            epRequests[endpoint]={'path': endPointPath, 'data': data}
-        asyncrequest.async_request(epRequests, 'POST')      
-
-    def get_endpoint_list(cluster):
-        if cluster in server.cluster:
-            endpointList = [endpoint for endpoint in server.cluster[cluster]['endpoints']]
-            return endpointList
+            quorum = server.clusters.quorum.select('*', where={'node': os.environ['HOSTNAME']})[0]
+            return {"message": f"quorum updated on {os.environ['HOSTNAME']}", 'quorum': quorum},200
         else:
-            return [os.environ['PYQL_CLUSTER_SVC']]
+            try:
+                quorum = server.clusters.quorum.select('*', where={'node': os.environ['HOSTNAME']})[0]
+            except:
+                quorum = []
+            return {'message':'OK', 'quorum': quorum}, 200
+   
     @server.route('/cluster/<cluster>/table/<table>/path')
     def get_db_table_path(cluster, table):
         paths = {'inSync': {}, 'outOfSync': {}}
         tableEndpoints = get_table_endpoints(cluster, table)
+        tb = get_table_info(cluster, table, tableEndpoints)
         for pType in paths:
             for endpoint in tableEndpoints[pType]:
                 dbName = get_db_name(cluster, endpoint)
-                paths[pType][endpoint] = f"http://{server.cluster[cluster]['endpoints'][endpoint]['path']}/db/{dbName}/table/{table}"
+                paths[pType][endpoint] = tb['endpoints'][f'{endpoint}{table}']['path']
         return paths, 200
 
     @server.route('/cluster/<cluster>/table/<table>/endpoints')
     def get_table_endpoints(cluster, table):
         tableEndpoints = {'inSync': {}, 'outOfSync': {}}
-        if cluster in server.cluster:
-            for endpoint in server.cluster[cluster]['endpoints']:
-                tableEndpoint = f'{endpoint}{table}'
-                if not tableEndpoint in server.cluster[cluster]['tables'][table]['endpoints']:
-                    log.warning(f"##get_table_endpoints - {tableEndpoint} not found in {server.cluster[cluster]['tables'][table]['endpoints']}")
-                    #tableEndpoints['outOfSync'][tableEndpoint] = server.cluster[cluster]['tables']['state'][tableEndpoint]
-                    if tableEndpoint in server.cluster[cluster]['tables']['state']:
-                        server.cluster[cluster]['tables'][table]['endpoints'][tableEndpoint] = server.cluster['pyql']['tables']['state'][tableEndpoint]
-                        server.cluster[cluster]['tables'][table]['endpoints'][tableEndpoint]
-                    continue
-                if server.cluster[cluster]['tables'][table]['endpoints'][tableEndpoint]['inSync'] == True:
-                    tableEndpoints['inSync'][endpoint] = server.cluster[cluster]['endpoints'][endpoint]
-                    tableEndpoints['inSync'][endpoint]['uuid'] = server.cluster['pyql']['tables']['state'][tableEndpoint]['uuid']
-                else:
-                    tableEndpoints['outOfSync'][endpoint] = server.cluster[cluster]['endpoints'][endpoint]
-                    tableEndpoints['outOfSync'][endpoint]['uuid'] = server.cluster['pyql']['tables']['state'][tableEndpoint]['uuid']
-        else:
-            log.error("get_table_endpoints This should never happen")
-            tableEndpoints['inSync']['temp'] =  {'path': os.environ['PYQL_CLUSTER_SVC']}
-        log.info(f"get_table_endpoints finished for table {table}: status {tableEndpoints}")
+
+        endpointsInCluster = server.clusters.endpoints.select(
+            '*',
+            where={'cluster': cluster}
+        )
+        tablesEndpointState = server.clusters.state.select('*', where={'cluster': cluster, 'tableName': table})
+
+        for endpoint in endpointsInCluster:
+            tableEndpoint = f"{endpoint['name']}{table}"
+            for state in tablesEndpointState:
+                if state['name'] == tableEndpoint:
+                    sync = 'inSync' if state['inSync'] == True else 'outOfSync'
+                    tableEndpoints[sync][endpoint['name']] = endpoint
+                    tableEndpoints[sync][endpoint['name']]['uuid'] = state['uuid']
+        log.warning(f"get_table_endpoints result {tableEndpoints}")
         return tableEndpoints
 
     def get_db_name(cluster, endpoint):
-        if cluster == 'pyql':
-            return 'cluster'
-        for database in server.cluster[cluster]['databases']:
-            if endpoint == server.cluster[cluster]['databases'][database]['endpoint']:
-                return database.split(f'{endpoint}_')[1]
+        database = server.clusters.databases.select('dbname', where={'endpoint': endpoint, 'cluster': cluster})
+        if len(database) > 0:
+            return database[0]['dbname']
         log.error(f"No DB found with {cluster} endpoint {endpoint}")
 
     def get_endpoint_url(cluster, endpoint, db, table, action, **kw):
-        endPointPath = server.cluster[cluster]['endpoints'][endpoint]['path']
-        if 'commit' in kw:
-            return f'http://{endPointPath}/db/{db}/cache/{table}/txn/commit'
+        endPointPath = server.clusters.endpoints.select('path', where={'name': endpoint, 'cluster': cluster})
+        endPointPath = endPointPath[0]['path']
+        if 'commit' in kw or 'cancel' in kw:
+            action = 'commit' if 'commit' in kw else 'cancel'
+            return f'http://{endPointPath}/db/{db}/cache/{table}/txn/{action}'
         if 'cache' in kw:
             return f'http://{endPointPath}/db/{db}/cache/{table}/{action}/{kw["cache"]}'
         else:
@@ -435,67 +322,54 @@ def run(server):
         """
             current primary use is for updating sync status of a table & triggering db 
         """
-        if server.quorum['status'] == False:
+        quorum, rc = cluster_quorum(False, True)
+
+        if not 'inQuorum' in quorum['quorum'] or quorum['quorum']['inQuorum'] == False:
             return {
                 "message": f"cluster pyql is not in quorum",
                 "error": f"quorum was not available"}, 500
-        setInSyncTrue = False
         data = request.get_json() if data == None else data
-        jobsToRun = []
         if conf == 'sync' and action == 'status':
             for endpoint in data:
-                tableEndpoint = f'{endpoint}{table}'
                 update = {
                     'set': {
                         **data[endpoint]
                     },
                     'where': {
-                        'name': tableEndpoint
+                        'name': endpoint
                     }
                 }
-                if 'inSync' in data[endpoint] and data[endpoint]['inSync'] == False:
-                    # Job will update pyql state in db - as we are first only updating memory.
-                    job = {
-                        'job': f'updateTableSyncStatus_{cluster}_{table}',
-                        'jobType': 'cluster',
-                        'method': 'POST',
-                        'path': f'/cluster/pyql/table/state/update',
-                        'data': update
-                    }
-                    #cluster_jobs_add('jobs', job)
-                    server.jobs.append(job)
-                else:
-                    setInSyncTrue = True
-        def update_pyql_nodes():
-            if not cluster == 'pyql':
-                tableEndpoints = get_table_endpoints('pyql', 'state')
-            else:
-                tableEndpoints = get_table_endpoints('pyql', table)
-            log.warning(f'table endpoints for updating {table}/{conf}/{action} {tableEndpoints}')
-            epRequests = {}
-            for endpoint in tableEndpoints['inSync']:
-                endPointPath = f"{tableEndpoints['inSync'][endpoint]['path']}/cluster/{cluster}/table/{table}/{conf}/{action}"
-                epRequests[endpoint] = {'path': endPointPath, 'data': data}
-            asyncResults = asyncrequest.async_request(epRequests, 'POST')
-            log.warning(f"update_pyql_nodes result {asyncResults}")
-            return asyncResults
-        if setInSyncTrue == True:
-            # Mark outOfSync endpoint InSync
-            update_pyql_nodes()
-            # Update DB's on all new InSync nodes
-            cluster_table_update(
-                'pyql', 'state', 
-                {
-                    'set': {'inSync': True, 'state': 'loaded'},
-                    'where': {'name': tableEndpoint}
-                })
-        results = update_pyql_nodes()
-            
-        # create job to update tables
-        for job in jobsToRun:
-            server.jobs.append(job)
+                r, rc = cluster_table_update('pyql', 'state', update)
+        elif conf == 'pause':
+            update = {
+                'set': {
+                    'isPaused': True if action == 'start' else False
+                },
+                'where': {
+                    'cluster': cluster, 'name': table
+                }
+            }
+            r, rc = cluster_table_update('pyql', 'tables', update)
+        else:
+            log.warning(f"post_update_table_conf called but no actions to take {table} in {cluster} with {data}")
+            pass
         return {"message": f"updated {table} in {cluster} with {data}"}, 200
-
+    def get_table_info(cluster, table, endpoints):
+        tb = server.clusters.tables.select(
+            '*',
+            where={'cluster': cluster, 'name': table}
+            )[0]
+        tb['endpoints'] = {}
+        tableEndpointState = server.clusters.state.select(
+            '*',
+            where={'cluster': cluster, 'tableName': table}
+            )
+        for state in tableEndpointState:
+            endpoint = state['name'].split(table)[0]
+            path = endpoints['inSync'][endpoint]['path'] if endpoint in endpoints['inSync'] else endpoints['outOfSync'][endpoint]['path'] 
+            tb['endpoints'][state['name']] = state
+            tb['endpoints'][state['name']]['path'] = f"http://{path}/db/{tb['database']}/table/{tb['name']}"
+        return tb
 
     def post_request_tables(cluster, table, action, requestData=None, **kw):
         """
@@ -510,7 +384,7 @@ def run(server):
             log.exception(message)
             return {"message": message}, 400
         failTrack = []
-        tb = server.cluster[cluster]['tables'][table]
+        tb = get_table_info(cluster, table, tableEndpoints)
         def process_request():
             endpointResponse = {}
             epRequests = {}
@@ -518,7 +392,6 @@ def run(server):
             requestUuid = str(uuid.uuid1())
             transTime = time.time()
             for endpoint in tableEndpoints['inSync']:
-                tb = server.cluster[cluster]['tables'][table]
                 db = get_db_name(cluster, endpoint)
                 epRequests[endpoint] = {
                     'path': get_endpoint_url(cluster, endpoint, db, table, action, cache=requestUuid),
@@ -528,7 +401,7 @@ def run(server):
             asyncResults = asyncrequest.async_request(epRequests, 'POST')
             for endpoint in tableEndpoints['inSync']:
                 if not asyncResults[endpoint]['status'] == 200:
-                    failTrack.append(endpoint)
+                    failTrack.append(f'{endpoint}{table}')
                     # start job to Retry for endpoint, or mark endpoint bad after testing
                     log.warning(f"unable to {action} from endpoint {endpoint} using {requestData}")
                     error, rc = asyncResults[endpoint]['content'], asyncResults[endpoint]['status']
@@ -544,29 +417,39 @@ def run(server):
 
                 # update state for outOfSyncNode
                 statusData = {failedEndpoint: {'inSync': False} for failedEndpoint in failTrack}
-                mesage, rc = post_update_table_conf(cluster, table,'sync','status', statusData)
-                
-                if not rc == 200:
-                    quorumCheck, rc = cluster_quorum(check=True)
-                    log.error(f"failed to update outOfSyncNode(s) {statusData} quorumCheck {quorumCheck}")
-                    message = f"canceling request, - quorum {server.quorum['nodes']} inQuorum {server.quorum['status']}"
-                    #TODO - need to rollback and cancel cached requests for inSync & not failTracked endpoints
-                    log.error(message)
-                    return {"message": message}, 500
+                if cluster == 'pyql':
+                    if not table == 'state':
+                        mesage, rc = post_update_table_conf(cluster, table,'sync','status', statusData)
+                else:
+                    mesage, rc = post_update_table_conf(cluster, table,'sync','status', statusData)
+                    log.warning(f"post_update_table_conf result{message} result {rc}")
+                    if not rc == 200:
+                        quorumCheck, rc = cluster_quorum(False, True)
+                        log.error(f"failed to update outOfSyncNode(s) {statusData} quorumCheck {quorumCheck}")
+                        log.error(f"rolling-back un-commited txn")
+                        # RollBack cached commands  
+                        epCancelRequests = {}
+                        for endpoint in endpointResponse:
+                            db = get_db_name(cluster, endpoint)
+                            epCancelRequests[endpoint] = {
+                                'path': get_endpoint_url(cluster, endpoint, db, table, action, cancel=True),
+                                'data': endpointResponse[endpoint]
+                            }
+                        asyncResults = asyncrequest.async_request(epCancelRequests, 'POST')
+                        log.error(message)
+                        return {"message": message}, 500
 
                 for failedEndpoint in failTrack:
-                    tbEndpoint = f'{failedEndpoint}{table}'
-                    if not tb['endpoints'][tbEndpoint]['state'] == 'new':
-                        #endPointPath = server.cluster[cluster]['endpoints'][failedEndpoint]['path']
+                    if not tb['endpoints'][failedEndpoint]['state'] == 'new':
                         # Prevent writing transaction logs for failed transaction log changes
                         if cluster == 'pyql':
-                            log.warning(f"{tbEndpoint} is outOfSync for pyql table {table}")
-                            if table == 'transactions':
+                            log.warning(f"{failedEndpoint} is outOfSync for pyql table {table}")
+                            if table == 'transactions' or table == 'jobs':
                                 continue
 
                         # Write data to a change log for resyncing
                         changeLogs['txns'].append({
-                                'endpoint': tb['endpoints'][tbEndpoint]['uuid'],
+                                'endpoint': tb['endpoints'][failedEndpoint]['uuid'],
                                 'uuid': requestUuid,
                                 'tableName': table,
                                 'cluster': cluster,
@@ -588,10 +471,9 @@ def run(server):
                     log.info(f"outOfSyncEndpoint {tbEndpoint} may be new, not triggering resync yet {tb['endpoints']}")
                     continue
                 if not tb['endpoints'][tbEndpoint]['state'] == 'new':
-                    #TODO - Create recurring job to check for outOfSync endpoints & create job to sync
                     # Prevent writing transaction logs for failed transaction log changes
                     if cluster == 'pyql':
-                        if table == 'transactions':
+                        if table == 'transactions' or table == 'jobs':
                             continue
                     log.warning(f"new outOfSyncEndpoint {tbEndpoint} need to write to db logs")
                     changeLogs['txns'].append({
@@ -607,11 +489,15 @@ def run(server):
             
 
             details = {'message': response, 'endpointStatus': tb['endpoints']} if 'details' in kw else response
-            if len(changeLogs['txns']) > 0:
-                # Better solution - maintain transactions table for transactions, table sync and logic is already available
-                for txn in changeLogs['txns']:
-                    post_request_tables('pyql','transactions','insert', txn)
-
+            def write_change_logs():
+                if len(changeLogs['txns']) > 0:
+                    # Better solution - maintain transactions table for transactions, table sync and logic is already available
+                    for txn in changeLogs['txns']:
+                        post_request_tables('pyql','transactions','insert', txn)
+            if cluster == 'pyql' and table == 'state':
+                pass
+            else:
+                write_change_logs()
             # Commit cached commands  
             epCommitRequests = {}
             for endpoint in endpointResponse:
@@ -621,6 +507,12 @@ def run(server):
                     'data': endpointResponse[endpoint]
                 }
             asyncResults = asyncrequest.async_request(epCommitRequests, 'POST')
+            #pyql state table changes must be commited before logs to prevent loop
+            if cluster == 'pyql' and table == 'state':
+                write_change_logs()
+                for failedEndpoint in failTrack:
+                    post_request_tables('pyql', 'state', 'update', {'set': {'inSync': False}, 'where': {'name': failedEndpoint}})
+
             return {"message": asyncResults}, 200
         if tb['isPaused'] == False:
             return process_request()
@@ -638,13 +530,13 @@ def run(server):
                     "message": error
                     }, 500
 
-
     def table_select(cluster, table, data=None, method='GET'):
-        if server.quorum['status'] == False:
+        quorum, rc = cluster_quorum(False, True)
+        print(quorum)
+        if quorum['quorum']['inQuorum'] == False:
             return {
                 "message": f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum",
                 "error": f"quorum was not available"}, 500
-
 
         tableEndpoints = get_table_endpoints(cluster, table)
         endPointList = [endpoint for endpoint in tableEndpoints['inSync']]
@@ -672,13 +564,6 @@ def run(server):
                     break
             except Exception as e:
                 log.error(f"Encountered exception accessing {endpoint} for {cluster} {table} select")
-                #log.warning(f"marking endpoint {endpoint} outOfSync for {cluster} table {table}")
-                #try:
-                #    statusData = {endpoint: {'inSync': False}}
-                #    mesage, rc = post_update_table_conf(cluster, table,'sync','status', statusData)
-                #except Exception as e:
-                #    log.error(f"Encountered exception marking table {table} outOfSync from table_select")
-            #remove failed ep from endPointList & try others
             endPointList.pop(epIndex)
             continue
             
@@ -686,7 +571,6 @@ def run(server):
             return r.json(), r.status_code
         except Exception as e:
             log.exception("Exception encountered during table_select")
-            #error = f"{r.text} {r.status_code}"
             log.error(f"{repr(e)}")
             return {"data": [], "error": f"{repr(e)}"}, 400
 
@@ -717,20 +601,27 @@ def run(server):
     @server.route('/cluster/<cluster>/table/<table>/state/<action>', methods=['POST'])
     def cluster_table_state(cluster, table, action):
         config = request.get_json()
-        tb = server.cluster[cluster]['tables'][table]
         if action == 'set':
             """
                 Expected  input {endpoint: {'state': 'new|loaded'}}
             """
+            config = request.get_json()
             for endpoint in config:
                 tableEndpoint = f'{endpoint}{table}'
-                tb['endpoints'][tableEndpoint]['state'] = config[endpoint]['state']
-            return {"message": f"set {config} for {table}"}
+                server.clusters.state.update(
+                    state=config[endpoint]['state'],
+                    where={'name': tableEndpoint})
+            return {"message": f"set {config} for {table}"}, 200
         elif action == 'get':
             """
                 Expected  input {'endpoints': ['endpoint1', 'endpoint2']}
             """
-            log.info(f"##cluster_table_status /cluster/pyql/table/state/state/get input is {config}")
+            log.warning(f"##cluster_table_status /cluster/pyql/table/state/state/get input is {config}")
+            tb = get_table_info(
+                cluster, 
+                table,
+                get_table_endpoints(cluster, table)
+                )
             endpoints = {endpoint: tb['endpoints'][f'{endpoint}{table}'] for endpoint in config['endpoints']}
             return endpoints, 200
         else:
@@ -738,44 +629,11 @@ def run(server):
     
     @server.route('/cluster/<cluster>/table/<table>/sync/<action>', methods=['GET','POST'])
     def cluster_table_sync(cluster, table, action):
-        config = request.get_json()
-        if not cluster in server.cluster or not table in server.cluster[cluster]['tables']:
-            update_cluster(cluster)
-        tb = server.cluster[cluster]['tables'][table]
         if action == 'status':
             if request.method == 'GET':
-                update_cluster(cluster)
-                response = get_table_endpoints(cluster, table)
-                return response, 200
-            # Expected  input {endpoint: {'inSync': False}}
-            for endpoint in config:
-                tableEndpoint = f'{endpoint}{table}'
-                if config[endpoint]['inSync'] == False:
-                    # Create Job for resyncing table endpoint
-                    #This Key prevents in-memory refreshes from database 
-                    tb['endpoints'][tableEndpoint]['ignoreInSync'] = True
-                else:
-                    tb['endpoints'][tableEndpoint]['ignoreInSync'] = False
-                tb['endpoints'][tableEndpoint]['inSync'] = config[endpoint]['inSync']
-            log.info(f"###cluster_table_sync set {config} for {table}")
-            return {"message": f"set {config} for {table}"}, 200
-    @server.route('/cluster/<cluster>/table/<table>/pause/<action>', methods=['GET','POST'])
-    def cluster_table_pause(cluster, table, action):
-        if not cluster in server.cluster or not table in server.cluster[cluster]['tables']:
-            update_cluster(cluster)
-        tb = server.cluster[cluster]['tables'][table]
-        if 'action' == 'start':
-            tb['isPaused'] = True
-        elif 'action' == 'stop':
-            tb['isPaused'] = False
-        elif 'action' == 'status':
-            config = request.get_json()
-            if request.method == 'GET':
-                return {'isPaused': tb['isPaused']}, 200
-            tb['isPaused'] = config['isPaused']
-        else:
-            pass
-        return {'isPaused': tb['isPaused']}, 200
+                endpoints = get_table_endpoints(cluster, table)
+                tb = get_table_info(cluster, table, endpoints)
+                return tb, 200
 
     @server.route(f'/cluster/<cluster>/tablelogs/<table>/<endpoint>/<action>', methods=['GET','POST'])
     def get_cluster_table_endpoint_logs(cluster, table, endpoint, action, **kw):
@@ -831,40 +689,6 @@ def run(server):
                         log.error(f"something abnormal happened when commiting txnlog {txn}")
                 return {"message": f"successfully commited txns"}, 200
 
-    @server.route('/clusters/<action>', methods=['POST'])
-    def clusters_action(action):
-        """
-            /clusters/updateAll used to trigger /clusters/update on each cluster node.
-        """
-        if action == 'update':
-            update_clusters()
-            return {'message': f"clusters {' '.join(server.cluster.keys())} updated"}, 200
-        elif action == 'updateAll':
-            endpoints = get_table_endpoints('pyql', 'state')['inSync']
-            results = []
-            for endpoint in endpoints:
-                r = requests.post(f'{endpoint["path"]}/clusters/update')
-                results.append(r)
-            message= f"clusters_action {action} completed"
-            log.info(message)
-            return {'message': message, 'results': [r.status_code for r in results]}, 200
-        return {"message": f"invalid action {action} for /clusters/"}, 400
-
-
-    @server.route('/cluster/<cluster>/config/<action>/<items>', methods=['POST'])
-    def update_cluster_config(cluster, action, items):
-        if action == 'update':
-            if items == 'cluster':
-                update_cluster(cluster)
-                return server.cluster[cluster], 200
-            elif items == 'endpoints':
-                update_endpoints(cluster)
-                return server.cluster[cluster], 200
-            else:
-                pass
-        return {"message": f"invalid action {action} or item {item} provided"}, 400
-        
-
     @server.route('/cluster/<clusterName>/join', methods=['GET','POST'])
     def join_cluster(clusterName):
         required = {
@@ -889,13 +713,20 @@ def run(server):
             newEndpointOrDatabase = False
             jobsToRun = []
             bootstrap = False
-
+            
             #check if pyql is bootstrapped
-            if not 'pyql' in server.cluster and clusterName == 'pyql':
+            clusters = server.clusters.clusters.select('*')
+            isBootstrapped = False
+            for cluster in clusters:
+                if cluster['name'] == 'pyql':
+                    isBootstrapped = True
+
+            if not isBootstrapped:
                 bootstrap_pyql_cluster(config)
                 bootstrap = True
 
-            if not clusterName in server.cluster:
+            clusters = server.clusters.clusters.select('*')
+            if not clusterName in [cluster['name'] for cluster in clusters]:
                 #Cluster does not exist, need to create
                 #JobIfy - create as job so config is replicated
                 data = {
@@ -904,10 +735,12 @@ def run(server):
                     'createDate': f'{datetime.now().date()}'
                     }
                 post_request_tables('pyql', 'clusters', 'insert', data)
-                update_cluster(clusterName, False)
+
             #check for existing endpoint in cluster: clusterName
+            endpoints = server.clusters.endpoints.select('name', where={'cluster': clusterName})
+
             # If endpoint does not exists create
-            if not config['name'] in server.cluster[clusterName]['endpoints']:
+            if not config['name'] in [endpoint['name'] for endpoint in endpoints]:
                 newEndpointOrDatabase = True
                 data = {
                     'name': config['name'],
@@ -915,11 +748,13 @@ def run(server):
                     'cluster': clusterName
                 }
                 post_request_tables('pyql', 'endpoints', 'insert', data)
-                update_endpoints(clusterName, True)
+                #update_endpoints(clusterName, True)
             # check for existing endpoint db's in cluster: clusterName
             # if db not exist, add
             endpointDatabase = f'{config["name"]}_{config["database"]["name"]}'
-            if not endpointDatabase in server.cluster[clusterName]['databases']:
+            databases = server.clusters.databases.select('name', where={'cluster': clusterName})
+
+            if not endpointDatabase in [database['name'] for database in databases]:
                 newEndpointOrDatabase = True
                 #JobIfy - create as job so config
                 data = {
@@ -930,13 +765,13 @@ def run(server):
                     'endpoint': config['name']
                 }
                 post_request_tables('pyql', 'databases', 'insert', data)
-                update_databases(clusterName, config['name'], False)
-
+            tables = server.clusters.tables.select('name', where={'cluster': clusterName})
+            tables = [table['name'] for table in tables]
             # if tables not exist, add
             newTables = []
             for table in config['tables']:
                 for tableName, tableConfig in table.items():
-                    if not tableName in server.cluster[clusterName]['tables']:
+                    if not tableName in tables:
                         newTables.append(tableName)
                         #JobIfy - create as job so config
                         data = {
@@ -947,15 +782,20 @@ def run(server):
                             'isPaused': False
                         }
                         post_request_tables('pyql', 'tables', 'insert', data)
-                        update_tables(clusterName, config['name'], config['database'], tableName)
             # If new endpoint was added - update endpoints in each table 
             # so tables can be created in each endpoint for new / exsting tables
             if newEndpointOrDatabase == True:
-                jobsToRun = [] # Resetting as all cluster tables need a job to sync on newEndpointOrDatabase 
-                for table in server.cluster[clusterName]['tables']:
-                    for endpoint in server.cluster[clusterName]['endpoints']:
+                jobsToRun = [] # Resetting as all cluster tables need a job to sync on newEndpointOrDatabase
+                tables = server.clusters.tables.select('name', where={'cluster': clusterName})
+                tables = [table['name'] for table in tables]
+                endpoints = server.clusters.endpoints.select('name', where={'cluster': clusterName})
+                endpoints = [endpoint['name'] for endpoint in endpoints]
+                state = server.clusters.endpoints.select('name', where={'cluster': clusterName})
+                state = [tbEp['name'] for tbEp in state]
+                for table in tables:
+                    for endpoint in endpoints:
                         tableEndpoint = f'{endpoint}{table}'
-                        if not tableEndpoint in server.cluster[clusterName]['tables']['state']:
+                        if not tableEndpoint in state:
                             # check if this table was added along with endpoint, and does not need to be created 
                             loadState = 'loaded' if endpoint == config['name'] else 'new'
                             if not table in newTables:
@@ -967,50 +807,24 @@ def run(server):
                                 syncState = True
                             # Get DB Name to update
                             endpointDb = get_db_name(clusterName, endpoint)
-                            endpointDb = server.cluster[clusterName]['databases'][f'{endpoint}_{endpointDb}']
+                            endpointDb = server.clusters.databases.select('*', where={'cluster': clusterName, 'name': f'{endpoint}_{endpointDb}'})[0]
                             data = {
                                 'name': tableEndpoint,
                                 'state': loadState,
                                 'inSync': syncState,
+                                'tableName': table,
+                                'cluster': clusterName,
                                 'uuid': endpointDb['uuid'], # used for syncing logs 
                                 'lastModTime': 0.0
                             }
                             post_request_tables('pyql', 'state', 'insert', data)
-                            update_tables(clusterName, endpoint, endpointDb['name'], table)
             else:
                 if not bootstrap:
                     log.warning(f"{os.environ['HOSTNAME']} was not bootstrapped - create tablesync job for table state")
                     if clusterName == 'pyql':
-                        """
-                        nodeJoinJobs = []
-                        stateTableSync = {
-                            'job': f'sync_table_pyql_state',
-                            'jobType': 'tablesync',
-                            'cluster': clusterName,
-                            'table': table
-                        }
-                        nodeJoinJobs.append(stateTableSync)
- 
-                        log.warning(f"create job to run after job which marks /joined node as ready=True to receive be able to receive requests")
-                        markReadyJob = {
-                            "job": f"markReadyJob_{config['name']}",
-                            "jobType": "cluster",
-                            "method": "POST",
-                            "node": config['path'],
-                            "path": "/cluster/pyql/ready",
-                            "data": {'ready': True}
-                        }
-                        nodeJoinJobs.append(markReadyJob)
-                        """
-                        # Trigger in-memory refresh from DB's on each cluster node.
-                        post_update_cluster_config(clusterName, 'update', 'cluster')
                         cluster_tablesync_mgr('check')
-                        #joinJobStart = wait_on_jobs(0, nodeJoinJobs)
-                        return server.cluster[clusterName], 200
-            # Trigger in-memory refresh from DB's on each cluster node.
-            post_update_cluster_config(clusterName, 'update', 'cluster')
-
-            return server.cluster[clusterName], 200
+                        return {"message": f"re-join cluster {clusterName} for endpoint {config['name']} completed successfully"}, 200
+            return {"message": f"join cluster {clusterName} for endpoint {config['name']} completed successfully"}, 200
 
     def post_cluster_tables_config_sync(cluster, table=None):
         """
@@ -1058,7 +872,7 @@ def run(server):
     def cluster_jobmgr_cleanup():
         """
             invoked on-demand or by cron to check for stale jobs & requeue
-        """
+        """ 
         jobs = table_select('pyql', 'jobs')[0]['data']
         for job in jobs:
             if not job['next_run_time'] == None:
@@ -1201,15 +1015,18 @@ def run(server):
         if action == 'check':
             jobsToCreate = {}
             jobs = {}
-            for cluster in server.cluster:
-                for table in server.cluster[cluster]['tables']:
-                    for endpoint in get_table_endpoints(cluster, table)['outOfSync']:
-                        endpointPath = get_table_endpoints(cluster, table)['outOfSync'][endpoint]['path']
-                        if not cluster in jobsToCreate:
-                            jobsToCreate[cluster] = {}
-                        if not table in jobsToCreate[cluster]:
-                            jobsToCreate[cluster][table] = []
-                        jobsToCreate[cluster][table].append(endpointPath)
+            tables = server.clusters.tables.select('name', 'cluster')
+            for table in tables:
+                cluster = table['cluster']
+                tableName = table['name']
+                endpoints = get_table_endpoints(cluster,tableName)['outOfSync']
+                for endpoint in endpoints:
+                    endpointPath = endpoints[endpoint]['path']
+                    if not cluster in jobsToCreate:
+                        jobsToCreate[cluster] = {}
+                    if not tableName in jobsToCreate[table['cluster']]:
+                        jobsToCreate[cluster][tableName] = []
+                    jobsToCreate[cluster][tableName].append(endpointPath)
             for cluster in jobsToCreate:
                 jobs[cluster] = []
                 for table in jobsToCreate[cluster]:
@@ -1222,12 +1039,14 @@ def run(server):
                         })
             for cluster in jobs:
                 if cluster == 'pyql':
-                    order = ['clusters', 'endpoints', 'databases', 'tables', 'state', 'transactions', 'jobs']
+                    order = ['clusters', 'endpoints', 'databases', 'tables', 'state', 'jobs', 'transactions']
                     stateCheck = False
                     jobsToRunOrdered = []
                     while len(order) > 0:
                         lastPop = None
                         for job in jobs[cluster]:
+                            if len(order) == 0:
+                                break
                             if job['table'] == order[0]:
                                 if order[0] == 'state':
                                     stateCheck = True
@@ -1250,7 +1069,7 @@ def run(server):
                     wait_on_jobs(0, jobsToRunOrdered)
                 else:
                     for job in jobs[cluster]:
-                        server.jobs.append(job)
+                        server.internal_job_add(job)
             log.info(f"cluster_tablesync_mgr created {jobs} for outofSync endpoints")
             return {"jobs": jobs}, 200
                     
@@ -1301,30 +1120,18 @@ def run(server):
             "message": f"job {job} added to jobs queue",
             "jobId": jobId}, 200
     
-    def add_cron_job_to_cluster(job):
-        if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
-            newCronJob = {
-                "job": f"addCronJob{job['job']}",
-                "jobType": 'cluster',
-                "method": "POST",
-                "path": "/cluster/cron/add",
-                "data": job,
-            }
-            server.jobs.append(newCronJob)
 
-    #Job to trigger cluster_quorum()
-    initQuorum = {
-        "job": "initQuorum",
-        "jobType": "cluster",
-        "method": "POST",
-        "path": "/cluster/pyql/quorum",
-        "data": None
-    }
+    server.internal_job_add(joinClusterJob)
 
-    update_clusters()
-    server.jobs.append(joinClusterJob)
-    server.jobs.append(initQuorum)
     if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
+        #Job to trigger cluster_quorum()
+        initQuorum = {
+            "job": "initQuorum",
+            "jobType": "cluster",
+            "method": "POST",
+            "path": "/cluster/pyql/quorum",
+            "data": None
+        }
         initMarkReadyJob = {
             "job": "initReady",
             "jobType": "cluster",
@@ -1332,36 +1139,50 @@ def run(server):
             "path": "/cluster/pyql/ready",
             "data": {'ready': True}
         }
-        server.jobs.append(initMarkReadyJob)
-
-    tableSyncCronJob = {
-        'job': 'tablesync_check',
-        'jobType': 'cron',
-        "method": "POST",
-        "path": "/cluster/tablesync/check",
-        "interval": 60,
-        "data": None
-    }
-    clusterQuorumCronJob = {
-        'job': 'clusterQuorum_check',
-        'jobType': 'cron',
-        "method": "POST",
-        "path": "/cluster/pyql/quorum/check",
-        "interval": 15,
-        "data": None
-    }
-    clusterJobCleanupCronJob = {
-        'job': 'clusterJob_cleanup',
-        'jobType': 'cron',
-        'method': 'POST',
-        'path': '/cluster/jobmgr/cleanup',
-        'interval': 60,
-        'data': None
-    }
-    for job in [clusterQuorumCronJob, tableSyncCronJob, clusterJobCleanupCronJob]:
-        add_cron_job_to_cluster(job)
-
-    
-
-    
-
+        server.internal_job_add(initQuorum)
+        server.internal_job_add(initMarkReadyJob)
+        # Create Cron Jobs inside init node 
+        tableSyncCronJob = {
+            'job': 'tablesync_check',
+            'jobType': 'cron',
+            "method": "POST",
+            "path": "/cluster/tablesync/check",
+            "interval": 60,
+            "data": None
+        }
+        clusterQuorumCronJob = {
+            'job': 'clusterQuorum_check',
+            'jobType': 'cron',
+            "method": "POST",
+            "path": "/cluster/pyql/quorum/check",
+            "interval": 15,
+            "data": None
+        }
+        clusterJobCleanupCronJob = {
+            'job': 'clusterJob_cleanup',
+            'jobType': 'cron',
+            'method': 'POST',
+            'path': '/cluster/jobmgr/cleanup',
+            'interval': 60,
+            'data': None
+        }
+        for job in [clusterQuorumCronJob, tableSyncCronJob, clusterJobCleanupCronJob]:
+            newCronJob = {
+                "job": f"addCronJob{job['job']}",
+                "jobType": 'cluster',
+                "method": "POST",
+                "path": "/cluster/cron/add",
+                "data": job,
+            }
+            server.internal_job_add(newCronJob)
+        
+    server.clusters.quorum.insert(**{
+        'node': os.environ['HOSTNAME'],
+        'inQuorum': True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False,
+        'ready': True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False
+    })
+    # Sets ready false for any node with may be restarting as resync is required before marked ready
+    server.clusters.quorum.update(
+        ready=True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False,
+        where={'node': os.environ['HOSTNAME']}
+    )

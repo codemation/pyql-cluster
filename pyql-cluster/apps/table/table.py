@@ -90,7 +90,7 @@ def run(server):
                                 columns,
                                 tableConfig[tableName]["primaryKey"]
                                 )
-                            server.actions['cache_enable'](database, tableName)
+                            #server.actions['cache_enable'](database, tableName)
                             return {"message": f"""table {tableName} created successfully """}, 200
                         else:
                             return f"""provided primaryKey {tableConfig[tableName]["primaryKey"]} is not a column with "columns": {colNames} """

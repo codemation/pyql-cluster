@@ -197,6 +197,15 @@ def sync_table_job(cluster, table, job=None):
             state = {endpoint[0]: {'state': 'loaded'}}
             set_table_state(cluster, table, state)
             # Worker completes initial insertions from select * of TB.
+            if cluster == 'pyql' and table == 'jobs' or table == 'transactions':
+                #need to blackout changes to these tables during copy as txn logs not generated
+                message, rc = table_cutover(cluster, table, 'start')
+                table_copy(cluster, table, endpointPath)
+                tableEndpoint = f'{endpoint[0]}{table}'
+                setInSync = {tableEndpoint: {'inSync': True, 'state': 'loaded'}}
+                statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
+                message, rc = table_cutover(cluster, table, 'stop')
+                return
             table_copy(cluster, table, endpointPath)
         try:
             if stateCheck[endpoint[0]]['state'] == 'new': # Never loaded, needs to be initialize
@@ -221,32 +230,38 @@ def sync_table_job(cluster, table, job=None):
         except Exception as e:
             return log_exception(job, table, e), 500
 
-            
-        print(f"tablesyncer {job} {table} - #SYNC Worker completes pull of change logs & issues a cutover by pausing table.")
-        message, rc = table_cutover(cluster, table, 'start')
-        try:
-            print(f"tablesyncer {job} {table} - #SYNC Worker checks for any new change logs that were commited just before the table was paused, and also syncs these")
-            sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
-            print(f"tablesyncer {job} {table} - #SYNC Worker sets new TB endpoint as inSync=True")
-            setInSync = {endpoint[0]: {'inSync': True}}
-            statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
-            print(f"tablesyncer {job} {table} - #SYNC set {table} {setInSync} result: {statusResult} {rc}")
-            print(f"tablesyncer {job} {table} - #SYNC marking outOfSync endpoint {endpoint[0]} table {table} in {cluster} as {setInSync}")
-            #if table == 'state':
-            #    sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
-            #setInSync = {endpoint[0]: {'inSync': True}}
-            #statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
-        except Exception as e:
-            print(f"tablesyncer {job} {table} - #SYNC Worker rolling back pause / inSync")
-            setInSync = {endpoint[0]: {'inSync': False}}
-            statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
-            #UnPause
-            message, rc = table_cutover(cluster, table, 'stop')
-            return log_exception(job, table, e), 500
+        if cluster == 'pyql' and table == 'jobs' or table == 'transactions':
+            pass
+        else:
+            print(f"tablesyncer {job} {table} - #SYNC Worker completes pull of change logs & issues a cutover by pausing table.")
+            message, rc = table_cutover(cluster, table, 'start')
+            tableEndpoint = f'{endpoint[0]}{table}'
+            try:
+                print(f"tablesyncer {job} {table} - #SYNC Worker checks for any new change logs that were commited just before the table was paused, and also syncs these")
+                sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
+                print(f"tablesyncer {job} {table} - #SYNC Worker sets new TB endpoint as inSync=True")
+                
+                setInSync = {tableEndpoint: {'inSync': True, 'state': 'loaded'}}
+                statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
+                print(f"tablesyncer {job} {table} - #SYNC set {table} {setInSync} result: {statusResult} {rc}")
+                print(f"tablesyncer {job} {table} - #SYNC marking outOfSync endpoint {f'{endpoint[0]}{table}'} table {table} in {cluster} as {setInSync}")
+                if cluster == 'pyql' and table == 'state':
+                    sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
+                    sync_status(cluster, table, 'POST', setInSync)
+                #setInSync = {endpoint[0]: {'inSync': True}}
+                #statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
+            except Exception as e:
+                print(f"tablesyncer {job} {table} - #SYNC Worker rolling back pause / inSync")
+                setInSync = {tableEndpoint: {'inSync': False, 'state': 'loaded'}}
+                statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
+                #UnPause
+                message, rc = table_cutover(cluster, table, 'stop')
+                return log_exception(job, table, e), 500
 
-        # Un-Pause
-        print(f"tablesyncer {job} {table} - #SYNC Worker -  completes cutover by un-pausing table")
-        message, rc = table_cutover(cluster, table, 'stop')
+            # Un-Pause
+            print(f"tablesyncer {job} {table} - #SYNC Worker -  completes cutover by un-pausing table")
+            message, rc = table_cutover(cluster, table, 'stop')
+
         message = f'tablesyncer {job} {table} - #SYNC finished syncing {endpoint[0]} for table {table} in cluster {cluster}'
         print(message)
     return {"message": message}, 200
@@ -280,7 +295,7 @@ if __name__=='__main__':
     args = sys.argv
     if len(args) > 1:
         jobpath, delay  = args[1], float(args[2])
-        start = time.time()
+        start = time.time() - 5
         while True:
             time.sleep(1)
             if delay < time.time() - start:

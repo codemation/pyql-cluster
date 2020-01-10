@@ -6,6 +6,8 @@ def db_attach(server):
             ('name', str, 'UNIQUE NOT NULL'),
             ('state', str),
             ('inSync', bool),
+            ('tableName', str),
+            ('cluster', str),
             ('uuid', str), # used for syncing logs 
             ('lastModTime', float)
        ],

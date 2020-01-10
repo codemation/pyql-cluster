@@ -11,6 +11,6 @@ def run(server):
             if 'set' not in params or 'where' not in params:
                 return f"""missing key-values set: {'{"columnName": "value"}'} and where: {'{"columnName": "value"}'}""", 400
             response = table.update(**params['set'], where=params['where'])
-            return {"status": 200, "message": "OK"}
+            return {"status": 200, "message": "OK"}, 200
         return {"message": message},rc
     server.actions['update'] = update_func
