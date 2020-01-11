@@ -826,48 +826,6 @@ def run(server):
                         return {"message": f"re-join cluster {clusterName} for endpoint {config['name']} completed successfully"}, 200
             return {"message": f"join cluster {clusterName} for endpoint {config['name']} completed successfully"}, 200
     
-    """TODO - Test and delete
-    def post_cluster_tables_config_sync(cluster, table=None):
-        
-        #    checks for 'new' state endpoints in each cluster table and creates table in endpoint database
-        
-        def table_config_sync(table):
-            tb = server.cluster[cluster]['tables'][table]
-            for database in server.cluster[cluster]['databases']:
-                endpoint = server.cluster[cluster]['databases'][database]['endpoint']
-                endpointPath = server.cluster[cluster]['endpoints'][endpoint]['path']
-                tableEndpoint = f'{endpoint}{table}'
-                dbName = get_db_name(cluster, endpoint)
-                if tb['endpoints'][tableEndpoint]['state'] == 'new':
-                    r = requests.post(
-                        f'http://{endpointPath}/db/{dbName}/table/create',
-                        headers={'Accept': 'application/json', "Content-Type": "application/json"},
-                        data=json.dumps(tb['config'])
-                    )
-                    is_requests_success(r, 'post_cluster_tables_config_sync')
-        if table == None:
-            for table in server.cluster[cluster]['tables']:
-                table_config_sync(table)
-        else:
-            table_config_sync(table)
-        return {"message": "post_cluster_tables_config_sync completed"}, 200
-    """
-            
-    """ TODO - TEST and delete
-    @server.route('/cluster/<cluster>/sync', methods=['GET','POST'])
-    def cluster_config_sync(cluster):
-        # ALL DB's added to a cluster will attempt to mirror added tables to each other
-        # Names of DB's will be unique within a cluster
-        # DB's may exist in more than 1 cluster, but tables added in 1 cluster-db, should not exist in other clusters.
-        # DB tables with same name as other DB's and different data, should be added to a different cluster.
-        config = request.get_json()
-        if 'table' in config:
-            post_cluster_tables_config_sync(cluster, config['table'])
-        else:
-            post_cluster_tables_config_sync(cluster)
-        return {"message": f"{cluster} config synced successfully"}, 200
-    """
-
     def re_queue_job(job):
         cluster_job_update(job['type'], job['id'],'queued')
 

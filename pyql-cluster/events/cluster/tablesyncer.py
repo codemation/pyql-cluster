@@ -113,27 +113,12 @@ def sync_cluster_table_logs(cluster, table, uuid, endpointPath):
     print(message)
     return {"message": message}, 200
 
-""" TODO - test and delete
-def sync_cluster_table(cluster, table):
-    #
-    #    checks for 'new' state endpoints in each cluster table and creates table in endpoint database
-    #
-    return probe(f'{clusterSvcName}/cluster/{cluster}/sync', 'POST', {'table': table})
-"""
-
 def sync_status(cluster, table, method='GET', data=None):
     # /cluster/<cluster>/tableconf/<table>/<conf>/<action>
     return probe(f'{clusterSvcName}/cluster/{cluster}/tableconf/{table}/sync/status', method, data)
 def get_table_endpoint_state(cluster, table, endpoints=[]):
     return probe(f'{clusterSvcName}/cluster/{cluster}/table/{table}/state/get', 'POST', {'endpoints': endpoints})
-def create_table(table):
-    return probe(f'{clusterSvcName}/cluster/{cluster}/table/{table}/state/get', 'POST', {'endpoints': endpoints})
-def drop_table(table):
-    pass
 
-def get_job_requirement(job):
-    #TODO - convert table config from json string to dict via json.loads
-    pass
 def log_exception(job, table, e):
     message = f"tablesyncer {job} {table} - #SYNC Worker - ecountered exception when syncing tablelogs "
     print(message)
@@ -152,7 +137,6 @@ def sync_table_job(cluster, table, job=None):
         - SYNC job is completed
     """
     # check sync status by GET to /cluster/<cluster>/table/<table>/sync/status
-    #syncStatus, rc = sync_status(cluster, table)
     syncStatus, rc = get_table_endpoints(cluster, table)
 
     if not rc == 200:
@@ -186,8 +170,6 @@ def sync_table_job(cluster, table, job=None):
     # check current state of table endpoints
     stateCheck, rc = get_table_endpoint_state(cluster, table, [ep[0] for ep in endpointsToSync])
 
-    # Sync Cluster Table Config
-    #sync_cluster_table(cluster,table) TODO - See if I can delete this 
     print(f"tablesyncer {job} {table} - #SYNC stateCheck {stateCheck}")
     
     for endpoint in endpointsToSync:
@@ -250,8 +232,6 @@ def sync_table_job(cluster, table, job=None):
                 if cluster == 'pyql' and table == 'state':
                     sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
                     sync_status(cluster, table, 'POST', setInSync)
-                #setInSync = {endpoint[0]: {'inSync': True}}
-                #statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
             except Exception as e:
                 print(f"tablesyncer {job} {table} - #SYNC Worker rolling back pause / inSync")
                 setInSync = {tableEndpoint: {'inSync': False, 'state': 'loaded'}}
@@ -275,8 +255,13 @@ def get_and_run_job(path):
         print(f"tablesyncer - #SYNC - preparing to run {job}")
         if job['config']['jobType'] == 'tablesync':
             table = job['config']['table']
-            set_job_status(job['id'],'running', message=f'tablesyncer - #SYNC starting sync_table_job for table {table}')
-            result, rc = sync_table_job(job['config']['cluster'], job['config']['table'],job['id'])
+            try:
+                set_job_status(job['id'],'running', message=f'tablesyncer - #SYNC starting sync_table_job for table {table}')
+                result, rc = sync_table_job(job['config']['cluster'], job['config']['table'],job['id'])
+            except Exception as e:
+                print(f"tablesyncer encountered exception syncing job {job['id']} re-queueing")
+                set_job_status(job['id'],'queued', node=None)
+
             print(f"tablesyncer - #SYNC get_and_run_job result {result} {rc}")
             if not rc == 200:
                 set_job_status(job['id'],'queued', node=None)
@@ -285,8 +270,6 @@ def get_and_run_job(path):
             set_job_status(job['id'],'finished')
             if 'nextJob' in job['config']:
                 set_job_status(job['config']['nextJob'],'queued')
-            #TODO Add exception handling here.
-            # Using - /cluster/<jobtype>/<uuid>/<status>
             result = f'tablesyncer - #SYNC completed job {job}'
             return result, 200
         print(f"tablesyncer - #SYNC tablesyncer get_and_run_job - no job in {job}")

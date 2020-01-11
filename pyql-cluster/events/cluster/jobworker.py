@@ -53,7 +53,7 @@ def get_and_process_job(path):
                     log(f"Exception when proceessing job {job} {repr(e)}")
                     set_job_status(job['id'], job['config']['jobType'],'queued', lastError=str(repr(e)))
             else:
-                set_job_status(job['id'],job['config']['jobType'], 'queued') #TODO - Should fail job
+                set_job_status(job['id'],job['config']['jobType'], 'queued')
                 message, rc =  f'{job["id"]} is missing jobType field', 200
                 print(message)
             return message,rc
@@ -64,7 +64,7 @@ if __name__=='__main__':
     args = sys.argv
     if len(args) > 2:
         jobpath, delay  = args[1], float(args[2])
-        start = time.time()
+        start = time.time() - 5
         while True:
             time.sleep(1)
             if delay < time.time() - start:
