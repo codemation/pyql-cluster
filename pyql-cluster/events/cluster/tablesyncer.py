@@ -113,11 +113,13 @@ def sync_cluster_table_logs(cluster, table, uuid, endpointPath):
     print(message)
     return {"message": message}, 200
 
+""" TODO - test and delete
 def sync_cluster_table(cluster, table):
-    """
-        checks for 'new' state endpoints in each cluster table and creates table in endpoint database
-    """
+    #
+    #    checks for 'new' state endpoints in each cluster table and creates table in endpoint database
+    #
     return probe(f'{clusterSvcName}/cluster/{cluster}/sync', 'POST', {'table': table})
+"""
 
 def sync_status(cluster, table, method='GET', data=None):
     # /cluster/<cluster>/tableconf/<table>/<conf>/<action>
@@ -185,7 +187,7 @@ def sync_table_job(cluster, table, job=None):
     stateCheck, rc = get_table_endpoint_state(cluster, table, [ep[0] for ep in endpointsToSync])
 
     # Sync Cluster Table Config
-    sync_cluster_table(cluster,table)
+    #sync_cluster_table(cluster,table) TODO - See if I can delete this 
     print(f"tablesyncer {job} {table} - #SYNC stateCheck {stateCheck}")
     
     for endpoint in endpointsToSync:

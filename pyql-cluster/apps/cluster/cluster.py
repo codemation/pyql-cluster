@@ -825,11 +825,12 @@ def run(server):
                         cluster_tablesync_mgr('check')
                         return {"message": f"re-join cluster {clusterName} for endpoint {config['name']} completed successfully"}, 200
             return {"message": f"join cluster {clusterName} for endpoint {config['name']} completed successfully"}, 200
-
+    
+    """TODO - Test and delete
     def post_cluster_tables_config_sync(cluster, table=None):
-        """
-            checks for 'new' state endpoints in each cluster table and creates table in endpoint database
-        """
+        
+        #    checks for 'new' state endpoints in each cluster table and creates table in endpoint database
+        
         def table_config_sync(table):
             tb = server.cluster[cluster]['tables'][table]
             for database in server.cluster[cluster]['databases']:
@@ -850,8 +851,9 @@ def run(server):
         else:
             table_config_sync(table)
         return {"message": "post_cluster_tables_config_sync completed"}, 200
+    """
             
-
+    """ TODO - TEST and delete
     @server.route('/cluster/<cluster>/sync', methods=['GET','POST'])
     def cluster_config_sync(cluster):
         # ALL DB's added to a cluster will attempt to mirror added tables to each other
@@ -864,6 +866,7 @@ def run(server):
         else:
             post_cluster_tables_config_sync(cluster)
         return {"message": f"{cluster} config synced successfully"}, 200
+    """
 
     def re_queue_job(job):
         cluster_job_update(job['type'], job['id'],'queued')
