@@ -40,6 +40,8 @@ spec:
                 key: K8S_NAMESPACE
           - name: PYQL_TYPE
             value: K8S
+          - name: PYQL_CLUSTER_ACTION
+            value: join
         ports:
         - containerPort: 80
           name: http
