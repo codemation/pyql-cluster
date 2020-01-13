@@ -27,7 +27,7 @@ else:
     # For loading when triggered by uWSGI
     if os.environ['PYQL_TYPE'] == 'K8S':
         # Processing environ variables for Kubernetes implementation
-        hostAddr = socket.gethostbyname(socket.gethostname())
+        hostAddr = '-'.join(socket.gethostbyname(socket.gethostname()).split('.'))
         k8sNamespace = os.environ['K8S_NAMESPACE']
         k8sCluster = os.environ['K8S_CLUSTER']
         k8sDomain = f"pyql-cluster.{k8sNamespace}.svc.{k8sCluster}"
