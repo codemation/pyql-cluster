@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pyql-cluster
+spec:
+  selector:
+    matchLabels:
+      app: pyql-cluster # has to match .spec.template.metadata.labels
+  serviceName: "pyql-cluster"
+  replicas: 1 # by default is 1
+  template:
+    metadata:
+      labels:
+        app: pyql-cluster # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: pyql-cluster
+        image: joshjamison/pyql-cluster:dev0.1
+        env:
+          - name: PYQL_CLUSTER_SVC
+            valueFrom:  
+              configMapKeyRef:          
+                name: pyql-cluster-config
+                key: PYQL_CLUSTER_SVC
+          - name: PYQL_PORT
+            valueFrom:  
+              configMapKeyRef:          
+                name: pyql-cluster-config
+                key: PYQL_PORT
+          - name: K8S_CLUSTER
+            valueFrom:  
+              configMapKeyRef:          
+                name: pyql-cluster-config
+                key: K8S_CLUSTER
+          - name: K8S_NAMESPACE
+            valueFrom:  
+              configMapKeyRef:          
+                name: pyql-cluster-config
+                key: K8S_NAMESPACE
+          - name: PYQL_TYPE
+            value: K8S
+        ports:
+        - containerPort: 80
+          name: http
+        volumeMounts:
+        - name: pyql-cluster-db
+          mountPath: /mnt/pyql-cluster-db
+  volumeClaimTemplates:
+  - metadata:
+      name: pyql-cluster-db
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "manual"
+      resources:
+        requests:
+          storage: 20Gi
