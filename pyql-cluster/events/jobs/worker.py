@@ -49,7 +49,11 @@ def add_job_to_queue(path, job):
     return message,rc
 
 def get_and_process_job(path):
-    job, rc = probe(f'{nodePath}{path}')
+    try:
+        job, rc = probe(f'{nodePath}{path}')
+    except Exception as e:
+        print(f"worker.py - Error probing {path}, try again later")
+        return {"message": f"worker.py - Error probing {path}"}, 400
     if not "message" in job:
         jobId = job['id']
         job = job['config']

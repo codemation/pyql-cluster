@@ -16,7 +16,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: pyql-cluster
-        image: joshjamison/pyql-cluster:dev0.1
+        image: joshjamison/pyql-cluster:dev0.2
         env:
           - name: PYQL_CLUSTER_SVC
             valueFrom:  
@@ -57,3 +57,27 @@ spec:
       resources:
         requests:
           storage: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyql-cluster
+spec:
+  clusterIP: "None"
+  ports:
+    - targetPort: 80
+      port: 80
+  selector:
+    app: pyql-cluster
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyql-cluster-lb
+spec:
+  type: NodePort
+  ports:
+    - targetPort: 80
+      port: 80
+  selector:
+    app: pyql-cluster

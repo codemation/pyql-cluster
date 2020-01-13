@@ -4,7 +4,7 @@ metadata:
   creationTimestamp: null
   name: pyql-cluster-config
 data:
-  PYQL_CLUSTER_SVC: 'pyql-cluster'
+  PYQL_CLUSTER_SVC: 'pyql-cluster-lb.default.svc.cluster.local'
   PYQL_PORT: '80'
   K8S_CLUSTER: 'cluster.local'
   K8S_NAMESPACE: 'default'

@@ -11,13 +11,17 @@ if __name__=='__main__':
     args = sys.argv
     if len(args) > 3:
         endpoint, delay, action  = args[1], float(args[2]), args[3]
-        start = delay
+        start = delay - 5
         while True:
             time.sleep(1)
             if delay < time.time() - start:
-                message, rc = probe(endpoint)
-                print(f"checker.py probe rc -  {rc}")
-                if not rc == 200:
-                    message, rc = probe(action)
-                    print(f"checker.py probe rc -({message} {rc}")
+                try:
+                    message, rc = probe(endpoint)
+                except Exception as e:
+                    print(f"checker.py error in checking probe rc - {repr{e}}")
+                    continue
+                if rc:
+                    if not rc == 200:
+                        message, rc = probe(action)
+                        print(f"checker.py probe rc -({message} {rc}")
                 start = time.time()
