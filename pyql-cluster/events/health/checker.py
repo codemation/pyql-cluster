@@ -1,4 +1,15 @@
 import sys, time, requests, os
+if 'PYQL_TYPE' in os.environ:
+    if os.environ['PYQL_TYPE'] == 'K8S':
+        # Processing environ variables for Kubernetes implementation
+        hostAddr = '-'.join(socket.gethostbyname(socket.gethostname()).split('.'))
+        k8sNamespace = os.environ['K8S_NAMESPACE']
+        k8sCluster = os.environ['K8S_CLUSTER']
+        k8sDomain = f"pyql-cluster.{k8sNamespace}.svc.{k8sCluster}"
+        # Setting PYQL_NODE - used when joining a cluster
+        os.environ['PYQL_NODE'] = f"{hostAddr}.{k8sDomain}"
+
+
 
 def probe(endpoint):
     url = f'http://{os.environ["PYQL_NODE"]}:{os.environ["PYQL_PORT"]}{endpoint}'
@@ -18,7 +29,7 @@ if __name__=='__main__':
                 try:
                     message, rc = probe(endpoint)
                 except Exception as e:
-                    print(f"checker.py error in checking probe rc - {repr{e}}")
+                    print(f"checker.py error in checking probe rc - {repr(e)}")
                     continue
                 if rc:
                     if not rc == 200:

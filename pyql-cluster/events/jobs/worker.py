@@ -1,4 +1,15 @@
 import sys, time, requests, json, os
+if 'PYQL_TYPE' in os.environ:
+    if os.environ['PYQL_TYPE'] == 'K8S':
+        # Processing environ variables for Kubernetes implementation
+        hostAddr = '-'.join(socket.gethostbyname(socket.gethostname()).split('.'))
+        k8sNamespace = os.environ['K8S_NAMESPACE']
+        k8sCluster = os.environ['K8S_CLUSTER']
+        k8sDomain = f"pyql-cluster.{k8sNamespace}.svc.{k8sCluster}"
+        # Setting PYQL_NODE - used when joining a cluster
+        os.environ['PYQL_NODE'] = f"{hostAddr}.{k8sDomain}"
+
+
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 nodePath = f'http://{os.environ["PYQL_NODE"]}:{os.environ["PYQL_PORT"]}'
