@@ -1,5 +1,6 @@
 import sys, time, requests, json, os
 if 'PYQL_TYPE' in os.environ:
+    import socket
     if os.environ['PYQL_TYPE'] == 'K8S':
         # Processing environ variables for Kubernetes implementation
         hostAddr = '-'.join(socket.gethostbyname(socket.gethostname()).split('.'))
