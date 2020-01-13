@@ -25,7 +25,7 @@ if __name__ == '__main__':
         main(port)
 else:
     # For loading when triggered by uWSGI
-    if os.environ['PYQL_TYPE'] == 'K8S'
+    if os.environ['PYQL_TYPE'] == 'K8S':
         # Processing environ variables for Kubernetes implementation
         hostAddr = socket.gethostbyname_ex(socket.gethostname())
         k8sNamespace = os.environ['K8S_NAMESPACE']
