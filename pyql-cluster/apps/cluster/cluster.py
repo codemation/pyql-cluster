@@ -38,6 +38,9 @@ def run(server):
         }) 
     os.environ['HOSTNAME'] = '-'.join(os.environ['PYQL_NODE'].split('.'))
 
+    if not 'PYQL_CLUSTER_ACTION' in os.environ:
+        os.environ['PYQL_CLUSTER_ACTION'] = 'join'
+
     # Table created only if 'init' is passed into os.environ['PYQL_CLUSTER_ACTION']
     tables = [
                 {
@@ -62,6 +65,7 @@ def run(server):
                     "jobs": server.get_table_func('cluster', 'jobs')[0]
                 }
             ]
+    
     joinClusterJob = {
         "job": f"{os.environ['HOSTNAME']}joinCluster",
         "jobType": "node" if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else 'cluster',
