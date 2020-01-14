@@ -64,7 +64,7 @@ def run(server):
                 {
                     "jobs": server.get_table_func('cluster', 'jobs')[0]
                 }
-            ]
+            ] if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else []
     
     joinClusterJob = {
         "job": f"{os.environ['HOSTNAME']}joinCluster",
@@ -78,7 +78,7 @@ def run(server):
                 'name': "cluster",
                 'uuid': dbuuid
             },
-            "tables": tables if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else []
+            "tables": tables
         }
     }
     def wait_on_jobs(curInd, jobList, waitingOn=None):
@@ -1146,8 +1146,17 @@ def run(server):
         'inQuorum': True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False,
         'ready': True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False
     })
+    # Check for number of endpoints in pyql cluster, if == 1, mark ready=True
+    endpointCount = server.clusters.endpoints.select('*') if 'endpoints' in server.data['cluster'].tables else []
+    if len(endpointCount) == 1 or if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
+        isReady = True
+    else:
+        isReady = False
     # Sets ready false for any node with may be restarting as resync is required before marked ready
     server.clusters.quorum.update(
-        ready=True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False,
+        ready=isReady,
         where={'node': os.environ['HOSTNAME']}
     )
+
+
+

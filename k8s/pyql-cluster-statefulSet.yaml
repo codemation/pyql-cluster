@@ -16,7 +16,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: pyql-cluster
-        image: joshjamison/pyql-cluster:dev0.4.3
+        image: joshjamison/pyql-cluster:dev0.4.5
         env:
           - name: PYQL_CLUSTER_SVC
             valueFrom:  
@@ -29,9 +29,10 @@ spec:
                 name: pyql-cluster-config
                 key: PYQL_PORT
           - name: PYQL_VOLUME_PATH
-            configMapKeyRef:          
-              name: pyql-cluster-config
-              key: PYQL_VOLUME_PATH
+            valueFrom:           
+              configMapKeyRef:          
+                name: pyql-cluster-config
+                key: PYQL_VOLUME_PATH
           - name: PYQL_TYPE
             value: K8S
           - name: PYQL_CLUSTER_ACTION
