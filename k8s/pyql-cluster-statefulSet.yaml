@@ -16,7 +16,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: pyql-cluster
-        image: joshjamison/pyql-cluster:dev0.4.6
+        image: joshjamison/pyql-cluster:dev0.4.7
         env:
           - name: PYQL_CLUSTER_SVC
             valueFrom:  
@@ -40,6 +40,18 @@ spec:
         ports:
         - containerPort: 80
           name: http
+        readinessProbe:
+          httpGet:
+            path: /cluster/pyql/ready
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /cluster/pyql/quorum
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 10
         volumeMounts:
         - name: pyql-cluster-db
           mountPath: /mnt/pyql-cluster-db

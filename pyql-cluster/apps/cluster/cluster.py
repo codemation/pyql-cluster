@@ -209,7 +209,10 @@ def run(server):
                 'ready',
                 where={'node': os.environ['HOSTNAME']}
             )
-            return ready[0], 200
+            if ready[0]['ready'] == True:
+                return ready[0], 200
+            else:
+                return ready[0], 400
         else:
             """
                 expects:

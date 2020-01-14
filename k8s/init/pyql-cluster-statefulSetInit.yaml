@@ -40,6 +40,18 @@ spec:
         ports:
         - containerPort: 80
           name: http
+        readinessProbe:
+          httpGet:
+            path: /cluster/pyql/ready
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /cluster/pyql/quorum
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 10
         volumeMounts:
         - name: pyql-cluster-db
           mountPath: /mnt/pyql-cluster-db
