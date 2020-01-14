@@ -1148,7 +1148,7 @@ def run(server):
     })
     # Check for number of endpoints in pyql cluster, if == 1, mark ready=True
     endpointCount = server.clusters.endpoints.select('*') if 'endpoints' in server.data['cluster'].tables else []
-    if len(endpointCount) == 1 or if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
+    if len(endpointCount) == 1 or os.environ['PYQL_CLUSTER_ACTION'] == 'init':
         isReady = True
     else:
         isReady = False
