@@ -8,7 +8,9 @@ def run(server):
         os.environ['DB_NAME'] = 'cluster' # TODO - Add to env variables config later
         if 'PYQL_TYPE' in os.environ:
             if os.environ['PYQL_TYPE'] == 'K8S':
-                config['database'] = os.environ['PYQL_VOLUME_PATH']
+                dbName = os.getenv('DB_NAME').rstrip()
+                dbLocation = os.environ['PYQL_VOLUME_PATH']
+                config['database'] = f'{dbLocation}/{dbName}'
         else:
             with open('.cmddir', 'r') as projDir:
                 for projectPath in projDir:

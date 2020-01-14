@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   creationTimestamp: null
-  name: pyql-git luster-config
+  name: pyql-cluster-config
 data:
   PYQL_CLUSTER_SVC: 'pyql-cluster-lb.default.svc.cluster.local'
   PYQL_PORT: '80'

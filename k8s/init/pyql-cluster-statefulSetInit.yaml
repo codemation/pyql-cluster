@@ -29,9 +29,10 @@ spec:
                 name: pyql-cluster-config
                 key: PYQL_PORT
           - name: PYQL_VOLUME_PATH
-            configMapKeyRef:          
-              name: pyql-cluster-config
-              key: PYQL_VOLUME_PATH
+            valueFrom:            
+              configMapKeyRef:          
+                name: pyql-cluster-config
+                key: PYQL_VOLUME_PATH
           - name: PYQL_CLUSTER_ACTION
             value: init
           - name: PYQL_TYPE
