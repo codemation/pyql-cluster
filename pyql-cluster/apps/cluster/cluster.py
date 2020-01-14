@@ -210,8 +210,10 @@ def run(server):
                 where={'node': os.environ['HOSTNAME']}
             )
             if ready[0]['ready'] == True:
+                log.warning(f"cluster_ready check returned {ready[0]}")
                 return ready[0], 200
             else:
+                log.warning(f"cluster_ready check returned {ready[0]}")
                 return ready[0], 400
         else:
             """
