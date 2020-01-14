@@ -1,9 +1,6 @@
 server {
     listen 80;
-    server_name localhost
-                pyql-cluster
-                *.default.svc.cluster.local
-                192.168.3.33;
+    server_name "";
 
     location / {
         include uwsgi_params;
