@@ -2,7 +2,7 @@ server {
     listen 80;
     server_name localhost
                 HOSTIP
-                pyql-cluster*
+                pyql-cluster
                 *.default.svc.cluster.local;
 
     location / {
