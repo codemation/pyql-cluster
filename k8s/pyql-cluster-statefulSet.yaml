@@ -16,7 +16,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: pyql-cluster
-        image: joshjamison/pyql-cluster:dev0.4.5
+        image: joshjamison/pyql-cluster:dev0.4.6
         env:
           - name: PYQL_CLUSTER_SVC
             valueFrom:  
