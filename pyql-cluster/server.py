@@ -26,7 +26,7 @@ if __name__ == '__main__':
 else:
     # For loading when triggered by uWSGI
     if os.environ['PYQL_TYPE'] == 'K8S':
-        os.environ['PYQL_NODE'] = socket.getfqdn()
+        os.environ['PYQL_NODE'] = socket.gethostbyname(socket.getfqdn())
 
     import setup
     setup.run(app)
