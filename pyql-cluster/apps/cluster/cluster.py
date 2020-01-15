@@ -637,7 +637,13 @@ def run(server):
             except Exception as e:
                 log.error(f"Encountered exception accessing {endpoint} for {cluster} {table} select")
                 log.error(repr(e))
-                post_request_tables('pyql', 'endpoints', 'update', {'set': {'inSync': False}, 'where': {'uuid': endpoint}})
+                post_request_tables(
+                    'pyql', 'state', 'update', 
+                    {
+                        'set': {'inSync': False}, 
+                        'where': {'name': f'{endpoint}{table}'
+                    }
+                )
             endPointList.pop(epIndex)
             continue
             
