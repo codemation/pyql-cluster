@@ -14,6 +14,12 @@ def run(server):
 
     log = server.log
 
+    nodeIp = '-'.join(os.environ['PYQL_NODE'].split('.'))
+    if 'PYQL_TYPE' in os.environ:
+        if os.environ['PYQL_TYPE'] == 'K8S':
+            nodeIp = socket.gethostbyname(socket.getfqdn())
+            nodeIp = '-'.join(nodeIp.split('.'))
+
     class cluster:
         """
             object used for quickly referencing tables
@@ -1160,7 +1166,7 @@ def run(server):
             server.internal_job_add(newCronJob)
         
     server.clusters.quorum.insert(**{
-        'node': os.environ['HOSTNAME'],
+        'node': nodeIp,
         'inQuorum': True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False,
         'ready': True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False
     })
@@ -1175,6 +1181,6 @@ def run(server):
     # Sets ready false for any node with may be restarting as resync is required before marked ready
     server.clusters.quorum.update(
         ready=isReady,
-        node=os.environ['HOSTNAME'],
-        where={'node': os.environ['HOSTNAME']}
+        node=nodeIp,
+        where={'node': nodeIp}
     )
