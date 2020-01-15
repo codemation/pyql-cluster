@@ -9,7 +9,7 @@ nodeIp = os.environ['PYQL_NODE']
 if 'PYQL_TYPE' in os.environ:
     if os.environ['PYQL_TYPE'] == 'K8S':
         os.environ['PYQL_NODE'] = socket.getfqdn()
-        nodeIp = socket.gethostbyaddr(socket.getfqdn())
+        nodeIp = socket.gethostbyname(socket.getfqdn())
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 
