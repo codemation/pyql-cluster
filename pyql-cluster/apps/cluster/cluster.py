@@ -264,7 +264,7 @@ def run(server):
                 epRequests[endpoint['uuid']] = {'path': endPointPath, 'data': None}
 
             if len(epList) == 0:
-                return {"message": f"pyql node {os.environ['HOSTNAME']} is still syncing"}, 200
+                return {"message": f"pyql node {nodeIp} is still syncing"}, 200
             try:
                 epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
             except Exception as e:
@@ -280,13 +280,13 @@ def run(server):
                 isNodeInQuorum = False
             server.clusters.quorum.update(
                     **{'inQuorum': isNodeInQuorum, 'nodes': {'nodes': inQuorum}}, 
-                    where={'node': os.environ['HOSTNAME']}
+                    where={'node': nodeIp}
                     )
-            quorum = server.clusters.quorum.select('*', where={'node': os.environ['HOSTNAME']})[0]
-            return {"message": f"quorum updated on {os.environ['HOSTNAME']}", 'quorum': quorum},200
+            quorum = server.clusters.quorum.select('*', where={'node': nodeIp})[0]
+            return {"message": f"quorum updated on {nodeIp}", 'quorum': quorum},200
         else:
             try:
-                quorum = server.clusters.quorum.select('*', where={'node': os.environ['HOSTNAME']})[0]
+                quorum = server.clusters.quorum.select('*', where={'node': nodeIp})[0]
             except:
                 quorum = []
             return {'message':'OK', 'quorum': quorum}, 200
