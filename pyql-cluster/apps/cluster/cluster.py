@@ -325,7 +325,7 @@ def run(server):
             return {"message": f"quorum updated on {nodeIp}", 'quorum': quorum},200
         else:
             try:
-                quorum = server.clusters.quorum.select('*', where={'node': nodeIp})
+                quorum = server.clusters.quorum.select('*', where={'node': nodeIp})[0]
             except Exception as e:
                 log.error(f"exception occured during cluster_quorum for {nodeIp} {quorum} ")
                 log.error(f"{repr(e)}")
