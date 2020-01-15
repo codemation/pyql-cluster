@@ -221,7 +221,7 @@ def run(server):
         if request.method == 'GET':
             ready = server.clusters.quorum.select(
                 'ready',
-                where={'node': os.environ['HOSTNAME']}
+                where={'node': nodeIp}
             )
             if ready[0]['ready'] == True:
                 log.warning(f"cluster_ready check returned {ready[0]}")
@@ -236,14 +236,14 @@ def run(server):
             """
             ready = request.get_json() if ready == None else ready
             updateSet = {
-                'set': {'ready': ready['ready']}, 'where': {'node': os.environ['HOSTNAME']}
+                'set': {'ready': ready['ready']}, 'where': {'node': nodeIp}
             }
             server.clusters.quorum.update(**updateSet['set'], where=updateSet['where'])
             return ready, 200
 
 
 
-    @server.route('/cluster/pyql/quorum/check', methods=['POST'])
+    @server.route('/pyql/quorum/check', methods=['POST'])
     def cluster_quorum_check():
         pyqlEndpoints = server.clusters.endpoints.select('*', where={'cluster': 'pyql'})
         if not len(pyqlEndpoints) > 0:
@@ -255,7 +255,7 @@ def run(server):
         for endpoint in pyqlEndpoints:
             epList.append(endpoint['uuid'])
             endPointPath = endpoint['path']
-            endPointPath = f'http://{endPointPath}/cluster/pyql/quorum'
+            endPointPath = f'http://{endPointPath}/pyql/quorum'
             epRequests[endpoint['uuid']] = {'path': endPointPath, 'data': None}
         log.warning(f"quorum/check - running using {epRequests}")
         if len(epList) == 0:
@@ -280,7 +280,7 @@ def run(server):
         quorum = server.clusters.quorum.select('*', where={'node': nodeIp})[0]
         return {"message": f"quorum updated on {nodeIp}", 'quorum': quorum},200
 
-    @server.route('/cluster/pyql/quorum', methods=['GET', 'POST'])
+    @server.route('/pyql/quorum', methods=['GET', 'POST'])
     def cluster_quorum(check=False, get=False):
         if request.method == 'POST' or check == True:
             pyqlEndpoints = server.clusters.endpoints.select('*', where={'cluster': 'pyql'})
@@ -293,7 +293,7 @@ def run(server):
             for endpoint in pyqlEndpoints:
                 epList.append(endpoint['uuid'])
                 endPointPath = endpoint['path']
-                endPointPath = f'http://{endPointPath}/cluster/pyql/quorum'
+                endPointPath = f'http://{endPointPath}/pyql/quorum'
                 epRequests[endpoint['uuid']] = {'path': endPointPath}
 
             if len(epList) == 0:
@@ -303,6 +303,7 @@ def run(server):
             except Exception as e:
                 log.exception("Excepton found during cluster_quorum() check")
             inQuorum = []
+            log.warning(f"epResults - {epResults}")
             for endpoint in epResults:
                 if epResults[endpoint]['status'] == 200:
                     inQuorum.append(endpoint)
@@ -1157,7 +1158,7 @@ def run(server):
             "job": "initQuorum",
             "jobType": "cluster",
             "method": "POST",
-            "path": "/cluster/pyql/quorum",
+            "path": "/pyql/quorum",
             "data": None
         }
         initMarkReadyJob = {
@@ -1182,7 +1183,7 @@ def run(server):
             'job': 'clusterQuorum_check',
             'jobType': 'cron',
             "method": "POST",
-            "path": "/cluster/pyql/quorum/check",
+            "path": "/pyql/quorum/check",
             "interval": 15,
             "data": None
         }
