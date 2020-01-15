@@ -264,6 +264,7 @@ def run(server):
             epResults = asyncrequest.async_request(epRequests, 'POST')
         except Exception as e:
             log.exception("Excepton found during cluster_quorum() check")
+        log.warning(f"quorum/check - results {epResults}")
         inQuorum = []
         for endpoint in epResults:
             if epResults[endpoint]['status'] == 200:
