@@ -269,7 +269,6 @@ def run(server):
             isNodeInQuorum = None
             if float(len(inQuorum) / len(epList)) >= float(2/3):
                 isNodeInQuorum = True
-                #server.quorum['status'] = True
             else:
                 isNodeInQuorum = False
             server.clusters.quorum.update(
@@ -312,7 +311,6 @@ def run(server):
                 if state['name'] == tableEndpoint:
                     sync = 'inSync' if state['inSync'] == True else 'outOfSync'
                     tableEndpoints[sync][endpoint['uuid']] = endpoint
-                    #tableEndpoints[sync][endpoint['name']]['uuid'] = state['uuid']
         log.warning(f"get_table_endpoints result {tableEndpoints}")
         return tableEndpoints
 
@@ -385,8 +383,6 @@ def run(server):
             sync = 'inSync' if endpoint in endpoints['inSync'] else 'outOfSync'
             path = endpoints[sync][endpoint]['path']    
             db = endpoints[sync][endpoint]['dbname']
-            #path = endpoints['inSync'][endpoint]['path'] if endpoint in endpoints['inSync'] else endpoints['outOfSync'][endpoint]['path']
-            #db = endpoints['inSync'][endpoint]['dbname'] if endpoint in endpoints['inSync'] else endpoints['outOfSync'][endpoint]['dbname']
             tb['endpoints'][state['name']] = state
             tb['endpoints'][state['name']]['path'] = f"http://{path}/db/{db}/table/{tb['name']}"
         return tb
@@ -570,7 +566,6 @@ def run(server):
         while len(endPointList) > 0:
             epIndex = randrange(len(endPointList))
             endpoint = endPointList[epIndex]
-            #db = get_db_name(cluster, endpoint)
             db = tableEndpoints['inSync'][endpoint]['dbname']
             try:
                 if method == 'GET':
@@ -789,46 +784,6 @@ def run(server):
                     )
                 else:
                     post_request_tables('pyql', 'endpoints', 'update', updateSet)
-            """
-            #check for existing endpoint in cluster: clusterName
-            endpoints = server.clusters.endpoints.select('name', where={'cluster': clusterName})
-
-            # If endpoint does not exists create
-            if not config['name'] in [endpoint['name'] for endpoint in endpoints]:
-                newEndpointOrDatabase = True
-                data = {
-                    'name': config['name'],
-                    'path': config['path'],
-                    'cluster': clusterName
-                }
-                post_request_tables('pyql', 'endpoints', 'insert', data)
-                #update_endpoints(clusterName, True)
-            # check for existing endpoint db's in cluster: clusterName
-            # if db not exist, add
-            endpointDatabase = f'{config["name"]}_{config["database"]["name"]}'
-            databases = server.clusters.databases.select('endpoint','uuid', where={'cluster': clusterName})
-
-            if not config["database"]["uuid"] in [database['uuid'] for database in databases]:
-                newEndpointOrDatabase = True
-                #JobIfy - create as job so config
-                data = {
-                    'name': endpointDatabase,
-                    'cluster': clusterName,
-                    'dbname': config['database']['name'],
-                    'uuid': config['database']['uuid'],
-                    'endpoint': config['name']
-                }
-                post_request_tables('pyql', 'databases', 'insert', data)
-            else:
-                for database in databases
-                    if config['uuid'] == database['uuid']:
-                        log.warning(f"database with uuid {config['uuid']} already existed in cluster - updating databases & endpoints")
-                        updateSet = {
-                            'set': {'endpoint': config['name'], 'name': endpointDatabase},
-                            'where': {'uuid': config['uuid']}
-                        }
-                        post_request_tables('pyql', 'databases', 'update', updateSet)
-            """
             tables = server.clusters.tables.select('name', where={'cluster': clusterName})
             tables = [table['name'] for table in tables]
             # if tables not exist, add
@@ -851,16 +806,7 @@ def run(server):
                 jobsToRun = [] # Resetting as all cluster tables need a job to sync on newEndpointOrDatabase
                 tables = server.clusters.tables.select('name', where={'cluster': clusterName})
                 tables = [table['name'] for table in tables]
-
-                #endpoints = server.clusters.endpoints.select('name', where={'cluster': clusterName})
-                #endpoints = [endpoint['name'] for endpoint in endpoints]
-
-                #state = server.clusters.endpoints.select('name', where={'cluster': clusterName})
-                #state = [tbEp['name'] for tbEp in state]
-
-                endpoints = server.clusters.endpoints.select('*', where={'cluster': clusterName})
-                #endpoints = [endpoint['name'] for endpoint in endpoints]              
-
+                endpoints = server.clusters.endpoints.select('*', where={'cluster': clusterName})    
                 state = server.clusters.state.select('name', where={'cluster': clusterName})
                 state = [tbEp['name'] for tbEp in state]
 
@@ -878,8 +824,6 @@ def run(server):
                                 # New tables in a cluster are automatically marked in sync by endpoint which added
                                 syncState = True
                             # Get DB Name to update
-                            #endpointDb = get_db_name(clusterName, endpoint)
-                            #endpointDb = server.clusters.databases.select('*', where={'cluster': clusterName, 'name': f'{endpoint}_{endpointDb}'})[0]
                             data = {
                                 'name': tableEndpoint,
                                 'state': loadState,
