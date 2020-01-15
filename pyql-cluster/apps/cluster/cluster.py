@@ -1166,13 +1166,14 @@ def run(server):
             }
             server.internal_job_add(newCronJob)
         
-    server.clusters.quorum.insert(**{
-        'node': nodeIp,
-        'inQuorum': True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False,
-        'ready': True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False
-    })
+
     # Check for number of endpoints in pyql cluster, if == 1, mark ready=True
     endpoints = server.clusters.endpoints.select('*') if 'endpoints' in server.data['cluster'].tables else []
+    quorum = server.clusters.quorum.select('*')
+    # clear existing quorum
+    for node in quorum:
+        server.clusters.quorum.delete(where={'node': node['node']})
+
     if len(endpoints) == 1 or os.environ['PYQL_CLUSTER_ACTION'] == 'init':
         isReady = True
         if len(endpoints) == 1:
@@ -1180,6 +1181,13 @@ def run(server):
     else:
         isReady = False
     # Sets ready false for any node with may be restarting as resync is required before marked ready
+
+    server.clusters.quorum.insert(**{
+        'node': nodeIp,
+        'inQuorum': True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False,
+        'ready': True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False
+    })
+
     server.clusters.quorum.update(
         ready=isReady,
         node=nodeIp,
