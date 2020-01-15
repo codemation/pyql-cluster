@@ -1,0 +1,365 @@
+2020-01-15 09:19:48,217 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:19:50,717 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:19:58,101 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:20:00,601 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:20:00,882 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:20:03,385 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:20:11,068 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:20:13,570 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:20:13,764 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:20:16,265 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:20:19,746 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:20:22,249 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:20:22,397 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:20:24,897 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:22:27,419 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:22:29,922 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:22:30,081 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:22:32,582 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:22:34,477 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:22:36,980 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:22:37,093 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:22:39,596 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:22:41,052 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:22:43,554 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:22:43,873 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:22:46,376 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:22:50,089 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:22:52,590 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:22:52,697 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:22:55,197 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:22:56,293 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:22:58,796 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:22:59,649 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:23:02,149 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:23:03,029 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:23:05,530 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:23:05,749 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:23:08,252 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:23:12,647 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:23:15,150 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:23:15,462 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:23:17,965 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:39:01,966 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:39:04,469 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:39:11,551 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:39:14,053 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:39:14,082 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:39:16,584 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:39:27,108 - logs.logger - ERROR - Table transactions is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:39:29,609 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:39:37,863 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:39:40,365 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:39:40,392 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:39:42,893 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:39:45,821 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:39:48,324 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:39:48,359 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:39:50,861 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:00,503 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:03,005 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:03,036 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:05,537 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:08,992 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:11,493 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:11,532 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:14,033 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:24,032 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:26,534 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:26,591 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:29,093 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:31,768 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:32,663 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:34,269 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:34,325 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:35,165 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:35,168 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:36,828 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:37,669 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:46,865 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:49,368 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:50,439 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:52,941 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:52,969 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:55,472 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:56,301 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:57,550 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:40:58,803 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:40:58,831 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:00,053 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:01,333 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:12,322 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:14,823 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:14,860 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:17,363 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:17,993 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:20,495 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:20,531 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:23,033 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:26,600 - logs.logger - ERROR - Table transactions is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:29,102 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:29,104 - logs.logger - ERROR - Table transactions is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:30,365 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:31,605 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:32,868 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:32,971 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:35,474 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:36,444 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:38,946 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:39,205 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:41,708 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:51,036 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:53,538 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:53,590 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:56,093 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:56,503 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:41:59,005 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:41:59,041 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:42:01,543 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:42:11,343 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:42:13,845 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:42:13,874 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:42:16,377 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:42:16,809 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:42:19,311 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:42:19,362 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:42:21,865 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:42:24,645 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:42:27,148 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:42:27,208 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:42:29,710 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:42:30,668 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:42:33,169 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:42:33,211 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:42:35,713 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:42:41,630 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:42:44,133 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:42:44,166 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:42:46,666 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:42:47,370 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:42:49,873 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:42:49,903 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:42:52,405 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:43:06,951 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:43:09,453 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:43:09,490 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:43:11,993 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:43:12,401 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:43:14,902 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:43:14,934 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:43:17,437 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:44:13,304 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:44:15,806 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:44:15,859 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:44:18,361 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:44:18,807 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:44:21,309 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:44:21,342 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:44:23,845 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:45:13,906 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:45:16,409 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:45:16,473 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:45:18,974 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:45:19,412 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:45:21,913 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:45:22,009 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:45:24,511 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:45:28,896 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:45:31,397 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:45:31,425 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:45:33,927 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:45:34,558 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:45:37,061 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:45:37,101 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:45:39,604 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:45:44,726 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:45:47,229 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:45:47,265 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:45:49,768 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:45:50,281 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:45:52,786 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:45:52,901 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:45:55,404 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:00,495 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:02,997 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:03,028 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:05,529 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:06,026 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:08,526 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:08,602 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:11,104 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:15,243 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:17,745 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:17,790 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:20,291 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:20,797 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:23,298 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:23,432 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:25,933 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:32,507 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:35,009 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:35,061 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:37,564 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:37,999 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:40,501 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:40,540 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:43,042 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:47,270 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:47,358 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:49,773 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:49,814 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:49,860 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:49,885 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:52,316 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:52,386 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:53,061 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:53,176 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:55,564 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:55,629 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:55,677 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:55,742 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:46:58,132 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:46:58,244 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:04,604 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:47:07,105 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:07,160 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:47:09,662 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:10,074 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:47:12,575 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:12,622 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:47:15,125 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:19,223 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:47:21,725 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:21,778 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:47:24,280 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:24,733 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:47:27,233 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:27,294 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:47:29,797 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:39,542 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:47:42,042 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:42,274 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:47:44,777 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:45,233 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:47:47,734 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:47,776 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:47:50,277 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:55,990 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:47:58,493 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:47:58,532 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:01,034 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:01,482 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:03,983 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:04,048 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:06,549 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:10,785 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:13,288 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:13,324 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:15,825 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:16,375 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:18,877 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:18,937 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:21,438 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:26,333 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:28,836 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:28,893 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:31,395 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:31,930 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:34,432 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:34,475 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:36,977 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:41,385 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:43,887 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:43,921 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:46,423 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:47,045 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:49,546 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:49,577 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:52,080 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:57,228 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:48:59,730 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:48:59,782 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:02,284 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:02,836 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:05,339 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:05,385 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:07,888 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:13,141 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:15,643 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:15,674 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:18,177 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:18,970 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:21,472 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:21,505 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:24,008 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:29,635 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:32,137 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:32,211 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:34,713 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:35,150 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:37,651 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:37,695 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:40,197 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:45,120 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:47,621 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:47,756 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:50,257 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:50,706 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:53,209 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:49:53,266 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:49:55,767 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:01,044 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:03,545 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:03,685 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:06,187 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:06,692 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:09,193 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:09,388 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:11,889 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:17,367 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:19,869 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:20,031 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:22,533 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:22,992 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:25,494 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:25,596 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:28,098 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:33,217 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:35,720 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:35,834 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:38,337 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:38,799 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:41,301 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:41,394 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:43,897 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:48,971 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:51,473 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:51,555 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:54,057 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:54,542 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:57,044 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:50:57,082 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:50:59,585 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:51:20,819 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:51:23,321 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:51:23,398 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:51:25,899 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:51:26,319 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:51:28,821 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 09:51:28,862 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 09:51:31,365 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 10:01:08,337 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 10:01:10,840 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 10:01:17,440 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 10:01:19,941 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 10:01:20,089 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 10:01:22,589 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 10:03:23,557 - logs.logger - ERROR - Table tables is paused, Waiting 2.5 seconds before retrying
+2020-01-15 10:03:26,059 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 10:03:29,429 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 10:03:31,932 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 10:03:32,100 - logs.logger - ERROR - Table state is paused, Waiting 2.5 seconds before retrying
+2020-01-15 10:03:34,601 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 10:03:35,583 - logs.logger - ERROR - Table jobs is paused, Waiting 2.5 seconds before retrying
+2020-01-15 10:03:38,085 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
+2020-01-15 10:05:44,014 - logs.logger - ERROR - Encountered exception accessing b9e29314-3775-11ea-8ab9-5254000ac873 for pyql jobs select

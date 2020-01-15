@@ -382,8 +382,11 @@ def run(server):
             )
         for state in tableEndpointState:
             endpoint = state['name'].split(table)[0]
-            path = endpoints['inSync'][endpoint]['path'] if endpoint in endpoints['inSync'] else endpoints['outOfSync'][endpoint]['path']
-            db = endpoints['inSync'][endpoint]['dbname']
+            sync = 'inSync' if endpoint in endpoints['inSync'] else 'outOfSync'
+            path = endpoints[sync][endpoint]['path']    
+            db = endpoints[sync][endpoint]['dbname']
+            #path = endpoints['inSync'][endpoint]['path'] if endpoint in endpoints['inSync'] else endpoints['outOfSync'][endpoint]['path']
+            #db = endpoints['inSync'][endpoint]['dbname'] if endpoint in endpoints['inSync'] else endpoints['outOfSync'][endpoint]['dbname']
             tb['endpoints'][state['name']] = state
             tb['endpoints'][state['name']]['path'] = f"http://{path}/db/{db}/table/{tb['name']}"
         return tb
@@ -534,6 +537,9 @@ def run(server):
         if tb['isPaused'] == False:
             return process_request()
         else:
+            if cluster == 'pyql' and table == 'tables' or table == 'state' and action == 'update':
+                # tables val isPaused / state inSync are values and we need to allow tables updates through if updating
+                return process_request()
             log.error(f"Table {table} is paused, Waiting 2.5 seconds before retrying")
             time.sleep(2.5)
             #TODO - create a counter stat to track how often this occurs
@@ -770,6 +776,7 @@ def run(server):
 
             else:
                 #update endpoint latest path info - if different
+                log.warning(f"endpoint with id {config['database']['uuid']} already exists in {clusterName} {endpoints}")
                 updateSet = {
                     'set': {'path': config['path']},
                     'where': {'uuid': config['database']['uuid']}
@@ -781,7 +788,7 @@ def run(server):
                         where=updateSet['where']
                     )
                 else:
-                    post_request_tables('pyql', 'endpoints', 'update', data)
+                    post_request_tables('pyql', 'endpoints', 'update', updateSet)
             """
             #check for existing endpoint in cluster: clusterName
             endpoints = server.clusters.endpoints.select('name', where={'cluster': clusterName})
