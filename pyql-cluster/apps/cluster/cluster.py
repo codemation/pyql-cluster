@@ -622,19 +622,22 @@ def run(server):
                 if method == 'GET':
                     r = requests.get(
                         get_endpoint_url(cluster, endpoint, db, table, 'select'),
-                            headers={'Accept': 'application/json'}
-                            )
+                        headers={'Accept': 'application/json'},
+                        timeout=1.0
+                        )
                     break
                 else:
                     r = requests.post(
                         get_endpoint_url(cluster, endpoint, db, table, 'select'),
                         headers={'Accept': 'application/json', "Content-Type": "application/json"}, 
-                        data=json.dumps(data)
+                        data=json.dumps(data),
+                        timeout=1.0
                         )
                     break
             except Exception as e:
                 log.error(f"Encountered exception accessing {endpoint} for {cluster} {table} select")
-                print(repr(e))
+                log.error(repr(e))
+                post_request_tables('pyql', 'endpoints', 'update', {'set': {'inSync': False}, 'where': {'uuid': endpoint}})
             endPointList.pop(epIndex)
             continue
             
