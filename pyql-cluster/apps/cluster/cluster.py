@@ -32,6 +32,8 @@ def run(server):
 
     server.clusters = cluster('cluster')
 
+    endpoints = server.clusters.endpoints.select('*') if 'endpoints' in server.data['cluster'].tables else []
+
     uuidCheck = server.data['cluster'].tables['pyql'].select('uuid', where={'database': 'cluster'})
     if len(uuidCheck) > 0:
         for _,v in uuidCheck[0].items():
@@ -73,9 +75,11 @@ def run(server):
                 }
             ] if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else []
     
+    joinJobType = "node" if os.environ['PYQL_CLUSTER_ACTION'] == 'init' or len(endpoints) == 1 else 'cluster'
+
     joinClusterJob = {
         "job": f"{os.environ['HOSTNAME']}joinCluster",
-        "jobType": "node" if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else 'cluster',
+        "jobType": joinJobType,
         "method": "POST",
         "path": "/cluster/pyql/join",
         "data": {
@@ -1208,7 +1212,6 @@ def run(server):
         
 
     # Check for number of endpoints in pyql cluster, if == 1, mark ready=True
-    endpoints = server.clusters.endpoints.select('*') if 'endpoints' in server.data['cluster'].tables else []
     quorum = server.clusters.quorum.select('*')
     # clear existing quorum
     for node in quorum:
