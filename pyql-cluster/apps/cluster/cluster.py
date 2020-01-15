@@ -1214,21 +1214,13 @@ def run(server):
         server.clusters.quorum.delete(where={'node': node['node']})
 
     if len(endpoints) == 1 or os.environ['PYQL_CLUSTER_ACTION'] == 'init':
-        isReady = True
-        if len(endpoints) == 1:
-            server.clusters.quorum.delete(where={'node': endpoints[0]['uuid']})
+        readyAndQuorum = True
     else:
-        isReady = False
+        readyAndQuorum = False
     # Sets ready false for any node with may be restarting as resync is required before marked ready
 
     server.clusters.quorum.insert(**{
         'node': nodeIp,
-        'inQuorum': True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False,
-        'ready': True if os.environ['PYQL_CLUSTER_ACTION'] == 'init' else False
+        'inQuorum': readyAndQuorum,
+        'ready': readyAndQuorum,
     })
-
-    server.clusters.quorum.update(
-        ready=isReady,
-        node=nodeIp,
-        where={'node': nodeIp}
-    )
