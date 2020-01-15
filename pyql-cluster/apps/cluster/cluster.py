@@ -641,7 +641,7 @@ def run(server):
                     'pyql', 'state', 'update', 
                     {
                         'set': {'inSync': False}, 
-                        'where': {'name': f'{endpoint}{table}'
+                        'where': {'name': f'{endpoint}{table}'}
                     }
                 )
             endPointList.pop(epIndex)
