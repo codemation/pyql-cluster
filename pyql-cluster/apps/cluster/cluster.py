@@ -17,6 +17,7 @@ def run(server):
     nodeIp = '-'.join(os.environ['PYQL_NODE'].split('.'))
     if 'PYQL_TYPE' in os.environ:
         if os.environ['PYQL_TYPE'] == 'K8S':
+            import socket
             nodeIp = socket.gethostbyname(socket.getfqdn())
             nodeIp = '-'.join(nodeIp.split('.'))
 
