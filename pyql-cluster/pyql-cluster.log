@@ -363,3 +363,917 @@
 2020-01-15 10:03:35,583 - logs.logger - ERROR - Table jobs is paused, Waiting 2.5 seconds before retrying
 2020-01-15 10:03:38,085 - logs.logger - ERROR - table is paused preventing changes, maybe an issue occured during sync cutover, try again later
 2020-01-15 10:05:44,014 - logs.logger - ERROR - Encountered exception accessing b9e29314-3775-11ea-8ab9-5254000ac873 for pyql jobs select
+2020-01-15 12:40:04,396 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:06,019 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:08,281 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:10,180 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:10,364 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:11,590 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:12,243 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:12,683 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:13,105 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:13,952 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:17,484 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:18,030 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:18,775 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:20,191 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:21,023 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:21,062 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:24,005 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:25,950 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:26,871 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:28,382 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:29,900 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:30,045 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:31,335 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:31,509 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:33,173 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:33,210 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:34,504 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:34,716 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:35,720 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:36,422 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:36,981 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:37,007 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:42,375 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:44,075 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:45,937 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:47,911 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:48,006 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:48,123 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:48,374 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:48,890 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:50,576 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:51,344 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:52,313 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:52,400 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:52,754 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:53,198 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:54,869 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:56,951 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:57,813 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:40:59,457 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:01,298 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:04,391 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:04,661 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:04,738 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:04,923 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:05,082 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:06,351 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:06,904 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:08,345 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:09,357 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:10,070 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:12,501 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:13,346 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:14,775 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:16,765 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:20,451 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:21,265 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:21,751 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:22,136 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:23,947 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:25,900 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:25,909 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:25,967 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:26,823 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:28,474 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:28,695 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:29,598 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:30,236 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:31,978 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:36,943 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:37,394 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:37,737 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:44,380 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:45,311 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:47,557 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:50,918 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:52,331 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:52,391 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:52,772 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:53,636 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:54,903 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:56,705 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:58,960 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:59,131 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:41:59,635 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:00,665 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:03,534 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:07,586 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:08,429 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:08,496 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:08,680 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:08,786 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:08,847 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:09,502 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:10,125 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:10,130 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:10,334 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:10,418 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:10,554 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:10,644 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:11,057 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:12,371 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:12,681 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:12,724 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:14,585 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:15,147 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:15,268 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:15,587 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:16,038 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:16,202 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:16,853 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:18,739 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:19,003 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:19,461 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:21,529 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:23,564 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:23,634 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:24,651 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:24,768 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:24,902 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:25,081 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:25,471 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:26,359 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:26,425 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:26,671 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:26,977 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:27,132 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:28,167 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:28,237 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:30,226 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:30,827 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:30,987 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:32,237 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:32,282 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:34,452 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:35,404 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:37,032 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:39,456 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:40,329 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:40,391 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:40,802 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:40,964 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:41,884 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:42,952 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:43,129 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:44,000 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:45,521 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:47,213 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:47,510 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:47,615 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:48,072 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:48,173 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:48,788 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:50,199 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:50,285 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:51,294 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:51,345 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:52,431 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:55,832 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:56,533 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:57,286 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:57,367 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:57,680 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:58,408 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:58,682 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:58,812 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:42:59,538 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:42:59,596 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:02,712 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:03,268 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:04,281 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:05,415 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:43:05,453 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:06,843 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:43:06,949 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:06,989 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:07,321 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:10,733 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:11,358 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:13,055 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:43:13,117 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:14,115 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:43:14,178 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:43:14,196 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:43:14,290 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:14,908 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:43:15,145 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:15,381 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:16,183 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:16,279 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:16,954 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:17,582 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:18,074 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:19,784 - logs.logger - ERROR - Excepton found during cluster_quorum() check
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 264, in cluster_quorum_check
+    epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+NameError: name 'check' is not defined
+2020-01-15 12:43:25,635 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:43:26,475 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:43:26,625 - logs.logger - ERROR - job # bb874e92-378b-11ea-8c26-99babe6a99d5 may be stuck / inconsistent, updating to requeue
+2020-01-15 12:43:59,261 - logs.logger - ERROR - Encountered exception accessing e1994b5a-3789-11ea-8c26-99babe6a99d5 for pyql jobs select
+2020-01-15 12:43:59,261 - logs.logger - ERROR - Exception encountered during table_select
+Traceback (most recent call last):
+  File "/home/josh/python/pyql-cluster/pyql-cluster/apps/cluster/cluster.py", line 636, in table_select
+    return r.json(), r.status_code
+UnboundLocalError: local variable 'r' referenced before assignment
+2020-01-15 12:43:59,262 - logs.logger - ERROR - UnboundLocalError("local variable 'r' referenced before assignment")

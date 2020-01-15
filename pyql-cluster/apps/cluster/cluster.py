@@ -245,7 +245,40 @@ def run(server):
 
     @server.route('/cluster/pyql/quorum/check', methods=['POST'])
     def cluster_quorum_check():
-        return cluster_quorum(check=True)
+        pyqlEndpoints = server.clusters.endpoints.select('*', where={'cluster': 'pyql'})
+        if not len(pyqlEndpoints) > 0:
+            warning = f"{os.environ['HOSTNAME']} - pyql node is still syncing"
+            log.warning(warning)
+            return {"message": warning}, 200
+        epRequests = {}
+        epList = []
+        for endpoint in pyqlEndpoints:
+            epList.append(endpoint['uuid'])
+            endPointPath = endpoint['path']
+            endPointPath = f'http://{endPointPath}/cluster/pyql/quorum'
+            epRequests[endpoint['uuid']] = {'path': endPointPath, 'data': None}
+
+        if len(epList) == 0:
+            return {"message": f"pyql node {nodeIp} is still syncing"}, 200
+        try:
+            epResults = asyncrequest.async_request(epRequests, 'POST')
+        except Exception as e:
+            log.exception("Excepton found during cluster_quorum() check")
+        inQuorum = []
+        for endpoint in epResults:
+            if epResults[endpoint]['status'] == 200:
+                inQuorum.append(endpoint)
+        isNodeInQuorum = None
+        if float(len(inQuorum) / len(epList)) >= float(2/3):
+            isNodeInQuorum = True
+        else:
+            isNodeInQuorum = False
+        server.clusters.quorum.update(
+                **{'inQuorum': isNodeInQuorum, 'nodes': {'nodes': inQuorum}}, 
+                where={'node': nodeIp}
+                )
+        quorum = server.clusters.quorum.select('*', where={'node': nodeIp})[0]
+        return {"message": f"quorum updated on {nodeIp}", 'quorum': quorum},200
 
     @server.route('/cluster/pyql/quorum', methods=['GET', 'POST'])
     def cluster_quorum(check=False, get=False):
@@ -261,12 +294,12 @@ def run(server):
                 epList.append(endpoint['uuid'])
                 endPointPath = endpoint['path']
                 endPointPath = f'http://{endPointPath}/cluster/pyql/quorum'
-                epRequests[endpoint['uuid']] = {'path': endPointPath, 'data': None}
+                epRequests[endpoint['uuid']] = {'path': endPointPath}
 
             if len(epList) == 0:
                 return {"message": f"pyql node {nodeIp} is still syncing"}, 200
             try:
-                epResults = asyncrequest.async_request(epRequests, 'POST' if check == True else 'GET')
+                epResults = asyncrequest.async_request(epRequests)
             except Exception as e:
                 log.exception("Excepton found during cluster_quorum() check")
             inQuorum = []
