@@ -1,11 +1,15 @@
 import sys, time, requests, os
+
+if 'PYQL_NODE' in os.environ:
+    nodeIP = os.environ['PYQL_NODE']
+
 if 'PYQL_TYPE' in os.environ:
     if os.environ['PYQL_TYPE'] == 'K8S':
         import socket
-        os.environ['PYQL_NODE'] = socket.getfqdn()
+        nodeIP = socket.gethostbyname(socket.getfqdn())
 
 def probe(endpoint):
-    url = f'http://{os.environ["PYQL_NODE"]}:{os.environ["PYQL_PORT"]}{endpoint}'
+    url = f'http://{nodeIP}:{os.environ["PYQL_PORT"]}{endpoint}'
     r = requests.get(url, headers={'Accept': 'application/json'})
     try:
         return r.json(),r.status_code

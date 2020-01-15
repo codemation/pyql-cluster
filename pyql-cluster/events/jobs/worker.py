@@ -1,13 +1,20 @@
 import sys, time, requests, json, os
+
 if 'PYQL_TYPE' in os.environ:
     if os.environ['PYQL_TYPE'] == 'K8S':
         import socket
         os.environ['PYQL_NODE'] = socket.getfqdn()
 
+if 'PYQL_NODE' in os.environ:
+    nodeIP = os.environ['PYQL_NODE']
 
+if 'PYQL_TYPE' in os.environ:
+    if os.environ['PYQL_TYPE'] == 'K8S':
+        import socket
+        nodeIP = socket.gethostbyname(socket.getfqdn())
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
-nodePath = f'http://{os.environ["PYQL_NODE"]}:{os.environ["PYQL_PORT"]}'
+nodePath = f'http://{nodeIP}:{os.environ["PYQL_PORT"]}'
 
 def probe(path, method='GET', data=None):
     if method == 'GET':

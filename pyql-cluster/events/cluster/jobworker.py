@@ -2,13 +2,14 @@
     Cluster Job Worker
 """
 
-import sys, time, requests, json, os, socket
+import sys, time, requests, json, os
 
-nodeIp = os.environ['PYQL_NODE']
+if 'PYQL_NODE' in os.environ:
+    nodeIP = os.environ['PYQL_NODE']
 
 if 'PYQL_TYPE' in os.environ:
     if os.environ['PYQL_TYPE'] == 'K8S':
-        os.environ['PYQL_NODE'] = socket.getfqdn()
+        import socket
         nodeIp = socket.gethostbyname(socket.getfqdn())
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
@@ -34,7 +35,7 @@ def log(log):
     print(f"{os.environ['HOSTNAME']} jobworker - {log}")
 
 def get_and_process_job(path):
-    job, rc = probe(path,'POST', {'node': nodeIp})
+    job, rc = probe(path,'POST', {'node': nodeIP})
     def process_job(job, rc):
         if rc == 200 and not 'message' in job:
             log(f"job pulled {job}")
