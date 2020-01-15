@@ -257,7 +257,7 @@ def run(server):
             endPointPath = endpoint['path']
             endPointPath = f'http://{endPointPath}/cluster/pyql/quorum'
             epRequests[endpoint['uuid']] = {'path': endPointPath, 'data': None}
-
+        log.warning(f"quorum/check - running using {epRequests}")
         if len(epList) == 0:
             return {"message": f"pyql node {nodeIp} is still syncing"}, 200
         try:
