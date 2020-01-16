@@ -10,7 +10,7 @@ if 'PYQL_TYPE' in os.environ:
 
 def probe(endpoint):
     url = f'http://{nodeIP}:{os.environ["PYQL_PORT"]}{endpoint}'
-    r = requests.get(url, headers={'Accept': 'application/json'})
+    r = requests.get(url, headers={'Accept': 'application/json'}, timeout=1.0)
     try:
         return r.json(),r.status_code
     except:

@@ -18,9 +18,9 @@ nodePath = f'http://{nodeIP}:{os.environ["PYQL_PORT"]}'
 
 def probe(path, method='GET', data=None):
     if method == 'GET':
-        r = requests.get(path, headers={'Accept': 'application/json'})
+        r = requests.get(path, headers={'Accept': 'application/json'}, timeout=1.0)
     else:
-        r = requests.post(path, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data))
+        r = requests.post(path, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data), timeout=1.0)
     try:
         return r.json(),r.status_code
     except:
