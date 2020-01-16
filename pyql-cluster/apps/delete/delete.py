@@ -1,7 +1,6 @@
 # delete
 def run(server):
     from flask import request
-    import os
     @server.route('/db/<database>/table/<table>/delete', methods=['POST'])
     def delete_func(database,table, params=None):
         message, rc = server.check_db_table_exist(database,table)

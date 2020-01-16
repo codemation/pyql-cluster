@@ -2,8 +2,6 @@
 def run(server):
     from flask import request
     log = server.log
-    import json
-    import os
     @server.route('/db/<database>/table/<table>/insert', methods=['POST'])
     def insert_func(database,table, params=None):
         message, rc = server.check_db_table_exist(database,table)

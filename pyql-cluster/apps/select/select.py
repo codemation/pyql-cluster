@@ -1,7 +1,6 @@
 # select
 def run(server):
     from flask import request
-    import os
     log = server.log
     @server.route('/db/<database>/table/<table>/select', methods=['GET', 'POST'])
     def select_func(database,table):
