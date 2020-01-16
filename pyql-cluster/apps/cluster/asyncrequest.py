@@ -8,7 +8,8 @@ async def async_get_request(session, url):
         try:
             async with session.get(
                 config['path'] if 'http' in config['path'] else f"http://{config['path']}",
-                headers={'Accept': 'application/json', 'Content-Type': 'application/json'}
+                headers={'Accept': 'application/json', 'Content-Type': 'application/json'},
+                timeout=2.0
                 ) as r:
                 jsonBody = await r.json()
             #print(f"{url} completed")
@@ -22,7 +23,8 @@ async def async_post_request(session, url):
             async with session.post(
                 config['path'] if 'http' in config['path'] else f"http://{config['path']}",
                 headers={'Accept': 'application/json', "Content-Type": "application/json"},
-                json=config['data'] if 'data' in config else None
+                json=config['data'] if 'data' in config else None,
+                timeout=2.0
             ) as r:
                 jsonBody = await r.json()
             return urlId, {'content': jsonBody, 'status': r.status}
