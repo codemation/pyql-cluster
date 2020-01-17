@@ -12,10 +12,14 @@ clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 
 def probe(path, method='GET', data=None):
     url = f'{path}'
-    if method == 'GET':
-        r = requests.get(url, headers={'Accept': 'application/json'}, timeout=1.0)
-    else:
-        r = requests.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data), timeout=1.0)
+    try:
+        if method == 'GET':
+            r = requests.get(url, headers={'Accept': 'application/json'}, timeout=1.0)
+        else:
+            r = requests.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data), timeout=1.0)
+    except Exception as e:
+        error = f"tablesyncer - Encountered exception when probing {path} - {repr(e)}"
+        return error, 500
     try:
         return r.json(),r.status_code
     except:
@@ -27,14 +31,75 @@ def set_job_status(jobId, status, **kwargs):
         'POST',
         kwargs
         )
+def table_sync_recovery(cluster, table):
+    """
+        run when all table-endpoints are inSync=False
+    """
+    #need to check quorum as all endpoints are currently inSync = False for table
+    quorumCheck, rc = probe(f"{clusterSvcName}/pyql/quorum")
+    if quorumCheck['quorum']['inQuorum'] == True:
+        # Need to check all endpoints for the most up-to-date loaded table
+        # /db/cluster/table/endpoints/select
+        select = {'select': ['path', 'dbname', 'uuid'], 'where': {'cluster': cluster}}
+        clusterEndpoints, rc = probe(
+            f"{clusterSvcName}/db/cluster/table/endpoints/select", 
+            'POST',
+            select
+            )
+        latest = {'endpoint': None, 'lastModTime': 0.0}
+        # for each endpoint - check the table in /db/cluster/table/pyql/select
+        clusterEndpoints = clusterEndpoints['data']
+        print(f"table_sync_recovery - cluster {cluster} endpoints {clusterEndpoints}")
+        findLatest = {'select': ['lastModTime'], 'where': {'tableName': table}}
+        for endpoint in clusterEndpoints:
+            pyqlTbCheck, rc = probe(
+                f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/pyql/select",
+                'POST',
+                findLatest
+                )
+            print(f"table_sync_recovery - cluster {cluster} endpoint {pyqlTbCheck}")
+            if pyqlTbCheck['data'][0]['lastModTime'] > latest['lastModTime']:
+                latest['endpoint'] = endpoint['uuid']
+                latest['lastModTime'] = pyqlTbCheck['data'][0]['lastModTime']
+        print(f"table_sync_recovery latest endpoint is {latest['endpoint']}")
+        updateSetInSync = {
+            'set': {'inSync': True}, 
+            'where': {
+                'name': f"{latest['endpoint']}{table}"
+                }
+            }
+        if cluster == 'pyql' and table == 'state':
+            #special case - cannot update inSync True via clusterSvcName - still no inSync endpoints
+            for endpoint in clusterEndpoints:
+                stateUpdate, rc = probe(
+                    f"http://{endpoint['path']}/db/cluster/table/state/update",
+                    'POST',
+                    updateSetInSync
+                )
+        else:
+            clusterStateUpdate, rc = probe(
+                f"{endpoint['path']}/cluster/pyql/table/state/update",
+                'POST',
+                updateSetInSync              
+            )
+        print(f"table_sync_recovery completed selecting an endpoint as inSync -  {latest['endpoint']} - need to requeue job and resync remaining nodes")
+        return {"message": "table_sync_recovery completed"}, 200
+
+
 
 def table_select(path):
     tableSelect, rc = probe(f'{path}')
     if rc == 200:
-        return tableSelect
+        return tableSelect, rc
+    if rc == 500:
+        error = f"#CRITICAL - tablesyncer was not able to find an inSync endpoints"
+        return error, rc
 def table_copy(cluster, table, endpointPath):
     sourcePath = f'{clusterSvcName}/cluster/{cluster}/table/{table}/select'
-    tableCopy = table_select(sourcePath)
+    tableCopy, rc = table_select(sourcePath)
+    if rc == 500:
+        print(tableCopy)
+        return tableCopy, rc
     #/db/<database>/table/<table>/sync
     print(endpointPath)
     response, rc = probe(f'{endpointPath}/sync', method='POST', data=tableCopy)
@@ -89,6 +154,7 @@ def sync_cluster_table_logs(cluster, table, uuid, endpointPath):
             )
             break
         except Exception as e:
+            log_exception(job, table, e)
             tryCount+=1
             if tryCount <= 2:
                 print(f"Encountered exception trying to to pull tablelogs, retry # {tryCount}")
@@ -130,7 +196,7 @@ def get_table_endpoint_state(cluster, table, endpoints=[]):
 def log_exception(job, table, e):
     message = f"tablesyncer {job} {table} - #SYNC Worker - ecountered exception when syncing tablelogs "
     print(message)
-    print(f"tablesyncer {job} {table} - #SYNC Worker Exception: {repr(r)}")
+    print(f"tablesyncer {job} {table} - #SYNC Worker Exception: {repr(e)}")
     return message
 
 def sync_table_job(cluster, table, job=None):
@@ -192,13 +258,20 @@ def sync_table_job(cluster, table, job=None):
             if cluster == 'pyql' and table == 'jobs' or table == 'transactions':
                 #need to blackout changes to these tables during copy as txn logs not generated
                 message, rc = table_cutover(cluster, table, 'start')
-                table_copy(cluster, table, endpointPath)
+                response, rc = table_copy(cluster, table, endpointPath)
+                if rc == 500:
+                    response, rc = table_sync_recovery(cluster, table)
+                    return log_exception(job, table, response), 500
+
                 tableEndpoint = f'{endpoint[0]}{table}'
                 setInSync = {tableEndpoint: {'inSync': True, 'state': 'loaded'}}
                 statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
                 message, rc = table_cutover(cluster, table, 'stop')
                 return
-            table_copy(cluster, table, endpointPath)
+            response, rc = table_copy(cluster, table, endpointPath)
+            if rc == 500:
+                response, rc = table_sync_recovery(cluster, table)
+                return log_exception(job, table, response), 500
         try:
             if stateCheck[endpoint[0]]['state'] == 'new': # Never loaded, needs to be initialize
                 print(f"tablesyncer {job} {table} - #SYNC table {table} never loaded, needs to be initialize")
@@ -241,6 +314,7 @@ def sync_table_job(cluster, table, job=None):
                     sync_cluster_table_logs(cluster, table, uuid, outOfSyncPath)
                     sync_status(cluster, table, 'POST', setInSync)
             except Exception as e:
+                log_exception(job, table, e)
                 print(f"tablesyncer {job} {table} - #SYNC Worker rolling back pause / inSync")
                 setInSync = {tableEndpoint: {'inSync': False, 'state': 'loaded'}}
                 statusResult, rc = sync_status(cluster, table, 'POST', setInSync)
@@ -268,13 +342,13 @@ def get_and_run_job(path):
                 result, rc = sync_table_job(job['config']['cluster'], job['config']['table'],job['id'])
             except Exception as e:
                 print(f"tablesyncer encountered exception syncing job {job['id']} re-queueing")
+                print(f"Exception {repr(e)}")
                 set_job_status(job['id'],'queued', node=None)
 
             print(f"tablesyncer - #SYNC get_and_run_job result {result} {rc}")
             if not rc == 200:
                 set_job_status(job['id'],'queued', node=None)
                 return "job-requeued", 500
-
             set_job_status(job['id'],'finished')
             if 'nextJob' in job['config']:
                 set_job_status(job['config']['nextJob'],'queued')

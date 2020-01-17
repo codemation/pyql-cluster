@@ -611,7 +611,7 @@ def run(server):
         tableEndpoints = get_table_endpoints(cluster, table)
         endPointList = [endpoint for endpoint in tableEndpoints['inSync']]
         if not len(endPointList) > 0:
-            return {"status": 500, "message": f"no endpoints found in cluster {cluster}"}
+            return {"status": 500, "message": f"no endpoints found in cluster {cluster}"}, 500
         data = request.get_json() if data == None else data
 
         while len(endPointList) > 0:
