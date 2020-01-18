@@ -92,6 +92,20 @@ def run(server):
             "tables": tables
         }
     }
+    def probe(path, method='GET', data=None, timeout=1.0):
+        url = f'{path}'
+        try:
+            if method == 'GET':
+                r = requests.get(url, headers={'Accept': 'application/json'}, timeout=1.0)
+            else:
+                r = requests.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data), timeout=timeout)
+        except Exception as e:
+            error = f"tablesyncer - Encountered exception when probing {path} - {repr(e)}"
+            return error, 500
+        try:
+            return r.json(),r.status_code
+        except:
+            return r.text, r.status_code
     def wait_on_jobs(curInd, jobList, waitingOn=None):
         """
             job queing helper function - guarantees 1 job runs after the other by creating "waiting jobs" 
@@ -943,10 +957,23 @@ def run(server):
             Used by jobworkers or tablesyncers to pull jobs from clusters job queues
             jobtype = 'job|syncjob|cron'
         """
+        quorumCheck, rc = cluster_quorum(False, True)
+        if not quorumCheck['quorum']['inQuorum'] == True:
+            warning = f"{node} is not inQuorum with pyql cluster {quorumCheck}, cannot pull job"
+            log.warning(warning)
+            return {"message": warning}, 200
+
         queue = f'{jobtype}s' if not jobtype == 'cron' else jobtype
         node = request.get_json()['node']
         nodeInSync = False
+
+        jobEndpoints = get_table_endpoints('pyql', 'jobs')
+        if not len(jobEndpoints['inSync'].keys()) > 0:
+            # trigger tablesync check - no inSync job endpoints available for
+            cluster_tablesync_mgr('check')
+
         jobEndpoints = get_table_endpoints('pyql', 'jobs')['inSync']
+
         for endpoint in jobEndpoints:
             if node in jobEndpoints[endpoint]['path']:
                 nodeInSync = True
@@ -1048,6 +1075,63 @@ def run(server):
                 updateWhere['set']['start_time'] = str(time.time())
             return post_request_tables('pyql', 'jobs', 'update', updateWhere)
 
+    @server.route('/cluster/<cluster>/table/<table>/recovery', methods=['POST'])
+    def table_sync_recovery(cluster, table):
+        """
+            run when all table-endpoints are inSync=False
+        """
+        #need to check quorum as all endpoints are currently inSync = False for table
+        quorumCheck, rc = cluster_quorum(False, True)
+        if quorumCheck['quorum']['inQuorum'] == True:
+            # Need to check all endpoints for the most up-to-date loaded table
+            # /db/cluster/table/endpoints/select
+            select = {'select': ['path', 'dbname', 'uuid'], 'where': {'cluster': cluster}}
+            clusterEndpoints = server.clusters.endpoints.select(
+                'path', 'dbname', 'uuid', 
+                where={'cluster': cluster}
+            )
+            latest = {'endpoint': None, 'lastModTime': 0.0}
+            # for each endpoint - check the table in /db/cluster/table/pyql/select
+            #clusterEndpoints = clusterEndpoints
+            log.warning(f"table_sync_recovery - cluster {cluster} endpoints {clusterEndpoints}")
+            findLatest = {'select': ['lastModTime'], 'where': {'tableName': table}}
+            for endpoint in clusterEndpoints:
+                if not endpoint['uuid'] in quorumCheck['quorum']['nodes']['nodes']:
+                    log.warning(f"table_sync_recovery - endpoint {endpoint} is not in quorum, so assumed as dead")
+                    continue
+                pyqlTbCheck, rc = probe(
+                    f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/pyql/select",
+                    'POST',
+                    findLatest,
+                    timeout=2.0
+                )
+                print(f"table_sync_recovery - checking lastModTime on cluster {cluster} endpoint {endpoint}")
+                if pyqlTbCheck['data'][0]['lastModTime'] > latest['lastModTime']:
+                    latest['endpoint'] = endpoint['uuid']
+                    latest['lastModTime'] = pyqlTbCheck['data'][0]['lastModTime']
+            print(f"table_sync_recovery latest endpoint is {latest['endpoint']}")
+            updateSetInSync = {
+                'set': {'inSync': True}, 
+                'where': {
+                    'name': f"{latest['endpoint']}{table}"
+                    }
+                }
+            if cluster == 'pyql' and table == 'state':
+                #special case - cannot update inSync True via clusterSvcName - still no inSync endpoints
+                for endpoint in clusterEndpoints:
+                    if not endpoint['uuid'] in quorumCheck['quorum']['nodes']['nodes']:
+                        log.warning(f"table_sync_recovery - endpoint {endpoint} is not in quorum, so assumed as dead")
+                        continue
+                    stateUpdate, rc = probe(
+                        f"http://{endpoint['path']}/db/cluster/table/state/update",
+                        'POST',
+                        updateSetInSync,
+                        timeout=2.0
+                    )
+            else:
+                cluster_table_update('pyql', 'state', updateSetInSync)
+            print(f"table_sync_recovery completed selecting an endpoint as inSync -  {latest['endpoint']} - need to requeue job and resync remaining nodes")
+            return {"message": "table_sync_recovery completed"}, 200
 
     @server.route('/cluster/tablesync/<action>', methods=['POST'])
     def cluster_tablesync_mgr(action):
@@ -1062,7 +1146,12 @@ def run(server):
             for table in tables:
                 cluster = table['cluster']
                 tableName = table['name']
-                endpoints = get_table_endpoints(cluster,tableName)['outOfSync']
+                endpoints = get_table_endpoints(cluster,tableName)
+                if not len(endpoints['inSync'].keys()) > 0:
+                    log.warning(f"cluster_tablesync_mgr - detected all endpoints for {cluster} {tableName} are outOfSync")
+                    table_sync_recovery(cluster, tableName)
+                    endpoints = get_table_endpoints(cluster,tableName)
+                endpoints = endpoints['outOfSync']
                 for endpoint in endpoints:
                     endpointPath = endpoints[endpoint]['path']
                     if not cluster in jobsToCreate:

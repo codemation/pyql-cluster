@@ -1,3 +1,4 @@
+#TODO - Check if anything else makes sense to move into clusters app instead of as worker
 import sys, time, requests, json, os
 
 if 'PYQL_NODE' in os.environ:
@@ -10,13 +11,13 @@ if 'PYQL_TYPE' in os.environ:
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 
-def probe(path, method='GET', data=None):
+def probe(path, method='GET', data=None, timeout=1.0):
     url = f'{path}'
     try:
         if method == 'GET':
             r = requests.get(url, headers={'Accept': 'application/json'}, timeout=1.0)
         else:
-            r = requests.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data), timeout=1.0)
+            r = requests.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data), timeout=timeout)
     except Exception as e:
         error = f"tablesyncer - Encountered exception when probing {path} - {repr(e)}"
         return error, 500
@@ -35,57 +36,10 @@ def table_sync_recovery(cluster, table):
     """
         run when all table-endpoints are inSync=False
     """
-    #need to check quorum as all endpoints are currently inSync = False for table
-    quorumCheck, rc = probe(f"{clusterSvcName}/pyql/quorum")
-    if quorumCheck['quorum']['inQuorum'] == True:
-        # Need to check all endpoints for the most up-to-date loaded table
-        # /db/cluster/table/endpoints/select
-        select = {'select': ['path', 'dbname', 'uuid'], 'where': {'cluster': cluster}}
-        clusterEndpoints, rc = probe(
-            f"{clusterSvcName}/db/cluster/table/endpoints/select", 
-            'POST',
-            select
-            )
-        latest = {'endpoint': None, 'lastModTime': 0.0}
-        # for each endpoint - check the table in /db/cluster/table/pyql/select
-        clusterEndpoints = clusterEndpoints['data']
-        print(f"table_sync_recovery - cluster {cluster} endpoints {clusterEndpoints}")
-        findLatest = {'select': ['lastModTime'], 'where': {'tableName': table}}
-        for endpoint in clusterEndpoints:
-            pyqlTbCheck, rc = probe(
-                f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/pyql/select",
-                'POST',
-                findLatest
-                )
-            print(f"table_sync_recovery - cluster {cluster} endpoint {pyqlTbCheck}")
-            if pyqlTbCheck['data'][0]['lastModTime'] > latest['lastModTime']:
-                latest['endpoint'] = endpoint['uuid']
-                latest['lastModTime'] = pyqlTbCheck['data'][0]['lastModTime']
-        print(f"table_sync_recovery latest endpoint is {latest['endpoint']}")
-        updateSetInSync = {
-            'set': {'inSync': True}, 
-            'where': {
-                'name': f"{latest['endpoint']}{table}"
-                }
-            }
-        if cluster == 'pyql' and table == 'state':
-            #special case - cannot update inSync True via clusterSvcName - still no inSync endpoints
-            for endpoint in clusterEndpoints:
-                stateUpdate, rc = probe(
-                    f"http://{endpoint['path']}/db/cluster/table/state/update",
-                    'POST',
-                    updateSetInSync
-                )
-        else:
-            clusterStateUpdate, rc = probe(
-                f"{endpoint['path']}/cluster/pyql/table/state/update",
-                'POST',
-                updateSetInSync              
-            )
-        print(f"table_sync_recovery completed selecting an endpoint as inSync -  {latest['endpoint']} - need to requeue job and resync remaining nodes")
-        return {"message": "table_sync_recovery completed"}, 200
-
-
+    return probe(
+        f"{clusterSvcName}/cluster/{cluster}/table/{table}/recovery", 
+        'POST',
+    )
 
 def table_select(path):
     tableSelect, rc = probe(f'{path}')
