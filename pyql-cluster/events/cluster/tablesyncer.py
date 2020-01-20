@@ -202,6 +202,13 @@ def sync_table_job(cluster, table, job=None):
     
     for endpoint in endpointsToSync:
         uuid = stateCheck[endpoint[0]]['uuid']
+
+        # check if endpoint uuid in alive & inQuorum
+        quorum, rc = probe(f'{clusterSvcName}/pyql/quorum')
+        if not uuid in quorum['quorum']['nodes']['nodes']:
+            warning = f"endpoint {uuid}  is not alive or inQuorum with cluster - cannot issue sync right now"
+            return log_exception(job, table, warning), 500
+
         # Check if table is fresh 
         def load_table():
             endpointPath = endpoint[1]

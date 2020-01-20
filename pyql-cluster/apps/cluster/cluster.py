@@ -14,12 +14,15 @@ def run(server):
 
     log = server.log
 
+
+    """TODO - Delete - quorum using ID's instead of IP's
     nodeIp = '-'.join(os.environ['PYQL_NODE'].split('.'))
     if 'PYQL_TYPE' in os.environ:
         if os.environ['PYQL_TYPE'] == 'K8S':
             import socket
             nodeIp = socket.gethostbyname(socket.getfqdn())
             nodeIp = '-'.join(nodeIp.split('.'))
+    """
 
     class cluster:
         """
@@ -44,7 +47,9 @@ def run(server):
             'uuid': dbuuid,
             'database': 'cluster', 
             'lastModTime': time.time()
-        }) 
+        })
+    nodeIp = dbuuid #TODO Rename to nodeId instead of NodeIp
+
     os.environ['HOSTNAME'] = '-'.join(os.environ['PYQL_NODE'].split('.'))
 
     if not 'PYQL_CLUSTER_ACTION' in os.environ:
@@ -264,6 +269,8 @@ def run(server):
     @server.route('/pyql/quorum/check', methods=['POST'])
     def cluster_quorum_check():
         pyqlEndpoints = server.clusters.endpoints.select('*', where={'cluster': 'pyql'})
+        quorum = server.clusters.quorum.select('*')
+        quorumNodes = {q['node']: q for q in quorum}
         if not len(pyqlEndpoints) > 0:
             warning = f"{os.environ['HOSTNAME']} - pyql node is still syncing"
             log.warning(warning)
@@ -275,6 +282,12 @@ def run(server):
             endPointPath = endpoint['path']
             endPointPath = f'http://{endPointPath}/pyql/quorum'
             epRequests[endpoint['uuid']] = {'path': endPointPath, 'data': None}
+
+        # check if quorum table contains stale endpoints & cleanup
+        for endpoint in quorumNodes:
+            if not endpoint in epList:
+                server.clusters.quorum.delete(where={'node': endpoint})
+
         log.warning(f"quorum/check - running using {epRequests}")
         if len(epList) == 0:
             return {"message": f"pyql node {nodeIp} is still syncing"}, 200
@@ -285,15 +298,27 @@ def run(server):
         log.warning(f"quorum/check - results {epResults}")
         inQuorum = []
         for endpoint in epResults:
+            if not endpoint in quorumNodes:
+                # insert node entry into quorum table
+                server.clusters.quorum.insert(node=endpoint, lastUpdateTime=float(time.time()))
             if epResults[endpoint]['status'] == 200:
                 inQuorum.append(endpoint)
+                if endpoint in quorumNodes and not endpoint == nodeIp:
+                    server.clusters.quorum.update(
+                        **{'lastUpdateTime': float(time.time())},
+                        where={'node': endpoint}
+                    )
         isNodeInQuorum = None
         if float(len(inQuorum) / len(epList)) >= float(2/3):
             isNodeInQuorum = True
         else:
             isNodeInQuorum = False
         server.clusters.quorum.update(
-                **{'inQuorum': isNodeInQuorum, 'nodes': {'nodes': inQuorum}}, 
+                **{
+                    'inQuorum': isNodeInQuorum, 
+                    'nodes': {'nodes': inQuorum},
+                    'lastUpdateTime': float(time.time())
+                }, 
                 where={'node': nodeIp}
                 )
         quorum = server.clusters.quorum.select('*', where={'node': nodeIp})[0]
@@ -1324,5 +1349,6 @@ def run(server):
     server.clusters.quorum.insert(**{
         'node': nodeIp,
         'inQuorum': readyAndQuorum,
+        'lastUpdateTime': float(time.time()),
         'ready': readyAndQuorum,
     })

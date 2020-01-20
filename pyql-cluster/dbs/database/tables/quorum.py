@@ -6,7 +6,8 @@ def db_attach(server):
            ('node', str, 'UNIQUE NOT NULL'), 
            ('ready', bool), 
            ('inQuorum', bool),
-           ('nodes', str)
+           ('nodes', str),
+           ('lastUpdateTime', float)
        ],
        'node'
     )
