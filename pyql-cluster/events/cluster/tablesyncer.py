@@ -2,7 +2,7 @@
 import sys, time, requests, json, os
 
 if 'PYQL_NODE' in os.environ:
-    nodeIP = os.environ['PYQL_NODE']
+    nodeIp = os.environ['PYQL_NODE']
 
 if 'PYQL_TYPE' in os.environ:
     if os.environ['PYQL_TYPE'] == 'K8S':
@@ -13,7 +13,7 @@ if 'PYQL_TYPE' in os.environ:
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 
 nodeIp = os.environ['PYQL_ENDPOINT']
-print(f"jobworker.py started with endpoint {nodeIp}")
+print(f"tablesyncer.py started with endpoint {nodeIp}")
 
 def probe(path, method='GET', data=None, timeout=1.0):
     url = f'{path}'
@@ -297,7 +297,7 @@ def sync_table_job(cluster, table, job=None):
     return {"message": message}, 200
     
 def get_and_run_job(path):
-    job, rc = probe(path,'POST', {'node': nodeIP})
+    job, rc = probe(path,'POST', {'node': nodeIp})
     if not "message" in job:
         # Jobs pulled ['data']
         print(f"tablesyncer - #SYNC - preparing to run {job}")
