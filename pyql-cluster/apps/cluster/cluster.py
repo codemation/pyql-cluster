@@ -357,7 +357,10 @@ def run(server):
             else:
                 isNodeInQuorum = False
             server.clusters.quorum.update(
-                    **{'inQuorum': isNodeInQuorum, 'nodes': {'nodes': inQuorum}}, 
+                    **{'inQuorum': isNodeInQuorum, 
+                    'nodes': {'nodes': inQuorum},
+                    'lastUpdateTime': float(time.time())
+                    }, 
                     where={'node': nodeIp}
                     )
             quorum = server.clusters.quorum.select('*', where={'node': nodeIp})[0]
@@ -939,6 +942,9 @@ def run(server):
                     if clusterName == 'pyql':
                         cluster_tablesync_mgr('check')
                         return {"message": f"re-join cluster {clusterName} for endpoint {config['name']} completed successfully"}, 200
+            # Trigger quorum update using any new endpoints if cluster name == pyql
+            if clusterName == 'pyql':
+                cluster_quorum_check()
             return {"message": f"join cluster {clusterName} for endpoint {config['name']} completed successfully"}, 200
     
     def re_queue_job(job):
