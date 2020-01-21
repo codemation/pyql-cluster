@@ -1,0 +1,7 @@
+2020-01-21 17:57:53,489 - logs.logger - ERROR - All endpoints failed request ['12b4f15a-3c6f-11ea-8c45-99babe6a99d5jobs'] using {'id': '223e34ce-3c6f-11ea-8c45-99babe6a99d5', 'name': 'addCronJobclusterJob_cleanup', 'type': 'jobs', 'status': 'queued', 'config': {'data': {'data': None, 'interval': 60, 'job': 'clusterJob_cleanup', 'jobType': 'cron', 'method': 'POST', 'path': '/cluster/jobmgr/cleanup'}, 'job': 'addCronJobclusterJob_cleanup', 'jobType': 'cluster', 'method': 'POST', 'path': '/cluster/cron/add'}} thus will not update logs
+2020-01-21 18:01:44,972 - logs.logger - ERROR - could not verify if job exists in table
+2020-01-21 18:01:45,004 - logs.logger - ERROR - All endpoints failed request [] using {'set': {'inSync': True}, 'where': {'name': 'a17c97da-3c6f-11ea-8c45-99babe6a99d5tables'}} thus will not update logs
+2020-01-21 18:01:55,054 - logs.logger - ERROR - could not verify if job exists in table
+2020-01-21 18:01:55,081 - logs.logger - ERROR - could not verify if job exists in table
+2020-01-21 18:02:05,113 - logs.logger - ERROR - could not verify if job exists in table
+2020-01-21 18:02:05,155 - logs.logger - ERROR - All endpoints failed request [] using {'set': {'inSync': True}, 'where': {'name': 'a17c97da-3c6f-11ea-8c45-99babe6a99d5tables'}} thus will not update logs

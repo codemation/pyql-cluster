@@ -9,7 +9,11 @@ if 'PYQL_TYPE' in os.environ:
         import socket
         nodeIp = socket.gethostbyname(socket.getfqdn())
 
+
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
+
+nodeIp = os.environ['PYQL_ENDPOINT']
+print(f"jobworker.py started with endpoint {nodeIp}")
 
 def probe(path, method='GET', data=None, timeout=1.0):
     url = f'{path}'
@@ -25,6 +29,7 @@ def probe(path, method='GET', data=None, timeout=1.0):
         return r.json(),r.status_code
     except:
         return r.text, r.status_code
+
 def set_job_status(jobId, status, **kwargs):
     # Using - /cluster/<jobtype>/<uuid>/<status>
     return probe(

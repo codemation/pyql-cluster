@@ -49,6 +49,7 @@ def run(server):
             'lastModTime': time.time()
         })
     nodeIp = dbuuid #TODO Rename to nodeId instead of NodeIp
+    os.environ['PYQL_ENDPOINT'] = dbuuid
 
     os.environ['HOSTNAME'] = '-'.join(os.environ['PYQL_NODE'].split('.'))
 
@@ -230,6 +231,14 @@ def run(server):
                     data['state'](name)
                 )
     
+    @server.route('/pyql/node')
+    def cluster_node():
+        """
+            returns node-id - to be used by workers instead of relying on pod ip:
+        """
+        log.warning(f"get nodeId called {nodeIp}")
+        return {"nodeId": nodeIp}, 200
+
     @server.route('/cluster/pyql/state/<action>', methods=['GET','POST'])
     def cluster_state(action):
         endpoints = get_table_endpoints('pyql', 'state')['inSync']
@@ -1006,7 +1015,7 @@ def run(server):
         jobEndpoints = get_table_endpoints('pyql', 'jobs')['inSync']
 
         for endpoint in jobEndpoints:
-            if node in jobEndpoints[endpoint]['path']:
+            if node == jobEndpoints[endpoint]['uuid']:
                 nodeInSync = True
                 break
         if not nodeInSync:

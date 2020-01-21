@@ -4,8 +4,9 @@
 
 import sys, time, requests, json, os
 
+
 if 'PYQL_NODE' in os.environ:
-    nodeIP = os.environ['PYQL_NODE']
+    nodeIp = os.environ['PYQL_NODE']
 
 if 'PYQL_TYPE' in os.environ:
     if os.environ['PYQL_TYPE'] == 'K8S':
@@ -24,6 +25,10 @@ def probe(path, method='GET', data=None):
         return r.json(),r.status_code
     except:
         return r.text, r.status_code
+
+nodeIp = os.environ['PYQL_ENDPOINT']
+print(f"jobworker.py started with endpoint {nodeIp}")
+
 def set_job_status(jobId, jobtype, status, **kwargs):
     # Need to mark job finished/queued - # Using - /cluster/<jobtype>/<uuid>/<status>
     return probe(
@@ -35,7 +40,7 @@ def log(log):
     print(f"{os.environ['HOSTNAME']} jobworker - {log}")
 
 def get_and_process_job(path):
-    job, rc = probe(path,'POST', {'node': nodeIP})
+    job, rc = probe(path,'POST', {'node': nodeIp})
     def process_job(job, rc):
         if rc == 200 and not 'message' in job:
             log(f"job pulled {job}")
