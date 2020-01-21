@@ -15,11 +15,11 @@ clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 nodeIp = os.environ['PYQL_ENDPOINT']
 print(f"tablesyncer.py started with endpoint {nodeIp}")
 
-def probe(path, method='GET', data=None, timeout=1.0):
+def probe(path, method='GET', data=None, timeout=3.0):
     url = f'{path}'
     try:
         if method == 'GET':
-            r = requests.get(url, headers={'Accept': 'application/json'}, timeout=1.0)
+            r = requests.get(url, headers={'Accept': 'application/json'}, timeout=timeout)
         else:
             r = requests.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data), timeout=timeout)
     except Exception as e:

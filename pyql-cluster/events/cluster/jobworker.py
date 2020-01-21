@@ -15,7 +15,7 @@ if 'PYQL_TYPE' in os.environ:
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 
-def probe(path, method='GET', data=None, timeout=1.0):
+def probe(path, method='GET', data=None, timeout=3.0):
     url = f'{path}'
     if method == 'GET':
         r = requests.get(url, headers={'Accept': 'application/json'}, timeout=timeout)
