@@ -997,25 +997,28 @@ def run(server):
             Used by jobworkers or tablesyncers to pull jobs from clusters job queues
             jobtype = 'job|syncjob|cron'
         """
+        node = request.get_json()['node']
         quorumCheck, rc = cluster_quorum(False, True)
-        if not quorumCheck['quorum']['inQuorum'] == True:
+         # check this node is inQuorum and if worker requesting job is from an inQuorum node
+        if not 'quorum' in quorumCheck or not quorumCheck['quorum']['inQuorum'] == True or not node in quorumCheck['quorum']['nodes']['nodes']:
             warning = f"{node} is not inQuorum with pyql cluster {quorumCheck}, cannot pull job"
             log.warning(warning)
             return {"message": warning}, 200
 
         queue = f'{jobtype}s' if not jobtype == 'cron' else jobtype
-        node = request.get_json()['node']
-        nodeInSync = False
+
+
+        #nodeInSync = False
 
         jobEndpoints = get_table_endpoints('pyql', 'jobs')
         if not len(jobEndpoints['inSync'].keys()) > 0:
             # trigger tablesync check - no inSync job endpoints available for
             cluster_tablesync_mgr('check')
-
+        """
         jobEndpoints = get_table_endpoints('pyql', 'jobs')['inSync']
 
         for endpoint in jobEndpoints:
-            if node == jobEndpoints[endpoint]['uuid']:
+            if node in jobEndpoints[endpoint]['uuid']:
                 nodeInSync = True
                 break
         if not nodeInSync:
@@ -1023,6 +1026,7 @@ def run(server):
             log.warning(warning)
             return {"message": warning}, 200
         #node = '-'.join(node.split('.')) TODO - Delete
+        """
         while True:
             jobSelect = {
                 'select': ['id', 'next_run_time', 'node'], 
@@ -1071,7 +1075,10 @@ def run(server):
             log.warning(f"Attempt to reserve job {job} if no other node has taken ")
 
             jobUpdate = {'set': {'node': node}, 'where': {'id': job['id'], 'node': None}}
-            post_request_tables('pyql', 'jobs', 'update', jobUpdate)
+            result, rc = post_request_tables('pyql', 'jobs', 'update', jobUpdate)
+            if not rc == 200:
+                log.error(f"failed to reserve job {job} for node {node}")
+                continue
 
             # verify if job was reserved by node and pull config
             jobSelect['where']['node'] = node
