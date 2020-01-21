@@ -297,7 +297,7 @@ def sync_table_job(cluster, table, job=None):
     return {"message": message}, 200
     
 def get_and_run_job(path):
-    job, rc = probe(path,'POST', {'node': nodeIp})
+    job, rc = probe(path,'POST', {'node': nodeIp}, timeout=3.0)
     if not "message" in job:
         # Jobs pulled ['data']
         print(f"tablesyncer - #SYNC - preparing to run {job}")

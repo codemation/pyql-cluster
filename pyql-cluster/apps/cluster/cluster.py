@@ -1022,7 +1022,7 @@ def run(server):
             warning = f"{node} is not inSync with pyql cluster yet {jobEndpoints}, cannot pull job"
             log.warning(warning)
             return {"message": warning}, 200
-        node = '-'.join(node.split('.'))
+        #node = '-'.join(node.split('.')) TODO - Delete
         while True:
             jobSelect = {
                 'select': ['id', 'next_run_time', 'node'], 
@@ -1068,7 +1068,7 @@ def run(server):
 
             jobSelect['where']['id'] = job['id']
 
-            log.info(f"Attempt to reserve job {job} if no other node has taken ")
+            log.warning(f"Attempt to reserve job {job} if no other node has taken ")
 
             jobUpdate = {'set': {'node': node}, 'where': {'id': job['id'], 'node': None}}
             post_request_tables('pyql', 'jobs', 'update', jobUpdate)

@@ -15,12 +15,12 @@ if 'PYQL_TYPE' in os.environ:
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 
-def probe(path, method='GET', data=None):
+def probe(path, method='GET', data=None, timeout=1.0):
     url = f'{path}'
     if method == 'GET':
-        r = requests.get(url, headers={'Accept': 'application/json'}, timeout=1.0)
+        r = requests.get(url, headers={'Accept': 'application/json'}, timeout=timeout)
     else:
-        r = requests.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data), timeout=1.0)
+        r = requests.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data), timeout=timeout)
     try:
         return r.json(),r.status_code
     except:
@@ -40,7 +40,7 @@ def log(log):
     print(f"{os.environ['HOSTNAME']} jobworker - {log}")
 
 def get_and_process_job(path):
-    job, rc = probe(path,'POST', {'node': nodeIp})
+    job, rc = probe(path,'POST', {'node': nodeIp}, timeout=60.0)
     def process_job(job, rc):
         if rc == 200 and not 'message' in job:
             log(f"job pulled {job}")
