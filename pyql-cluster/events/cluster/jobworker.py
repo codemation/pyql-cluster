@@ -27,7 +27,7 @@ def probe(path, method='GET', data=None, timeout=3.0):
         return r.text, r.status_code
 
 nodeIp = os.environ['PYQL_ENDPOINT']
-print(f"jobworker.py started with endpoint {nodeIp}")
+
 
 def set_job_status(jobId, jobtype, status, **kwargs):
     # Need to mark job finished/queued - # Using - /cluster/<jobtype>/<uuid>/<status>
@@ -77,6 +77,7 @@ if __name__=='__main__':
     args = sys.argv
     if len(args) > 2:
         jobpath, delay  = args[1], float(args[2])
+        print(f"jobworker.py started with endpoint {nodeIp} path {jobpath}")
         start = time.time() - 5
         while True:
             time.sleep(1)

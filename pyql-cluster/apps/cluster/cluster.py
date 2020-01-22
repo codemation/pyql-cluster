@@ -1029,7 +1029,7 @@ def run(server):
         """
         while True:
             jobSelect = {
-                'select': ['id', 'next_run_time', 'node'], 
+                'select': ['id', 'name', 'next_run_time', 'node'], 
                 'where':{
                     'status': 'queued',
                     'type': queue
@@ -1086,7 +1086,7 @@ def run(server):
             jobCheck, rc = table_select('pyql', 'jobs', jobSelect, 'POST')
             if not len(jobCheck['data']) > 0:
                 continue
-            log.info(f"cluster_jobqueue - pulled job {jobCheck['data'][0]}")
+            log.warning(f"cluster_jobqueue - pulled job {jobCheck['data'][0]} for node {node}")
             return jobCheck['data'][0], 200
 
     @server.route('/cluster/<jobtype>/<uuid>/<status>', methods=['POST'])

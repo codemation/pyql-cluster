@@ -297,7 +297,7 @@ def sync_table_job(cluster, table, job=None):
     return {"message": message}, 200
     
 def get_and_run_job(path):
-    job, rc = probe(path,'POST', {'node': nodeIp}, timeout=30.0)
+    job, rc = probe(path,'POST', {'node': nodeIp}, timeout=30.0) # TODO - Parameterize timeout
     if not 'config' in job or not job['config']['jobType'] == 'tablesync':
         print(f"failed to pull a job - result {job} rc {rc}")
         return job, rc
