@@ -297,33 +297,33 @@ def sync_table_job(cluster, table, job=None):
     return {"message": message}, 200
     
 def get_and_run_job(path):
-    job, rc = probe(path,'POST', {'node': nodeIp}, timeout=3.0)
-    if not "message" in job:
-        # Jobs pulled ['data']
-        print(f"tablesyncer - #SYNC - preparing to run {job}")
-        if job['config']['jobType'] == 'tablesync':
-            table = job['config']['table']
-            try:
-                set_job_status(job['id'],'running', message=f'tablesyncer - #SYNC starting sync_table_job for table {table}')
-                result, rc = sync_table_job(job['config']['cluster'], job['config']['table'],job['id'])
-            except Exception as e:
-                print(f"tablesyncer encountered exception syncing job {job['id']} re-queueing")
-                print(f"Exception {repr(e)}")
-                set_job_status(job['id'],'queued', node=None)
+    job, rc = probe(path,'POST', {'node': nodeIp}, timeout=30.0)
+    if not 'config' in job or not job['config']['jobType'] == 'tablesync':
+        print(f"failed to pull a job - result {job} rc {rc}")
+        return job, rc
+    # Jobs pulled ['data']
+    print(f"tablesyncer - #SYNC - preparing to run {job}")
+    if job['config']['jobType'] == 'tablesync':
+        table = job['config']['table']
+        try:
+            set_job_status(job['id'],'running', message=f'tablesyncer - #SYNC starting sync_table_job for table {table}')
+            result, rc = sync_table_job(job['config']['cluster'], job['config']['table'],job['id'])
+        except Exception as e:
+            print(f"tablesyncer encountered exception syncing job {job['id']} re-queueing")
+            print(f"Exception {repr(e)}")
+            set_job_status(job['id'],'queued', node=None)
 
-            print(f"tablesyncer - #SYNC get_and_run_job result {result} {rc}")
-            if not rc == 200:
-                set_job_status(job['id'],'queued', node=None)
-                return "job-requeued", 500
-            set_job_status(job['id'],'finished')
-            if 'nextJob' in job['config']:
-                set_job_status(job['config']['nextJob'],'queued')
-            result = f'tablesyncer - #SYNC completed job {job}'
-            return result, 200
-        print(f"tablesyncer - #SYNC tablesyncer get_and_run_job - no job in {job}")
-        return f"no job in {job}", 500
-    print(f"get_and_run_job {job} rc")
-    return job, rc
+        print(f"tablesyncer - #SYNC get_and_run_job result {result} {rc}")
+        if not rc == 200:
+            set_job_status(job['id'],'queued', node=None)
+            return "job-requeued", 500
+        set_job_status(job['id'],'finished')
+        if 'nextJob' in job['config']:
+            set_job_status(job['config']['nextJob'],'queued')
+        result = f'tablesyncer - #SYNC completed job {job}'
+        return result, 200
+    print(f"tablesyncer - #SYNC tablesyncer get_and_run_job - no job in {job}")
+    return f"no job in {job}", 500
 if __name__=='__main__':
     args = sys.argv
     if len(args) > 1:
@@ -336,4 +336,5 @@ if __name__=='__main__':
                     result, rc = get_and_run_job(f'{clusterSvcName}{jobpath}')
                 except Exception as e:
                     print(f"tablesyncer exception when pulling / running job")
+                    print(repr(e))
                 start = time.time()
