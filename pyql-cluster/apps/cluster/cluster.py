@@ -660,7 +660,15 @@ def run(server):
                 "error": f"quorum was not available"}, 500
 
         tableEndpoints = get_table_endpoints(cluster, table)
-        endPointList = [endpoint for endpoint in tableEndpoints['inSync']]
+
+        # only attempts reads from endpoints in quorum
+        endPointList = []
+        for endpoint in tableEndpoints['inSync']:
+            if cluster == 'pyql':
+                if endpoint in quorum['quorum']['nodes']['nodes']:
+                    endPointList.append(endpoint)
+            else:
+                endPointList.append(endpoint)
         if not len(endPointList) > 0:
             return {"status": 500, "message": f"no endpoints found in cluster {cluster}"}, 500
         data = request.get_json() if data == None else data
