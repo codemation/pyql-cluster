@@ -9,12 +9,12 @@ def run(server):
             result = db.get(f"SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
             tables = [t[0] for t in result]
             if database == 'cluster':
-                clusterTables = ['clusters', 'endpoints', 'databases', 'tables', 'state', 'pyql']
+                clusterTables = ['clusters', 'endpoints', 'tables', 'state', 'pyql']
                 for index, check in enumerate(clusterTables):
                     log.info(f"checking {check}")
                     if not check in tables:
                         error = f"missing table {check} in database {database}"
-                        log.error(warning)
+                        log.error(error)
                         return {'message': error}, 500
                     
             for r in result:

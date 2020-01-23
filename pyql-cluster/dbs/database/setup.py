@@ -8,9 +8,6 @@ def attach_tables(server):
 
     from dbs.database.tables import endpoints
     endpoints.db_attach(server)
-
-    from dbs.database.tables import databases
-    databases.db_attach(server)
             
     from dbs.database.tables import tables
     tables.db_attach(server)

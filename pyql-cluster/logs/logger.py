@@ -3,7 +3,7 @@ def run(server):
     import logging
 
     # Create a custom logger
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger('pyql-cluster')
 
     # Create handlers
     i_handler = logging.StreamHandler()
@@ -16,8 +16,8 @@ def run(server):
     # Create formatters and add it to handlers
     c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
     f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    i_handler.setFormatter(c_format)
-    c_handler.setFormatter(c_format)
+    i_handler.setFormatter(f_format)
+    c_handler.setFormatter(f_format)
     f_handler.setFormatter(f_format)
 
     # Add handlers to the logger

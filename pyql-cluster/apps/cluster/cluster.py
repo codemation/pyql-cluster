@@ -1,6 +1,5 @@
 """
 App for handling pyql-endpoint cluster requests
-#TODO - Disallow tablesync jobs to create against endpoints which are not reachable - i.e check first
 #TODO - consider reducing stuck job detection time window or implement a call-back so can more quickly cleanup a stuck job
 """
 def run(server):
@@ -13,16 +12,6 @@ def run(server):
     from apps.cluster import asyncrequest
 
     log = server.log
-
-
-    """TODO - Delete - quorum using ID's instead of IP's
-    nodeIp = '-'.join(os.environ['PYQL_NODE'].split('.'))
-    if 'PYQL_TYPE' in os.environ:
-        if os.environ['PYQL_TYPE'] == 'K8S':
-            import socket
-            nodeIp = socket.gethostbyname(socket.getfqdn())
-            nodeIp = '-'.join(nodeIp.split('.'))
-    """
 
     class cluster:
         """
@@ -48,7 +37,7 @@ def run(server):
             'database': 'cluster', 
             'lastModTime': time.time()
         })
-    nodeIp = dbuuid #TODO Rename to nodeId instead of NodeIp
+    nodeId = dbuuid
     os.environ['PYQL_ENDPOINT'] = dbuuid
 
     os.environ['HOSTNAME'] = '-'.join(os.environ['PYQL_NODE'].split('.'))
@@ -63,9 +52,6 @@ def run(server):
                 },
                 {
                     "endpoints": server.get_table_func('cluster', 'endpoints')[0]
-                },
-                {
-                    "databases": server.get_table_func('cluster', 'databases')[0]
                 },
                 {
                     "tables": server.get_table_func('cluster', 'tables')[0]
@@ -236,8 +222,8 @@ def run(server):
         """
             returns node-id - to be used by workers instead of relying on pod ip:
         """
-        log.warning(f"get nodeId called {nodeIp}")
-        return {"nodeId": nodeIp}, 200
+        log.warning(f"get nodeId called {nodeId}")
+        return {"nodeId": nodeId}, 200
 
     @server.route('/cluster/pyql/state/<action>', methods=['GET','POST'])
     def cluster_state(action):
@@ -253,7 +239,7 @@ def run(server):
         if request.method == 'GET':
             ready = server.clusters.quorum.select(
                 'ready',
-                where={'node': nodeIp}
+                where={'node': nodeId}
             )
             if ready[0]['ready'] == True:
                 log.warning(f"cluster_ready check returned {ready[0]}")
@@ -268,7 +254,7 @@ def run(server):
             """
             ready = request.get_json() if ready == None else ready
             updateSet = {
-                'set': {'ready': ready['ready']}, 'where': {'node': nodeIp}
+                'set': {'ready': ready['ready']}, 'where': {'node': nodeId}
             }
             server.clusters.quorum.update(**updateSet['set'], where=updateSet['where'])
             return ready, 200
@@ -299,7 +285,7 @@ def run(server):
 
         log.warning(f"quorum/check - running using {epRequests}")
         if len(epList) == 0:
-            return {"message": f"pyql node {nodeIp} is still syncing"}, 200
+            return {"message": f"pyql node {nodeId} is still syncing"}, 200
         try:
             epResults = asyncrequest.async_request(epRequests, 'POST')
         except Exception as e:
@@ -312,7 +298,7 @@ def run(server):
                 server.clusters.quorum.insert(node=endpoint, lastUpdateTime=float(time.time()))
             if epResults[endpoint]['status'] == 200:
                 inQuorum.append(endpoint)
-                if endpoint in quorumNodes and not endpoint == nodeIp:
+                if endpoint in quorumNodes and not endpoint == nodeId:
                     server.clusters.quorum.update(
                         **{'lastUpdateTime': float(time.time())},
                         where={'node': endpoint}
@@ -328,10 +314,10 @@ def run(server):
                     'nodes': {'nodes': inQuorum},
                     'lastUpdateTime': float(time.time())
                 }, 
-                where={'node': nodeIp}
+                where={'node': nodeId}
                 )
-        quorum = server.clusters.quorum.select('*', where={'node': nodeIp})[0]
-        return {"message": f"quorum updated on {nodeIp}", 'quorum': quorum},200
+        quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
+        return {"message": f"quorum updated on {nodeId}", 'quorum': quorum},200
 
     @server.route('/pyql/quorum', methods=['GET', 'POST'])
     def cluster_quorum(check=False, get=False):
@@ -350,7 +336,7 @@ def run(server):
                 epRequests[endpoint['uuid']] = {'path': endPointPath}
 
             if len(epList) == 0:
-                return {"message": f"pyql node {nodeIp} is still syncing"}, 200
+                return {"message": f"pyql node {nodeId} is still syncing"}, 200
             try:
                 epResults = asyncrequest.async_request(epRequests)
             except Exception as e:
@@ -370,19 +356,19 @@ def run(server):
                     'nodes': {'nodes': inQuorum},
                     'lastUpdateTime': float(time.time())
                     }, 
-                    where={'node': nodeIp}
+                    where={'node': nodeId}
                     )
-            quorum = server.clusters.quorum.select('*', where={'node': nodeIp})[0]
-            return {"message": f"quorum updated on {nodeIp}", 'quorum': quorum},200
+            quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
+            return {"message": f"quorum updated on {nodeId}", 'quorum': quorum},200
         else:
             try:
-                quorum = server.clusters.quorum.select('*', where={'node': nodeIp})[0]
+                quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             except Exception as e:
-                log.error(f"exception occured during cluster_quorum for {nodeIp} {quorum} ")
+                log.error(f"exception occured during cluster_quorum for {nodeId} {quorum} ")
                 log.error(f"{repr(e)}")
                 quorum = []
             if quorum == None:
-                log.error(f"exception occured during cluster_quorum for {nodeIp} {quorum} ")
+                log.error(f"exception occured during cluster_quorum for {nodeId} {quorum} ")
                 quorum = []
             return {'message':'OK', 'quorum': quorum}, 200
    
@@ -1008,6 +994,7 @@ def run(server):
         node = request.get_json()['node']
         quorumCheck, rc = cluster_quorum(False, True)
          # check this node is inQuorum and if worker requesting job is from an inQuorum node
+        
         if not 'quorum' in quorumCheck or not quorumCheck['quorum']['inQuorum'] == True or not node in quorumCheck['quorum']['nodes']['nodes']:
             warning = f"{node} is not inQuorum with pyql cluster {quorumCheck}, cannot pull job"
             log.warning(warning)
@@ -1015,26 +1002,10 @@ def run(server):
 
         queue = f'{jobtype}s' if not jobtype == 'cron' else jobtype
 
-
-        #nodeInSync = False
-
         jobEndpoints = get_table_endpoints('pyql', 'jobs')
         if not len(jobEndpoints['inSync'].keys()) > 0:
             # trigger tablesync check - no inSync job endpoints available for
             cluster_tablesync_mgr('check')
-        """
-        jobEndpoints = get_table_endpoints('pyql', 'jobs')['inSync']
-
-        for endpoint in jobEndpoints:
-            if node in jobEndpoints[endpoint]['uuid']:
-                nodeInSync = True
-                break
-        if not nodeInSync:
-            warning = f"{node} is not inSync with pyql cluster yet {jobEndpoints}, cannot pull job"
-            log.warning(warning)
-            return {"message": warning}, 200
-        #node = '-'.join(node.split('.')) TODO - Delete
-        """
         while True:
             jobSelect = {
                 'select': ['id', 'name', 'next_run_time', 'node'], 
@@ -1139,15 +1110,12 @@ def run(server):
         quorumCheck, rc = cluster_quorum(False, True)
         if quorumCheck['quorum']['inQuorum'] == True:
             # Need to check all endpoints for the most up-to-date loaded table
-            # /db/cluster/table/endpoints/select
             select = {'select': ['path', 'dbname', 'uuid'], 'where': {'cluster': cluster}}
             clusterEndpoints = server.clusters.endpoints.select(
                 'path', 'dbname', 'uuid', 
                 where={'cluster': cluster}
             )
             latest = {'endpoint': None, 'lastModTime': 0.0}
-            # for each endpoint - check the table in /db/cluster/table/pyql/select
-            #clusterEndpoints = clusterEndpoints
             log.warning(f"table_sync_recovery - cluster {cluster} endpoints {clusterEndpoints}")
             findLatest = {'select': ['lastModTime'], 'where': {'tableName': table}}
             for endpoint in clusterEndpoints:
@@ -1334,7 +1302,7 @@ def run(server):
             'jobType': 'cron',
             "method": "POST",
             "path": "/cluster/tablesync/check",
-            "interval": 60,
+            "interval": 30,
             "data": None
         }
         clusterQuorumCronJob = {
@@ -1350,7 +1318,7 @@ def run(server):
             'jobType': 'cron',
             'method': 'POST',
             'path': '/cluster/jobmgr/cleanup',
-            'interval': 60,
+            'interval': 30,
             'data': None
         }
         for job in [clusterQuorumCronJob, tableSyncCronJob, clusterJobCleanupCronJob]:
@@ -1377,7 +1345,7 @@ def run(server):
     # Sets ready false for any node with may be restarting as resync is required before marked ready
 
     server.clusters.quorum.insert(**{
-        'node': nodeIp,
+        'node': nodeId,
         'inQuorum': readyAndQuorum,
         'lastUpdateTime': float(time.time()),
         'ready': readyAndQuorum,
