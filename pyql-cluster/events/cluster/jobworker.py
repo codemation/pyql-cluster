@@ -4,16 +4,6 @@
 
 import sys, datetime, time, requests, json, os
 
-""" TODO - delete
-if 'PYQL_NODE' in os.environ:
-    nodeIp = os.environ['PYQL_NODE']
-
-if 'PYQL_TYPE' in os.environ:
-    if os.environ['PYQL_TYPE'] == 'K8S':
-        import socket
-        nodeIp = socket.gethostbyname(socket.getfqdn())
-"""
-
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 
 def probe(path, method='GET', data=None, timeout=3.0):

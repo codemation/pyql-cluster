@@ -1,16 +1,6 @@
 #TODO - Check if anything else makes sense to move into clusters app instead of as worker
 import sys, datetime, time, requests, json, os
 
-""" TODO - Delete
-if 'PYQL_NODE' in os.environ:
-    nodeIp = os.environ['PYQL_NODE']
-
-if 'PYQL_TYPE' in os.environ:
-    if os.environ['PYQL_TYPE'] == 'K8S':
-        import socket
-        nodeIp = socket.gethostbyname(socket.getfqdn())
-"""
-
 def log(log):
     time = datetime.datetime.now().isoformat()
     print(f"{time} {os.environ['HOSTNAME']} tablesyncer - {log}")
@@ -54,15 +44,6 @@ def table_sync_recovery(cluster, table):
         f"{clusterSvcName}/cluster/{cluster}/table/{table}/recovery", 
         'POST',
     )
-""" TODO - Delete
-def table_select(path):
-    tableSelect, rc = probe(f'{path}')
-    if rc == 200:
-        return tableSelect, rc
-    if rc == 500:
-        error = f"#CRITICAL - tablesyncer was not able to find an inSync endpoints"
-        return error, rc
-"""
 def table_copy(cluster, table, endpointPath):
     sourcePath = f'{clusterSvcName}/cluster/{cluster}/table/{table}/select'
     tableCopy, rc = probe(sourcePath)
