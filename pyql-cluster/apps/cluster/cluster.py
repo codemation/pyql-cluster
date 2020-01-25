@@ -920,7 +920,7 @@ def run(server):
                         tableEndpoint = f"{endpoint['uuid']}{table}"
                         if not tableEndpoint in state:
                             # check if this table was added along with endpoint, and does not need to be created 
-                            loadState = 'loaded' if endpoint['uuid'] == config['database']['name'] else 'new'
+                            loadState = 'loaded' if endpoint['uuid'] == config['database']['uuid'] else 'new'
                             if not table in newTables:
                                 #Table arleady existed in cluster, but not in endpoint with same table was added
                                 syncState = False

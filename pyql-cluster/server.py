@@ -1,4 +1,3 @@
-
 from flask import Flask
 import os, socket
 app = Flask(__name__)
@@ -30,5 +29,3 @@ else:
 
     import setup
     setup.run(app)
-        
-            
