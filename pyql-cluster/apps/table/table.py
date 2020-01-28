@@ -55,7 +55,11 @@ def run(server):
             server.data[database].tables[table].insert(**row)
         return {"message": f"{database} {table} sync successful"}, 200
 
-
+    @server.route('/db/<database>/table/<table>/create', methods=['POST'])
+    def database_table_create(database, table):
+        newTableConfig = request.get_json()
+        return create_table_func(database, newTableConfig)
+        
     @server.route('/db/<database>/table/create', methods=['POST'])
     def create_table_func(database, config=None):
         if database in server.data:
@@ -91,5 +95,3 @@ def run(server):
                     tableConfig[tableName]["primaryKey"]
                     )
                 return {"message": f"""table {tableName} created successfully """}, 200
-                    
-                    

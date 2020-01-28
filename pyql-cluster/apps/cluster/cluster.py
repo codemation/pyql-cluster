@@ -699,6 +699,25 @@ def run(server):
             log.error(f"{repr(e)}")
             return {"data": [], "error": f"{repr(e)}"}, 400
 
+    @server.route('/cluster/<cluster>/table/<table>', methods=['GET'])
+    def cluster_table_config(cluster, table):
+        endpoints = get_table_endpoints(cluster, table)['inSync']
+        inSyncEndpoints = [ep for ep in endpoints]
+        if len(inSyncEndpoints) == 0:
+            return {"message": f"no inSync endpoints to pull config in cluster {cluster} table {table}"}, 400
+        if len(inSyncEndpoints) > 1:
+            endpointChoice = inSyncEndpoints[randrange(len(inSyncEndpoints))]
+        else:
+            endpointChoice = inSyncEndpoints[0]
+        endpoint = endpoints[endpointChoice]
+        try:
+            return probe(f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/{table}")
+        except Exception as e:
+            error = f"exception encountered when pulling config from {endpoint}"
+            log.error(error)
+            log.exception(e)
+            return {"error": error}, 500
+
 
     @server.route('/cluster/<cluster>/table/<table>/select', methods=['GET','POST'])
     def cluster_table_select(cluster, table):
@@ -846,7 +865,7 @@ def run(server):
                 if cluster['name'] == 'pyql':
                     isBootstrapped = True
 
-            if not isBootstrapped:
+            if not isBootstrapped and clusterName == 'pyql':
                 bootstrap_pyql_cluster(config)
                 bootstrap = True
 
@@ -940,7 +959,7 @@ def run(server):
                             }
                             post_request_tables('pyql', 'state', 'insert', data)
             else:
-                if not bootstrap:
+                if not bootstrap and clusterName == 'pyql':
                     log.warning(f"{os.environ['HOSTNAME']} was not bootstrapped - create tablesync job for table state")
                     if clusterName == 'pyql':
                         cluster_tablesync_mgr('check')

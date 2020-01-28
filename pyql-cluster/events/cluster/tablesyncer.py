@@ -53,7 +53,19 @@ def table_copy(cluster, table, endpointPath):
         return error, rc
     #/db/<database>/table/<table>/sync
     print(endpointPath)
-    response, rc = probe(f'{endpointPath}/sync', method='POST', data=tableCopy)
+    response, rc = probe(f'{endpointPath}/sync', 'POST', tableCopy)
+    if rc == 400:
+        if 'not found in database' in response['message']:
+            # create table & retry resync
+            tableConfig, rc = probe(f'{clusterSvcName}/cluster/{cluster}/table/{table}')
+            response, rc = probe(f'{endpointPath}/create', 'POST', tableConfig)
+            if not rc == 200:
+                failure = f"failed to create table using {tableConfig}"
+                log(failure)
+                return failure, 500
+            #Retry sync since new table creation
+            response, rc = probe(f'{endpointPath}/sync', 'POST', tableCopy)
+
     log(f"#SYNC table_copy results {response} {rc}")
     log(f"#SYNC initial table copy of {table} in cluster {cluster} completed, need to sync changes now")
     return response, rc
@@ -160,16 +172,22 @@ def sync_table_job(cluster, table, job=None):
     
     for endpoint in endpointsToSync:
         uuid = stateCheck[endpoint[0]]['uuid']
-
-        # check if endpoint uuid in alive & inQuorum
-        quorum, rc = probe(f'{clusterSvcName}/pyql/quorum')
-        if not uuid in quorum['quorum']['nodes']['nodes']:
-            warning = f"endpoint {uuid}  is not alive or inQuorum with cluster - cannot issue sync right now"
-            return log_exception(job, table, warning), 500
+        endpointPath = stateCheck[endpoint[0]]['path']
+        # check if endpoint uuid is alive & inQuorum
+        if cluster == 'pyql':
+            quorum, rc = probe(f'{clusterSvcName}/pyql/quorum')
+            if not uuid in quorum['quorum']['nodes']['nodes']:
+                warning = f"endpoint {uuid}  is not alive or inQuorum with cluster - cannot issue sync right now"
+                return log_exception(job, table, warning), 500
+        else:
+            dbAlivecheck, rc = probe(f"{endpointPath}")
+            if not rc == 200 and not rc==404:
+                log(f"dbAlivecheck response {dbAlivecheck}")
+                warning = f"endpoint {uuid}  is not alive or reachable with path {endpointPath} - cannot issue sync right now"
+                return log_exception(job, table, warning), 500
 
         # Check if table is fresh 
         def load_table():
-            endpointPath = endpoint[1]
             # Issue POST to /cluster/<cluster>/table/<table>/state/set -> loaded 
             state = {endpoint[0]: {'state': 'loaded'}}
             set_table_state(cluster, table, state)
@@ -179,6 +197,7 @@ def sync_table_job(cluster, table, job=None):
                 message, rc = table_cutover(cluster, table, 'start')
                 response, rc = table_copy(cluster, table, endpointPath)
                 if rc == 500:
+                    #TODO - Handle table not yet existing yet, create table using out of f'{clusterSvcName}/cluster/{cluster}/table/{table}
                     response, rc = table_sync_recovery(cluster, table)
                     return log_exception(job, table, response), 500
 
