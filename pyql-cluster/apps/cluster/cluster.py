@@ -223,7 +223,7 @@ def run(server):
             returns node-id - to be used by workers instead of relying on pod ip:
         """
         log.warning(f"get nodeId called {nodeId}")
-        return {"nodeId": nodeId}, 200
+        return {"uuid": nodeId}, 200
 
     @server.route('/cluster/pyql/state/<action>', methods=['GET','POST'])
     def cluster_state(action):
