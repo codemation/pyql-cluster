@@ -548,7 +548,7 @@ def run(server):
                         # Prevent writing transaction logs for failed transaction log changes
                         if cluster == 'pyql':
                             log.warning(f"{failedEndpoint} is outOfSync for pyql table {table}")
-                            if table == 'transactions' or table == 'jobs':
+                            if table == 'transactions' or table == 'jobs' or table =='state':
                                 continue
 
                         # Write data to a change log for resyncing
