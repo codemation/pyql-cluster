@@ -577,7 +577,7 @@ def run(server):
                 if not tb['endpoints'][tbEndpoint]['state'] == 'new':
                     # Prevent writing transaction logs for failed transaction log changes
                     if cluster == 'pyql':
-                        if table == 'transactions' or table == 'jobs':
+                        if table == 'transactions' or table == 'jobs' or table == 'state':
                             continue
                     log.warning(f"new outOfSyncEndpoint {tbEndpoint} need to write to db logs")
                     changeLogs['txns'].append({
