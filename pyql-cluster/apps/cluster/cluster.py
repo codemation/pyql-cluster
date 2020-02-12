@@ -651,15 +651,37 @@ def run(server):
         tableEndpoints = get_table_endpoints(cluster, table)
 
         # only attempts reads from endpoints in quorum
-        endPointList = []
-        for endpoint in tableEndpoints['inSync']:
-            if cluster == 'pyql':
-                if endpoint in quorum['quorum']['nodes']['nodes']:
-                    endPointList.append(endpoint)
-            else:
-                endPointList.append(endpoint)
+        def getInQuorumInSyncEndpoints(tbEndpoints):
+            inQuorumInSync = []
+            for endpoint in tbEndpoints['inSync']:
+                if cluster == 'pyql':
+                    if endpoint in quorum['quorum']['nodes']['nodes']:
+                        inQuorumInSync.append(endpoint)
+                else:
+                    inQuorumInSync.append(endpoint)
+            return inQuorumInSync
+        endPointList = getInQuorumInSyncEndpoints(tableEndpoints)
         if not len(endPointList) > 0:
-            return {"status": 500, "message": f"no endpoints found in cluster {cluster}"}, 500
+            note = f"this condition can occur if the cluster IS IN Quorum, but the only inSync i.e 'source of truth' for table is offline / outOfQuorum / path has changed"
+            if cluster == 'pyql' and table == 'jobs':
+                #TODO - write unittest for testing recovery in this condition
+                # jobs table is crucial for self-healing but consistency is not
+                # mark all pyql jobs endpoints outOfSync
+                updateWhere = {'set': {'inSync': False}, 'where': {'tableName': 'jobs', 'cluster': 'pyql'}}
+                post_request_tables('pyql', 'state', 'update', updateWhere)
+                # delete all non-cron jobs in local jobs tb
+                for jType in ['jobs', 'syncjobs']:
+                    deleteWhere = {'where': {'type': jType}}
+                    server.clusters.jobs.delete(**deleteWhere)
+                # set this nodes' jobs table inSync=true
+                updateWhere = {'set': {'inSync': True}, 'where': {'uuid': nodeId, 'tableName': 'jobs'}}
+                post_request_tables('pyql', 'state', 'update', updateWhere)
+                newTableEndpoints = get_table_endpoints(cluster, table)
+                endPointList = getInQuorumInSyncEndpoints(newTableEndpoints)
+            if not len(endPointList) > 0:
+                return {
+                    "status": 500, "message": f"no inSync endpoints found in cluster {cluster}",
+                    "note": note}, 500
         data = request.get_json() if data == None else data
 
         while len(endPointList) > 0:
@@ -694,7 +716,6 @@ def run(server):
                 )
             endPointList.pop(epIndex)
             continue
-            
         try:
             return r.json(), r.status_code
         except Exception as e:
