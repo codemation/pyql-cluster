@@ -1,4 +1,9 @@
 #TODO - Check if anything else makes sense to move into clusters app instead of as worker
+#TODO - fix requing if job finishes with non-rc200 i.e: 
+# 2020-02-11T21:19:02.462547 192-168-231-251 tablesyncer - job f55e54ec-4d13-11ea-9d4c-d6c50f362472 completed with non-200 rc, requeuing
+# if node is not removed from job, cannot be run again, this can lock waiting jobs
+
+
 import sys, datetime, time, requests, json, os
 
 def log(log):
@@ -192,7 +197,7 @@ def sync_table_job(cluster, table, job=None):
             state = {endpoint[0]: {'state': 'loaded'}}
             set_table_state(cluster, table, state)
             # Worker completes initial insertions from select * of TB.
-            if cluster == 'pyql' and table == 'jobs' or table == 'transactions':
+            if cluster == 'pyql' and table == 'jobs' or table == 'transactions' or table=='state':
                 #need to blackout changes to these tables during copy as txn logs not generated
                 message, rc = table_cutover(cluster, table, 'start')
                 response, rc = table_copy(cluster, table, endpointPath)
