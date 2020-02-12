@@ -2,6 +2,8 @@
 App for handling pyql-endpoint cluster requests
 #TODO - consider reducing stuck job detection time window or implement a call-back so can more quickly cleanup a stuck job
 #TODO - jobs which have a non-null value for node but sit "queued" should be detected and fixed by clean-up cron job
+#TODO - under some conditions a tablesync job may sit "waiting" if parent job does not queue it, need to detect & queue these jobs to ensure completion
+
 """
 def run(server):
     from flask import request
