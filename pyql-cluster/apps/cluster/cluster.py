@@ -1,5 +1,7 @@
 """
 App for handling pyql-endpoint cluster requests
+#TODO - URGENT - need to replace all instances of server.clusters.state with a check for inQuorum & if this node's "state" table is also inSync
+        requests from a node with outOfSync state table would be invalid so "ready" should return false to avoid requests to outOfSync state pyql nodes
 #TODO - consider reducing stuck job detection time window or implement a call-back so can more quickly cleanup a stuck job
 #TODO - jobs which have a non-null value for node but sit "queued" should be detected and fixed by clean-up cron job
 #TODO - under some conditions a tablesync job may sit "waiting" if parent job does not queue it, need to detect & queue these jobs to ensure completion
@@ -239,14 +241,20 @@ def run(server):
 
     @server.route('/cluster/pyql/ready', methods=['POST', 'GET'])
     def cluster_ready(ready=None):
-        if request.method == 'GET':
+        if request.method == 'GET' and post==False:
             ready = server.clusters.quorum.select(
                 'ready',
                 where={'node': nodeId}
             )
             if ready[0]['ready'] == True:
-                log.warning(f"cluster_ready check returned {ready[0]}")
-                return ready[0], 200
+                stateInSync = server.clusters.state.select('inSync', where={'tableName': 'state', 'cluster': 'pyql', 'uuid': nodeId})
+                if stateInSync[0]['inSync'] == True:
+                    log.warning(f"cluster_ready check returned {ready[0]}")
+                    return {'ready': ready[0], 'stateInSync': stateInSync[0]}, 200
+                else:
+                    server.clusters.quorum.update(ready=False, where={'node': nodeId})
+                    log.warning(f"cluster_ready check returned {ready[0]} but local state table was inSync=False")
+                    return {'ready': ready[0], 'stateInSync': stateInSync[0]}, 400
             else:
                 log.warning(f"cluster_ready check returned {ready[0]}")
                 return ready[0], 400
