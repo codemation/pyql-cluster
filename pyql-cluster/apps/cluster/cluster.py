@@ -357,15 +357,36 @@ def run(server):
             for endpoint in epResults:
                 if epResults[endpoint]['status'] == 200:
                     inQuorum.append(endpoint)
-            isNodeInQuorum = None
+            isNodeInQuorum = False
+            isReady = False
             if float(len(inQuorum) / len(epList)) >= float(2/3):
                 isNodeInQuorum = True
+                stateInSync = server.clusters.state.select(
+                    'inSync', 
+                    where={'uuid': nodeId, 'tableName': 'state', 'cluster': 'pyql'})
+                isReady = stateInSync[0]['inSync']
             else:
                 isNodeInQuorum = False
+                # since node is outOfQuorum, the local state table can no longer be trusted
+                # creating internal job to update mark this nodes 'state' table outOfSync, as soon as it is inQuorum again, 
+                # marking state tb locally outOfSync to prevent receiving requests
+                data = {'set': {'inSync': False}, 'where': {'uuid': nodeId, 'tableName': 'state', 'cluster': 'pyql'}}
+                stateMarkOutOfSyncJob = {
+                    "job": f"{nodeId}state_markOutOfSync",
+                    "jobType": "cluster",
+                    "method": "POST",
+                    "path": "/cluster/pyql/table/state/update",
+                    "data": data
+                }
+                server.clusters.state.update(**data['set'], where=data['where'])
+                server.internal_job_add(stateMarkOutOfSyncJob)
+
             server.clusters.quorum.update(
-                    **{'inQuorum': isNodeInQuorum, 
-                    'nodes': {'nodes': inQuorum},
-                    'lastUpdateTime': float(time.time())
+                    **{
+                        'inQuorum': isNodeInQuorum, 
+                        'nodes': {'nodes': inQuorum},
+                        'ready': isReady,
+                        'lastUpdateTime': float(time.time())
                     }, 
                     where={'node': nodeId}
                     )
