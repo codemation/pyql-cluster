@@ -242,22 +242,11 @@ def run(server):
     @server.route('/cluster/pyql/ready', methods=['POST', 'GET'])
     def cluster_ready(ready=None):
         if request.method == 'GET' and post==False:
-            ready = server.clusters.quorum.select(
-                'ready',
-                where={'node': nodeId}
-            )
-            if ready[0]['ready'] == True:
-                stateInSync = server.clusters.state.select('inSync', where={'tableName': 'state', 'cluster': 'pyql', 'uuid': nodeId})
-                if stateInSync[0]['inSync'] == True:
-                    log.warning(f"cluster_ready check returned {ready[0]}")
-                    return {'ready': ready[0], 'stateInSync': stateInSync[0]}, 200
-                else:
-                    server.clusters.quorum.update(ready=False, where={'node': nodeId})
-                    log.warning(f"cluster_ready check returned {ready[0]} but local state table was inSync=False")
-                    return {'ready': ready[0], 'stateInSync': stateInSync[0]}, 400
+            quorum = cluster_quorum(True)
+            if "quorum" in quorum and quorum['quorum']["ready"] == True:
+                return quorum['quorum'], 200
             else:
-                log.warning(f"cluster_ready check returned {ready[0]}")
-                return ready[0], 400
+                return quorum, 400
         else:
             """
                 expects:
@@ -1368,32 +1357,36 @@ def run(server):
         }
         server.internal_job_add(initQuorum)
         server.internal_job_add(initMarkReadyJob)
-        # Create Cron Jobs inside init node 
-        tableSyncCronJob = {
+        # Create Cron Jobs inside init node
+        cronJobs = []
+        cronJobs.append({
             'job': 'tablesync_check',
             'jobType': 'cron',
             "method": "POST",
             "path": "/cluster/tablesync/check",
             "interval": 30,
             "data": None
-        }
-        clusterQuorumCronJob = {
-            'job': 'clusterQuorum_check',
-            'jobType': 'cron',
-            "method": "POST",
-            "path": "/pyql/quorum/check",
-            "interval": 15,
-            "data": None
-        }
-        clusterJobCleanupCronJob = {
+        })
+        if 'PYQL_TYPE' in os.environ and os.environ['PYQL_TYPE'] == 'K8S':
+            pass
+        else:
+            cronJobs.append({
+                'job': 'clusterQuorum_check',
+                'jobType': 'cron',
+                "method": "POST",
+                "path": "/pyql/quorum/check",
+                "interval": 15,
+                "data": None
+            })
+        cronJobs.append({
             'job': 'clusterJob_cleanup',
             'jobType': 'cron',
             'method': 'POST',
             'path': '/cluster/jobmgr/cleanup',
             'interval': 30,
             'data': None
-        }
-        for job in [clusterQuorumCronJob, tableSyncCronJob, clusterJobCleanupCronJob]:
+        })
+        for job in cronJobs:
             newCronJob = {
                 "job": f"addCronJob{job['job']}",
                 "jobType": 'cluster',
