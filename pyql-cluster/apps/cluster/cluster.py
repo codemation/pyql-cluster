@@ -241,7 +241,7 @@ def run(server):
 
     @server.route('/cluster/pyql/ready', methods=['POST', 'GET'])
     def cluster_ready(ready=None):
-        if request.method == 'GET' and post==False:
+        if request.method == 'GET':
             quorum = cluster_quorum(True)
             if "quorum" in quorum and quorum['quorum']["ready"] == True:
                 return quorum['quorum'], 200
