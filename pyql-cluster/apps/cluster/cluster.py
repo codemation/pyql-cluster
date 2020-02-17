@@ -342,14 +342,22 @@ def run(server):
             except Exception as e:
                 log.exception("Excepton found during cluster_quorum() check")
             inQuorum = []
+            outQuorum = []
             log.warning(f"epResults - {epResults}")
             for endpoint in epResults:
-                if epResults[endpoint]['status'] == 200:
+                if epResults[endpoint]['status'] == 200 or endpoint == nodeId:
                     inQuorum.append(endpoint)
+                else:
+                    outQuorum.append(endpoint)
             isNodeInQuorum = False
             isReady = False
+            data = {'set': {'inSync': False}, 'where': {'uuid': nodeId, 'cluster': 'pyql'}}
             if float(len(inQuorum) / len(epList)) >= float(2/3):
                 isNodeInQuorum = True
+                # need to set outQuorum endpoint tables to inSync False - so reads are not attempted from tables
+                for endpoint in outQuorum:
+                    data['where']['uuid'] = endpoint
+                    post_request_tables('pyql', 'state', 'update', data)
                 stateInSync = server.clusters.state.select(
                     'inSync', 
                     where={'uuid': nodeId, 'tableName': 'state', 'cluster': 'pyql'})
@@ -359,7 +367,8 @@ def run(server):
                 # since node is outOfQuorum, the local state table can no longer be trusted
                 # creating internal job to update mark this nodes 'state' table outOfSync, as soon as it is inQuorum again, 
                 # marking state tb locally outOfSync to prevent receiving requests
-                data = {'set': {'inSync': False}, 'where': {'uuid': nodeId, 'tableName': 'state', 'cluster': 'pyql'}}
+                #data = {'set': {'inSync': False}, 'where': {'uuid': nodeId, 'tableName': 'state', 'cluster': 'pyql'}}
+                """TODO - check if needed anymore
                 stateMarkOutOfSyncJob = {
                     "job": f"{nodeId}state_markOutOfSync",
                     "jobType": "cluster",
@@ -367,8 +376,9 @@ def run(server):
                     "path": "/cluster/pyql/table/state/update",
                     "data": data
                 }
+                """
                 server.clusters.state.update(**data['set'], where=data['where'])
-                server.internal_job_add(stateMarkOutOfSyncJob)
+                #server.internal_job_add(stateMarkOutOfSyncJob)
 
             server.clusters.quorum.update(
                     **{
@@ -407,6 +417,21 @@ def run(server):
     @server.route('/cluster/<cluster>/table/<table>/endpoints')
     def get_table_endpoints(cluster, table):
         tableEndpoints = {'inSync': {}, 'outOfSync': {}}
+        """
+        # verify if this pyql_endpoint's local tables are inSync (usable)
+        stateTb = server.clusters.state.select(
+                'inSync', where={'cluster': 'pyql', 'uuid': nodeId, 'tableName': 'state'})
+        if not stateTb[0]['inSync'] == True:
+            endpointsInCluster = server.clusters.endpoints.select(
+                '*',
+                where={'cluster': cluster}
+            )
+            for ind, endpoint in enumerate(endpointsInCluster):
+                if endpoint['uuid'] == nodeId:
+                    endpointsInCluster.pop(ind)
+        """
+
+            
 
         endpointsInCluster = server.clusters.endpoints.select(
             '*',
