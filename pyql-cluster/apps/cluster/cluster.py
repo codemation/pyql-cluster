@@ -376,7 +376,7 @@ def run(server):
                 """
                 server.clusters.state.update(**data['set'], where=data['where'])
                 #server.internal_job_add(stateMarkOutOfSyncJob)
-
+            preQuorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             server.clusters.quorum.update(
                     **{
                         'inQuorum': isNodeInQuorum, 
@@ -389,9 +389,11 @@ def run(server):
             if isNodeInQuorum:
                 # need to set outQuorum endpoint tables to inSync False - so reads are not attempted from tables
                 for endpoint in outQuorum:
-                    data['where']['uuid'] = endpoint
-                    log.warning(f"cluster_quorum - marking endpoint {endpoint} tables inSync=False as endpoint is outOfQuorum")
-                    post_request_tables('pyql', 'state', 'update', data)
+                    if endpoint in preQuorum['quorum']['nodes']['nodes']:
+                        data['where']['uuid'] = endpoint
+                        log.warning(f"cluster_quorum - marking endpoint {endpoint} tables inSync=False as endpoint is outOfQuorum")
+                        server.clusters.state.update(**data['set'], where=data['where'])
+                        #post_request_tables('pyql', 'state', 'update', data)
             quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             return {"message": f"quorum updated on {nodeId}", 'quorum': quorum},200
         else:
