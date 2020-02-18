@@ -243,6 +243,7 @@ def run(server):
     def cluster_ready(ready=None):
         if request.method == 'GET':
             quorum, rc = cluster_quorum(True)
+            log.warning(f"readycheck - {quorum}")
             if "quorum" in quorum and quorum['quorum']["ready"] == True:
                 return quorum['quorum'], 200
             else:
@@ -354,10 +355,6 @@ def run(server):
             data = {'set': {'inSync': False}, 'where': {'uuid': nodeId, 'cluster': 'pyql'}}
             if float(len(inQuorum) / len(epList)) >= float(2/3):
                 isNodeInQuorum = True
-                # need to set outQuorum endpoint tables to inSync False - so reads are not attempted from tables
-                for endpoint in outQuorum:
-                    data['where']['uuid'] = endpoint
-                    post_request_tables('pyql', 'state', 'update', data)
                 stateInSync = server.clusters.state.select(
                     'inSync', 
                     where={'uuid': nodeId, 'tableName': 'state', 'cluster': 'pyql'})
@@ -389,6 +386,12 @@ def run(server):
                     }, 
                     where={'node': nodeId}
                     )
+            if isNodeInQuorum:
+                # need to set outQuorum endpoint tables to inSync False - so reads are not attempted from tables
+                for endpoint in outQuorum:
+                    data['where']['uuid'] = endpoint
+                    log.warning(f"cluster_quorum - marking endpoint {endpoint} tables inSync=False as endpoint is outOfQuorum")
+                    post_request_tables('pyql', 'state', 'update', data)
             quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             return {"message": f"quorum updated on {nodeId}", 'quorum': quorum},200
         else:
