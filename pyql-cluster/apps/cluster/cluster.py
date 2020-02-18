@@ -743,7 +743,7 @@ def run(server):
                     r = requests.get(
                         get_endpoint_url(cluster, endpoint, db, table, 'select'),
                         headers={'Accept': 'application/json'},
-                        timeout=1.0
+                        timeout=2.0
                         )
                     break
                 else:
@@ -751,12 +751,13 @@ def run(server):
                         get_endpoint_url(cluster, endpoint, db, table, 'select'),
                         headers={'Accept': 'application/json', "Content-Type": "application/json"}, 
                         data=json.dumps(data),
-                        timeout=1.0
+                        timeout=2.0
                         )
                     break
             except Exception as e:
                 log.error(f"Encountered exception accessing {endpoint} for {cluster} {table} select")
                 log.error(repr(e))
+                """TODO - Re-evaluate later if I want to let this func mark tables inSync False
                 post_request_tables(
                     'pyql', 'state', 'update', 
                     {
@@ -764,6 +765,7 @@ def run(server):
                         'where': {'name': f'{endpoint}{table}'}
                     }
                 )
+                """
             endPointList.pop(epIndex)
             continue
         try:
