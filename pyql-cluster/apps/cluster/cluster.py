@@ -390,7 +390,7 @@ def run(server):
                 # need to set outQuorum endpoint tables to inSync False - so reads are not attempted from tables
                 for endpoint in outQuorum:
                     log.warning(f"cluster_quorum - preQuorum {preQuorum}")
-                    if endpoint in preQuorum['quorum']['nodes']['nodes']:
+                    if endpoint in preQuorum['nodes']['nodes']:
                         data['where']['uuid'] = endpoint
                         log.warning(f"cluster_quorum - marking endpoint {endpoint} tables inSync=False as endpoint is outOfQuorum")
                         server.clusters.state.update(**data['set'], where=data['where'])
