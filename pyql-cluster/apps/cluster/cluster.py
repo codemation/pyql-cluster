@@ -4,7 +4,7 @@ App for handling pyql-endpoint cluster requests
         requests from a node with outOfSync state table would be invalid so "ready" should return false to avoid requests to outOfSync state pyql nodes
 #TODO - consider reducing stuck job detection time window or implement a call-back so can more quickly cleanup a stuck job
 #TODO - jobs which have a non-null value for node but sit "queued" should be detected and fixed by clean-up cron job
-#TODO - under some conditions a tablesync job may sit "waiting" if parent job does not queue it, need to detect & queue these jobs to ensure completion
+#TODO - NEXT under some conditions a tablesync job may sit "waiting" if parent job does not queue it, need to detect & queue these jobs to ensure completion
 
 """
 def run(server):
@@ -1440,6 +1440,7 @@ def run(server):
     if len(endpoints) == 1 or os.environ['PYQL_CLUSTER_ACTION'] == 'init':
         readyAndQuorum = True
     else:
+        server.clusters.state.update(inSync=False, where={'uuid': nodeId, 'cluster': 'pyql'})
         readyAndQuorum = False
     # Sets ready false for any node with may be restarting as resync is required before marked ready
 
