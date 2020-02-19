@@ -264,7 +264,7 @@ def run(server):
         log.error(f"cluster_endpoint_delete called for cluster - {cluster}, endpoint - {endpoint}")
         deleteWhere = {'where': {'uuid': endpoint, 'cluster': cluster}}
         server.clusters.state.delete(**deleteWhere)
-        server.clusters.endpoints.delete(****deleteWhere)
+        server.clusters.endpoints.delete(**deleteWhere)
 
 
     @server.route('/pyql/quorum/check', methods=['POST'])
