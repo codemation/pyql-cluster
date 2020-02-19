@@ -260,6 +260,11 @@ def run(server):
             server.clusters.quorum.update(**updateSet['set'], where=updateSet['where'])
             return ready, 200
 
+    def cluster_endpoint_delete(cluster, endpoint): 
+        log.error(f"cluster_endpoint_delete called for cluster - {cluster}, endpoint - {endpoint}")
+        deleteWhere = {'where': {'uuid': endpoint, 'cluster': cluster}}
+        server.clusters.state.delete(**deleteWhere)
+        server.clusters.endpoints.delete(****deleteWhere)
 
 
     @server.route('/pyql/quorum/check', methods=['POST'])
@@ -375,7 +380,10 @@ def run(server):
                 }
                 """
                 server.clusters.state.update(**data['set'], where=data['where'])
+                #TODO - May need to check for existence of another /join job and cleanup
+                server.internal_job_add(joinClusterJob)
                 #server.internal_job_add(stateMarkOutOfSyncJob)
+
             preQuorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             server.clusters.quorum.update(
                     **{
@@ -388,6 +396,11 @@ def run(server):
                     )
             if isNodeInQuorum:
                 # need to set outQuorum endpoint tables to inSync False - so reads are not attempted from tables
+                # remove outOfQuorum endpoint from cluster - cannot always guarantee the same DB will be available / re-join
+                for endpoint in outQuorum:
+                    # removal prevents new quorum issues if node is created with a different ID as 2/3 ratio must be maintained
+                    cluster_endpoint_delete('pyql', endpoint)
+                """
                 for endpoint in outQuorum:
                     log.warning(f"cluster_quorum - preQuorum {preQuorum}")
                     if endpoint in preQuorum['nodes']['nodes']:
@@ -395,6 +408,7 @@ def run(server):
                         log.warning(f"cluster_quorum - marking endpoint {endpoint} tables inSync=False as endpoint is outOfQuorum")
                         server.clusters.state.update(**data['set'], where=data['where'])
                         #post_request_tables('pyql', 'state', 'update', data)
+                """
 
             quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             return {"message": f"quorum updated on {nodeId}", 'quorum': quorum},200
