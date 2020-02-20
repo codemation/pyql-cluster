@@ -1078,9 +1078,24 @@ def run(server):
                     else:
                         log.error(f"job {job['id']} next_run_time is set but stuck for an un-known reason")
             if not job['start_time'] == None:
-                if time.time() - float(job['start_time']) > 240.0:
+                timeRunning = time.time() - float(job['start_time'])
+                if timeRunning > 240.0:
                     # job has been running for more than 4 minutes
+                    log.warning(f"job {job['id']} has been {job['status']} for more than {timeRunning} seconds - requeuing")
                     re_queue_job(job)
+                if job['status'] == 'queued':
+                    if timeRunning > 30.0:
+                        log.warning(f"job {job['id']} has been queued for more {timeRunning} seconds - requeuing")
+                        re_queue_job(job)
+            else:
+                if job['status'] == 'queued':
+                    # add start_time to check if job is stuck
+                    post_request_tables(
+                        'pyql', 'jobs', 'update', 
+                        {'set': {
+                            'start_time': time.time()}, 
+                        'where': {
+                            'id': job['id']}})
             if job['status'] == 'waiting':
                 waitingOn = None
                 for jb in jobs:
