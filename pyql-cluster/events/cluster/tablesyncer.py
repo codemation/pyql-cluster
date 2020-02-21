@@ -237,7 +237,8 @@ def sync_table_job(cluster, table, job=None):
         except Exception as e:
             return log_exception(job, table, e), 500
 
-        if cluster == 'pyql' and table == 'jobs' or table == 'transactions':
+        #if cluster == 'pyql' and table == 'jobs' or table == 'transactions':
+        if cluster == 'pyql' and table == 'transactions':
             pass
         else:
             log(f"{job} {table} - #SYNC Worker completes pull of change logs & issues a cutover by pausing table.")
