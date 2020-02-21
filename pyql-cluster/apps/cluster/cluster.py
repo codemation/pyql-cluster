@@ -1,11 +1,6 @@
 """
 App for handling pyql-endpoint cluster requests
-#TODO - URGENT - need to replace all instances of server.clusters.state with a check for inQuorum & if this node's "state" table is also inSync
-        requests from a node with outOfSync state table would be invalid so "ready" should return false to avoid requests to outOfSync state pyql nodes
 #TODO - consider reducing stuck job detection time window or implement a call-back so can more quickly cleanup a stuck job
-#TODO - jobs which have a non-null value for node but sit "queued" should be detected and fixed by clean-up cron job
-#TODO - NEXT under some conditions a tablesync job may sit "waiting" if parent job does not queue it, need to detect & queue these jobs to ensure completion
-
 """
 def run(server):
     from flask import request
@@ -367,24 +362,10 @@ def run(server):
             else:
                 isNodeInQuorum = False
                 # since node is outOfQuorum, the local state table can no longer be trusted
-                # creating internal job to update mark this nodes 'state' table outOfSync, as soon as it is inQuorum again, 
-                # marking state tb locally outOfSync to prevent receiving requests
-                #data = {'set': {'inSync': False}, 'where': {'uuid': nodeId, 'tableName': 'state', 'cluster': 'pyql'}}
-                """TODO - check if needed anymore
-                stateMarkOutOfSyncJob = {
-                    "job": f"{nodeId}state_markOutOfSync",
-                    "jobType": "cluster",
-                    "method": "POST",
-                    "path": "/cluster/pyql/table/state/update",
-                    "data": data
-                }
-                """
                 server.clusters.state.update(**data['set'], where=data['where'])
                 #TODO - May need to check for existence of another /join job and cleanup
+                #TODO - Create unittest to test this
                 server.internal_job_add(joinClusterJob)
-                #server.internal_job_add(stateMarkOutOfSyncJob)
-
-            preQuorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             server.clusters.quorum.update(
                     **{
                         'inQuorum': isNodeInQuorum, 
@@ -395,20 +376,10 @@ def run(server):
                     where={'node': nodeId}
                     )
             if isNodeInQuorum:
-                # need to set outQuorum endpoint tables to inSync False - so reads are not attempted from tables
                 # remove outOfQuorum endpoint from cluster - cannot always guarantee the same DB will be available / re-join
                 for endpoint in outQuorum:
                     # removal prevents new quorum issues if node is created with a different ID as 2/3 ratio must be maintained
                     cluster_endpoint_delete('pyql', endpoint)
-                """
-                for endpoint in outQuorum:
-                    log.warning(f"cluster_quorum - preQuorum {preQuorum}")
-                    if endpoint in preQuorum['nodes']['nodes']:
-                        data['where']['uuid'] = endpoint
-                        log.warning(f"cluster_quorum - marking endpoint {endpoint} tables inSync=False as endpoint is outOfQuorum")
-                        server.clusters.state.update(**data['set'], where=data['where'])
-                        #post_request_tables('pyql', 'state', 'update', data)
-                """
 
             quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             return {"message": f"quorum updated on {nodeId}", 'quorum': quorum},200
@@ -438,21 +409,6 @@ def run(server):
     @server.route('/cluster/<cluster>/table/<table>/endpoints')
     def get_table_endpoints(cluster, table):
         tableEndpoints = {'inSync': {}, 'outOfSync': {}}
-        """
-        # verify if this pyql_endpoint's local tables are inSync (usable)
-        stateTb = server.clusters.state.select(
-                'inSync', where={'cluster': 'pyql', 'uuid': nodeId, 'tableName': 'state'})
-        if not stateTb[0]['inSync'] == True:
-            endpointsInCluster = server.clusters.endpoints.select(
-                '*',
-                where={'cluster': cluster}
-            )
-            for ind, endpoint in enumerate(endpointsInCluster):
-                if endpoint['uuid'] == nodeId:
-                    endpointsInCluster.pop(ind)
-        """
-
-            
 
         endpointsInCluster = server.clusters.endpoints.select(
             '*',
@@ -580,7 +536,6 @@ def run(server):
                     endpointResponse[endpoint] = asyncResults[endpoint]['content']
                     response, rc = asyncResults[endpoint]['status'], asyncResults[endpoint]['status']
             
-            
             # At least 1 success in endpoint db change, need to mark failed endpoints out of sync
             # and create a changelog for resync
             if len(failTrack) > 0 and len(failTrack) < len(tableEndpoints['inSync']):
@@ -615,7 +570,8 @@ def run(server):
                         # Prevent writing transaction logs for failed transaction log changes
                         if cluster == 'pyql':
                             log.warning(f"{failedEndpoint} is outOfSync for pyql table {table}")
-                            if table == 'transactions' or table == 'jobs' or table =='state':
+                            #if table == 'transactions' or table == 'jobs' or table =='state':
+                            if table == 'transactions':
                                 continue
 
                         # Write data to a change log for resyncing
@@ -635,7 +591,6 @@ def run(server):
                 # No InSync failures
                 pass
             # Update any previous out of sync table change-logs, if any
-            
             for outOfSyncEndpoint in tableEndpoints['outOfSync']:
                 tbEndpoint = f'{outOfSyncEndpoint}{table}'
                 if not tbEndpoint in tb['endpoints'] or not 'state' in tb['endpoints'][tbEndpoint]:
@@ -771,15 +726,6 @@ def run(server):
             except Exception as e:
                 log.error(f"Encountered exception accessing {endpoint} for {cluster} {table} select")
                 log.error(repr(e))
-                """TODO - Re-evaluate later if I want to let this func mark tables inSync False
-                post_request_tables(
-                    'pyql', 'state', 'update', 
-                    {
-                        'set': {'inSync': False}, 
-                        'where': {'name': f'{endpoint}{table}'}
-                    }
-                )
-                """
             endPointList.pop(epIndex)
             continue
         try:

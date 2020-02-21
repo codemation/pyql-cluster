@@ -197,7 +197,8 @@ def sync_table_job(cluster, table, job=None):
             state = {endpoint[0]: {'state': 'loaded'}}
             set_table_state(cluster, table, state)
             # Worker completes initial insertions from select * of TB.
-            if cluster == 'pyql' and table == 'jobs' or table == 'transactions' or table=='state':
+            #if cluster == 'pyql' and table == 'jobs' or table == 'transactions' or table=='state':
+            if cluster == 'pyql' and table == 'transactions':
                 #need to blackout changes to these tables during copy as txn logs not generated
                 message, rc = table_cutover(cluster, table, 'start')
                 response, rc = table_copy(cluster, table, endpointPath)
