@@ -1,6 +1,9 @@
 """
 App for handling pyql-endpoint cluster requests
 #TODO - consider reducing stuck job detection time window or implement a call-back so can more quickly cleanup a stuck job
+#TODO - with cluster pqyl tt is currently possible for 1 node to remove an endpoint ( due to outOfQuorum ) but other nodes may not have failed
+        resulting in 1 endpoint which is more vulnerable to a 2/3's quorum failure. Need to identify these cases & add back if other nodes report
+        less inQuorum nodes than what was just found. 
 """
 def run(server):
     from flask import request
@@ -359,6 +362,8 @@ def run(server):
                     'inSync', 
                     where={'uuid': nodeId, 'tableName': 'state', 'cluster': 'pyql'})
                 isReady = stateInSync[0]['inSync']
+                if not isReady:
+                    # This node IS inQuorum=True & but isReady False, due to state Table 
             else:
                 isNodeInQuorum = False
                 # since node is outOfQuorum, the local state table can no longer be trusted
@@ -380,7 +385,29 @@ def run(server):
                 for endpoint in outQuorum:
                     # removal prevents new quorum issues if node is created with a different ID as 2/3 ratio must be maintained
                     cluster_endpoint_delete('pyql', endpoint)
-
+                for endpoint in epResults:
+                    if endpoint == nodeId or endpoint in outQuorum:
+                        continue
+                    if 'content' in epResults[endpoint] and 'quorum' in epResults[endpoint]['content']:
+                        endpointNodes = epResults[endpoint]['content']['quorum']['nodes']['nodes']
+                        endpointReady = epResults[endpoint]['content']['quorum']['ready']
+                        if len(endpointNodes) == len(inQuorum) and endpointReady=False:
+                            # corner case - nodes reported are equal but ready=False
+                            post_request_tables(
+                                'pyql', 'state', 'update', 
+                                {
+                                    'set': {'inSync': False},
+                                    'where': {'uuid': endpoint, 'tableName': 'state'}
+                                })
+                        if len(endpointNodes) < len(inQuorum):
+                            log.warning(f"remote endpoint {endpoint} is inQuorum but missing nodes")
+                            log.warning(f"marking remote endpoint tables inSync False as need to resync")
+                            post_request_tables(
+                                'pyql', 'state', 'update', 
+                                {
+                                    'set': {'inSync': False},
+                                    'where': {'uuid': endpoint}
+                                })
             quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             return {"message": f"quorum updated on {nodeId}", 'quorum': quorum},200
         else:
