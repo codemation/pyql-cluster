@@ -1,7 +1,7 @@
 """
 App for handling pyql-endpoint cluster requests
 #TODO - consider reducing stuck job detection time window or implement a call-back so can more quickly cleanup a stuck job
-#TODO - with cluster pqyl tt is currently possible for 1 node to remove an endpoint ( due to outOfQuorum ) but other nodes may not have failed
+#TODO - with cluster pqyl is currently possible for 1 node to remove an endpoint ( due to outOfQuorum ) but other nodes may not have failed
         resulting in 1 endpoint which is more vulnerable to a 2/3's quorum failure. Need to identify these cases & add back if other nodes report
         less inQuorum nodes than what was just found. 
 """
@@ -363,6 +363,7 @@ def run(server):
                     where={'uuid': nodeId, 'tableName': 'state', 'cluster': 'pyql'})
                 isReady = stateInSync[0]['inSync']
                 if not isReady:
+                    pass
                     # This node IS inQuorum=True & but isReady False, due to state Table 
             else:
                 isNodeInQuorum = False
@@ -391,7 +392,7 @@ def run(server):
                     if 'content' in epResults[endpoint] and 'quorum' in epResults[endpoint]['content']:
                         endpointNodes = epResults[endpoint]['content']['quorum']['nodes']['nodes']
                         endpointReady = epResults[endpoint]['content']['quorum']['ready']
-                        if len(endpointNodes) == len(inQuorum) and endpointReady=False:
+                        if len(endpointNodes) == len(inQuorum) and endpointReady==False:
                             # corner case - nodes reported are equal but ready=False
                             post_request_tables(
                                 'pyql', 'state', 'update', 
@@ -442,7 +443,6 @@ def run(server):
             where={'cluster': cluster}
         )
         tablesEndpointState = server.clusters.state.select('*', where={'cluster': cluster, 'tableName': table})
-
         for endpoint in endpointsInCluster:
             tableEndpoint = f"{endpoint['uuid']}{table}"
             for state in tablesEndpointState:
@@ -469,13 +469,13 @@ def run(server):
         else:
             return f'http://{endPointPath}/db/{db}/table/{table}/{action}'
 
+
     @server.route('/cluster/<cluster>/tableconf/<table>/<conf>/<action>', methods=['POST'])
     def post_update_table_conf(cluster, table, conf, action, data=None):
         """
             current primary use is for updating sync status of a table & triggering db 
         """
         quorum, rc = cluster_quorum(False, True)
-
         if not 'inQuorum' in quorum['quorum'] or quorum['quorum']['inQuorum'] == False:
             return {
                 "message": f"cluster pyql is not in quorum",
@@ -545,13 +545,21 @@ def run(server):
             changeLogs = {'txns': []}
             requestUuid = str(uuid.uuid1())
             transTime = time.time()
+            def get_txn(endpointUuid):
+                return {
+                    'endpoint': endpointUuid,
+                    'uuid': requestUuid,
+                    'tableName': table,
+                    'cluster': cluster,
+                    'timestamp': transTime,
+                    'txn': {action: requestData}
+                }
             for endpoint in tableEndpoints['inSync']:
                 db = get_db_name(cluster, endpoint)
                 epRequests[endpoint] = {
                     'path': get_endpoint_url(cluster, endpoint, db, table, action, cache=requestUuid),
-                    'data': requestData
+                    'data': {'txn': requestData, 'time': transTime}
                 }
-
             asyncResults = asyncrequest.async_request(epRequests, 'POST')
             for endpoint in tableEndpoints['inSync']:
                 if not asyncResults[endpoint]['status'] == 200:
@@ -567,8 +575,39 @@ def run(server):
             # and create a changelog for resync
             if len(failTrack) > 0 and len(failTrack) < len(tableEndpoints['inSync']):
                 log.warning(f"At least 1 successful response & at least 1 failure to update of inSync endpoints {failTrack}")
-
+                for failedEndpoint in failTrack:
+                    # Marking failedEndpoint inSync=False for table endpoint
+                    if cluster == 'pyql' and table == 'state':
+                        pass
+                    else:
+                        stateSet = {
+                            "set": {"insync": False},
+                            "where": {"name": failedEndpoint}
+                        }
+                        post_request_tables('pyql', 'state', 'update', stateSet)
+                    # Creating txn log for future replay for table endpoint
+                    if not tb['endpoints'][failedEndpoint]['state'] == 'new':
+                        if cluster == 'pyql':
+                            log.warning(f"{failedEndpoint} is outOfSync for pyql table {table}")
+                            #if table == 'transactions' or table == 'jobs' or table =='state':
+                            if table == 'transactions':
+                                continue
+                        # Write data to a change log for resyncing
+                        changeLogs['txns'].append(
+                            get_txn(tb['endpoints'][failedEndpoint]['uuid'])
+                        )
+                        """TODO -Delete
+                        changeLogs['txns'].append({
+                                'endpoint': tb['endpoints'][failedEndpoint]['uuid'],
+                                'uuid': requestUuid,
+                                'tableName': table,
+                                'cluster': cluster,
+                                'timestamp': transTime,
+                                'txn': {action: requestData}
+                            })
+                        """
                 # update state for outOfSyncNode
+                """TODO-Delete
                 statusData = {failedEndpoint: {'inSync': False} for failedEndpoint in failTrack}
                 if cluster == 'pyql':
                     if not table == 'state':
@@ -591,7 +630,8 @@ def run(server):
                         asyncResults = asyncrequest.async_request(epCancelRequests, 'POST')
                         log.error(message)
                         return {"message": message}, 500
-
+                """
+                """TODO - delete
                 for failedEndpoint in failTrack:
                     if not tb['endpoints'][failedEndpoint]['state'] == 'new':
                         # Prevent writing transaction logs for failed transaction log changes
@@ -602,6 +642,10 @@ def run(server):
                                 continue
 
                         # Write data to a change log for resyncing
+                        changeLogs['txns'].append(
+                            get_txn(tb['endpoints'][failedEndpoint]['uuid'])
+                        )
+                        
                         changeLogs['txns'].append({
                                 'endpoint': tb['endpoints'][failedEndpoint]['uuid'],
                                 'uuid': requestUuid,
@@ -610,6 +654,7 @@ def run(server):
                                 'timestamp': transTime,
                                 'txn': {action: requestData}
                             })
+                """
             # All endpoints failed request - 
             elif len(failTrack) == len(tableEndpoints['inSync']):
                 log.error(f"All endpoints failed request {failTrack} using {requestData} thus will not update logs")
@@ -629,6 +674,10 @@ def run(server):
                         if table == 'transactions' or table == 'jobs' or table == 'state':
                             continue
                     log.warning(f"new outOfSyncEndpoint {tbEndpoint} need to write to db logs")
+                    changeLogs['txns'].append(
+                        get_txn(tb['endpoints'][tbEndpoint]['uuid'])
+                    )
+                    """TODO - Delete
                     changeLogs['txns'].append({
                             'endpoint': tb['endpoints'][tbEndpoint]['uuid'],
                             'uuid': requestUuid,
@@ -637,12 +686,11 @@ def run(server):
                             'timestamp': transTime,
                             'txn': {action: requestData}
                         })
+                    """
                 else:
                     log.info(f"post_request_tables  table is new {tb['endpoints'][tbEndpoint]['state']}")
             
-
-            details = {'message': response, 'endpointStatus': tb['endpoints']} if 'details' in kw else response
-            def write_change_logs():
+            def write_change_logs(changeLogs):
                 if len(changeLogs['txns']) > 0:
                     # Better solution - maintain transactions table for transactions, table sync and logic is already available
                     for txn in changeLogs['txns']:
@@ -650,7 +698,7 @@ def run(server):
             if cluster == 'pyql' and table == 'state':
                 pass
             else:
-                write_change_logs()
+                write_change_logs(changeLogs)
             # Commit cached commands  
             epCommitRequests = {}
             for endpoint in endpointResponse:
@@ -659,12 +707,50 @@ def run(server):
                     'path': get_endpoint_url(cluster, endpoint, db, table, action, commit=True),
                     'data': endpointResponse[endpoint]
                 }
+            
             asyncResults = asyncrequest.async_request(epCommitRequests, 'POST')
+            print(asyncResults)
+            """
+            { # Example asyncResults
+                "message": {
+                    "272c59da-5a19-11ea-914a-b7044606fac3": {
+                    "content": {
+                        "message": "KeyError('lasterror')",
+                        "status": 400
+                    },
+                    "status": 400
+                    }
+                }
+                }
+            """
+            # if a commit fails - due to a timeout or other internal - need to mark endpoint OutOfSync
+            success, fail = set(), set()
+            for endpoint in asyncResults:
+                if not asyncResults[endpoint]["status"] == 200:
+                    fail.add(endpoint)
+                else:
+                    success.add(endpoint)
+            if len(success) == 0:
+                return {
+                    "message": f"failed to commit {requestData} to inSync {table} endpoints", 
+                    "details": asyncResults}, 400
+            if len(fail) > 0:
+                for endpoint in fail:
+                    stateSet = {
+                        "set": {"insync": False},
+                        "where": {"name": failedEndpoint}
+                    }
+                    post_request_tables('pyql', 'state', 'update', stateSet)
+                log.warning(f"commit failure for endpoints {fail}")
+                write_change_logs(
+                    {'txns': [get_txn(endpoint) for endpoint in fail]}
+                )
             #pyql state table changes must be commited before logs to prevent loop
             if cluster == 'pyql' and table == 'state':
-                write_change_logs()
+                write_change_logs(changeLogs)
                 for failedEndpoint in failTrack:
                     post_request_tables('pyql', 'state', 'update', {'set': {'inSync': False}, 'where': {'name': failedEndpoint}})
+            # need to check if
 
             return {"message": asyncResults}, 200
         if tb['isPaused'] == False:
@@ -682,9 +768,7 @@ def run(server):
                 #TODO - create a counter stat to track how often this occurs
                 error = "table is paused preventing changes, maybe an issue occured during sync cutover, try again later"
                 log.error(error)
-                return {
-                    "message": error
-                    }, 500
+                return {"message": error}, 500
 
     def table_select(cluster, table, data=None, method='GET'):
         quorum, rc = cluster_quorum(False, True)
@@ -777,8 +861,7 @@ def run(server):
             return probe(f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/{table}")
         except Exception as e:
             error = f"exception encountered when pulling config from {endpoint}"
-            log.error(error)
-            log.exception(e)
+            log.exception(error)
             return {"error": error}, 500
 
 
@@ -870,7 +953,7 @@ def run(server):
             if action == 'count':
                 return {"availableTxns": len(response['data'])}, rc
             elif action == 'getAll':
-                log.info(f"#get_cluster_table_endpoint_logs getAll {response}")
+                #log.info(f"#get_cluster_table_endpoint_logs getAll {response}")
                 return response, rc
             else:
                 return {"message": f"get_cluster_table_endpoint_logs -invalid action provided"}, 400

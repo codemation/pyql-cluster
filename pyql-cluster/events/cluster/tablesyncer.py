@@ -113,7 +113,8 @@ def sync_cluster_table_logs(cluster, table, uuid, endpointPath):
         return
     commitedLogs = []
     log(f"#SYNC sync_cluster_table_logs - logs to process {logsToSync}")
-    for txn in logsToSync['data']:
+    txns = sorted(logsToSync['data'], key=lambda txn: txn['timestamp'])
+    for txn in txns:
         if not uuid == txn['endpoint']:
             log(f"#SYNC this should not have happened, pulled logs for {uuid}")
         transaction = txn['txn']
