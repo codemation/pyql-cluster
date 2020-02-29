@@ -390,25 +390,26 @@ def run(server):
                     if endpoint == nodeId or endpoint in outQuorum:
                         continue
                     if 'content' in epResults[endpoint] and 'quorum' in epResults[endpoint]['content']:
-                        endpointNodes = epResults[endpoint]['content']['quorum']['nodes']['nodes']
-                        endpointReady = epResults[endpoint]['content']['quorum']['ready']
-                        if len(endpointNodes) == len(inQuorum) and endpointReady==False:
-                            # corner case - nodes reported are equal but ready=False
-                            post_request_tables(
-                                'pyql', 'state', 'update', 
-                                {
-                                    'set': {'inSync': False},
-                                    'where': {'uuid': endpoint, 'tableName': 'state'}
-                                })
-                        if len(endpointNodes) < len(inQuorum):
-                            log.warning(f"remote endpoint {endpoint} is inQuorum but missing nodes")
-                            log.warning(f"marking remote endpoint tables inSync False as need to resync")
-                            post_request_tables(
-                                'pyql', 'state', 'update', 
-                                {
-                                    'set': {'inSync': False},
-                                    'where': {'uuid': endpoint}
-                                })
+                        if not epResults[endpoint]['content']['quorum']['nodes'] == None:
+                            endpointNodes = epResults[endpoint]['content']['quorum']['nodes']['nodes']
+                            endpointReady = epResults[endpoint]['content']['quorum']['ready']
+                            if len(endpointNodes) == len(inQuorum) and endpointReady==False:
+                                # corner case - nodes reported are equal but ready=False
+                                post_request_tables(
+                                    'pyql', 'state', 'update', 
+                                    {
+                                        'set': {'inSync': False},
+                                        'where': {'uuid': endpoint, 'tableName': 'state'}
+                                    })
+                            if len(endpointNodes) < len(inQuorum):
+                                log.warning(f"remote endpoint {endpoint} is inQuorum but missing nodes")
+                                log.warning(f"marking remote endpoint tables inSync False as need to resync")
+                                post_request_tables(
+                                    'pyql', 'state', 'update', 
+                                    {
+                                        'set': {'inSync': False},
+                                        'where': {'uuid': endpoint}
+                                    })
             quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             return {"message": f"quorum updated on {nodeId}", 'quorum': quorum},200
         else:
