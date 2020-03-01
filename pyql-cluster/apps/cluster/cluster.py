@@ -87,6 +87,16 @@ def run(server):
             "tables": tables
         }
     }
+    @server.route('/cache/reset', methods=['POST'])
+    def node_reset_cache(reason=None):
+        """
+            resets local db table 'cache' 
+        """
+        reason = request.get_json() if reason == None else reason
+        log.warning(f"cache reset called for {reason}")
+        server.reset_cache()
+    server.node_reset_cache = node_reset_cache
+
     def probe(path, method='GET', data=None, timeout=1.0):
         url = f'{path}'
         try:
@@ -369,6 +379,7 @@ def run(server):
                 isNodeInQuorum = False
                 # since node is outOfQuorum, the local state table can no longer be trusted
                 server.clusters.state.update(**data['set'], where=data['where'])
+                node_reset_cache(f"node {nodeId} is outOfQuorum")
                 #TODO - May need to check for existence of another /join job and cleanup
                 #TODO - Create unittest to test this
                 server.internal_job_add(joinClusterJob)
@@ -416,8 +427,7 @@ def run(server):
             try:
                 quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             except Exception as e:
-                log.error(f"exception occured during cluster_quorum for {nodeId} {quorum} ")
-                log.error(f"{repr(e)}")
+                log.exception(f"exception occured during cluster_quorum for {nodeId} {quorum} ")
                 quorum = []
             if quorum == None:
                 log.error(f"exception occured during cluster_quorum for {nodeId} {quorum} ")
