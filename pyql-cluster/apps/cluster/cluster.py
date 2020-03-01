@@ -336,6 +336,7 @@ def run(server):
     @server.route('/pyql/quorum', methods=['GET', 'POST'])
     def cluster_quorum(check=False, get=False):
         if request.method == 'POST' or check == True:
+            # cannot trust local endpoints table if
             pyqlEndpoints = server.clusters.endpoints.select('*', where={'cluster': 'pyql'})
             if not len(pyqlEndpoints) > 0:
                 warning = f"{os.environ['HOSTNAME']} - pyql node is still syncing"
@@ -397,6 +398,7 @@ def run(server):
                 for endpoint in outQuorum:
                     # removal prevents new quorum issues if node is created with a different ID as 2/3 ratio must be maintained
                     cluster_endpoint_delete('pyql', endpoint)
+                missingNodes = {}
                 for endpoint in epResults:
                     if endpoint == nodeId or endpoint in outQuorum:
                         continue
@@ -405,22 +407,27 @@ def run(server):
                             endpointNodes = epResults[endpoint]['content']['quorum']['nodes']['nodes']
                             endpointReady = epResults[endpoint]['content']['quorum']['ready']
                             if len(endpointNodes) == len(inQuorum) and endpointReady==False:
-                                # corner case - nodes reported are equal but ready=False
+                                log.warning(f"corner case - nodes reported are equal but ready=False")
                                 post_request_tables(
                                     'pyql', 'state', 'update', 
                                     {
                                         'set': {'inSync': False},
                                         'where': {'uuid': endpoint, 'tableName': 'state'}
                                     })
-                            if len(endpointNodes) < len(inQuorum):
-                                log.warning(f"remote endpoint {endpoint} is inQuorum but missing nodes")
-                                log.warning(f"marking remote endpoint tables inSync False as need to resync")
-                                post_request_tables(
-                                    'pyql', 'state', 'update', 
-                                    {
-                                        'set': {'inSync': False},
-                                        'where': {'uuid': endpoint}
-                                    })
+                            if len(inQuorum) < len(endpointNodes):
+                                for node in endpointNodes:
+                                    if not node in inQuorum and not node in outQuorum:
+                                        if not node in missingNodes:
+                                            missingNodes[node] = []
+                                        missingNodes[node].append(endpoint)
+                for node in missingNodes:
+                    if len(missingNodes[node]) / len(epList) >= 2/3:
+                        log.warning(f"local endpoint {nodeId} is inQuorum but missing nodes")
+                        log.warning(f"marking local endpoint tables inSync False as need to resync")
+                        # make job to rejoin cluster
+                        server.clusters.state.update(**data['set'], where=data['where'])
+                        node_reset_cache(f"node {nodeId} is inQuorum, but missing nodes, need to rejoin cluster and resync")
+                        server.internal_job_add(joinClusterJob)
             quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             return {"message": f"quorum updated on {nodeId}", 'quorum': quorum},200
         else:
@@ -668,8 +675,9 @@ def run(server):
                 """
             # All endpoints failed request - 
             elif len(failTrack) == len(tableEndpoints['inSync']):
-                log.error(f"All endpoints failed request {failTrack} using {requestData} thus will not update logs")
-                return {"message": error}, rc if rc is not None else r.status_code
+                error=f"All endpoints failed request {failTrack} using {requestData} thus will not update logs" 
+                log.error(error)
+                return {"message": error, "results": asyncResults}, 400
             else:
                 # No InSync failures
                 pass
