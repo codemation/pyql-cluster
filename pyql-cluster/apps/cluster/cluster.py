@@ -366,6 +366,7 @@ def run(server):
                     outQuorum.append(endpoint)
             isNodeInQuorum = False
             isReady = False
+            health = 'unhealthy'
             data = {'set': {'inSync': False}, 'where': {'uuid': nodeId, 'cluster': 'pyql'}}
             if float(len(inQuorum) / len(epList)) >= float(2/3):
                 isNodeInQuorum = True
@@ -373,22 +374,26 @@ def run(server):
                     'inSync', 
                     where={'uuid': nodeId, 'tableName': 'state', 'cluster': 'pyql'})
                 isReady = stateInSync[0]['inSync']
-                if not isReady:
-                    pass
-                    # This node IS inQuorum=True & but isReady False, due to state Table 
+                health = epResults[nodeId]['content']['quorum']['health']
+                if not isReady and not health == 'healing':
+                    # need to rejoin cluster as state table has become outOfSync
+                    health = 'healing'
+                    server.internal_job_add(joinClusterJob)
+                    node_reset_cache(f"node {nodeId} is {health}")
             else:
                 isNodeInQuorum = False
                 # since node is outOfQuorum, the local state table can no longer be trusted
                 server.clusters.state.update(**data['set'], where=data['where'])
-                node_reset_cache(f"node {nodeId} is outOfQuorum")
                 #TODO - May need to check for existence of another /join job and cleanup
                 #TODO - Create unittest to test this
                 server.internal_job_add(joinClusterJob)
+                node_reset_cache(f"node {nodeId} is outOfQuorum")
             server.clusters.quorum.update(
                     **{
                         'inQuorum': isNodeInQuorum, 
                         'nodes': {'nodes': inQuorum},
                         'ready': isReady,
+                        'health': health,
                         'lastUpdateTime': float(time.time())
                     }, 
                     where={'node': nodeId}
@@ -403,17 +408,9 @@ def run(server):
                     if endpoint == nodeId or endpoint in outQuorum:
                         continue
                     if 'content' in epResults[endpoint] and 'quorum' in epResults[endpoint]['content']:
-                        if not epResults[endpoint]['content']['quorum']['nodes'] == None:
-                            endpointNodes = epResults[endpoint]['content']['quorum']['nodes']['nodes']
-                            endpointReady = epResults[endpoint]['content']['quorum']['ready']
-                            if len(endpointNodes) == len(inQuorum) and endpointReady==False:
-                                log.warning(f"corner case - nodes reported are equal but ready=False")
-                                post_request_tables(
-                                    'pyql', 'state', 'update', 
-                                    {
-                                        'set': {'inSync': False},
-                                        'where': {'uuid': endpoint, 'tableName': 'state'}
-                                    })
+                        endpointQuorum = epResults[endpoint]['content']['quorum']
+                        if not endpointQuorum['nodes'] == None:
+                            endpointNodes = endpointQuorum['nodes']['nodes']
                             if len(inQuorum) < len(endpointNodes):
                                 for node in endpointNodes:
                                     if not node in inQuorum and not node in outQuorum:
@@ -1132,6 +1129,7 @@ def run(server):
             # Trigger quorum update using any new endpoints if cluster name == pyql
             if clusterName == 'pyql':
                 cluster_quorum_check()
+                server.clusters.quorum.update(health='healthy', where={'node': nodeId})
             return {"message": f"join cluster {clusterName} for endpoint {config['name']} completed successfully"}, 200
     
     def re_queue_job(job):
@@ -1543,14 +1541,17 @@ def run(server):
 
     if len(endpoints) == 1 or os.environ['PYQL_CLUSTER_ACTION'] == 'init':
         readyAndQuorum = True
+        health = 'healthy'
     else:
         server.clusters.state.update(inSync=False, where={'uuid': nodeId, 'cluster': 'pyql'})
         readyAndQuorum = False
+        health = 'unhealthy'
     # Sets ready false for any node with may be restarting as resync is required before marked ready
 
     server.clusters.quorum.insert(**{
         'node': nodeId,
         'inQuorum': readyAndQuorum,
+        'health': health,
         'lastUpdateTime': float(time.time()),
         'ready': readyAndQuorum,
     })
