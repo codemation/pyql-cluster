@@ -599,7 +599,7 @@ def run(server):
                         pass
                     else:
                         stateSet = {
-                            "set": {"insync": False},
+                            "set": {"inSync": False},
                             "where": {"name": failedEndpoint}
                         }
                         post_request_tables('pyql', 'state', 'update', stateSet)
@@ -756,7 +756,7 @@ def run(server):
             if len(fail) > 0:
                 for endpoint in fail:
                     stateSet = {
-                        "set": {"insync": False},
+                        "set": {"inSync": False},
                         "where": {"name": failedEndpoint}
                     }
                     post_request_tables('pyql', 'state', 'update', stateSet)
