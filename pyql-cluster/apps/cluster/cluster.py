@@ -1499,8 +1499,7 @@ def run(server):
             "path": "/cluster/pyql/ready",
             "data": {'ready': True}
         }
-        server.internal_job_add(initQuorum)
-        server.internal_job_add(initMarkReadyJob)
+
         # Create Cron Jobs inside init node
         cronJobs = []
         cronJobs.append({
@@ -1514,6 +1513,8 @@ def run(server):
         if 'PYQL_TYPE' in os.environ and os.environ['PYQL_TYPE'] == 'K8S':
             pass
         else:
+            server.internal_job_add(initQuorum)
+            server.internal_job_add(initMarkReadyJob)
             cronJobs.append({
                 'job': 'clusterQuorum_check',
                 'jobType': 'cron',
