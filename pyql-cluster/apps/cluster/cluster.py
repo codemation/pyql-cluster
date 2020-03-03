@@ -364,40 +364,45 @@ def run(server):
                     inQuorum.append(endpoint)
                 else:
                     outQuorum.append(endpoint)
+            quorumSet = {}
             isNodeInQuorum = False
             isReady = False
             health = 'unhealthy'
             data = {'set': {'inSync': False}, 'where': {'uuid': nodeId, 'cluster': 'pyql'}}
+            if 'quorum' in epResults[nodeId]['content']:
+                nodeQuorum = epResults[nodeId]['content']['quorum']
+            else:
+                nodeQuorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             if float(len(inQuorum) / len(epList)) >= float(2/3):
-                isNodeInQuorum = True
                 stateInSync = server.clusters.state.select(
                     'inSync', 
                     where={'uuid': nodeId, 'tableName': 'state', 'cluster': 'pyql'})
+                if not nodeQuorum['ready'] == stateInSync[0]['inSync']:
+                    quorumSet['ready'] = stateInSync[0]['inSync']
+                if not nodeQuorum['inQuorum'] == True:
+                    quorumSet['inQuorum'] = True
+                isNodeInQuorum = True
                 isReady = stateInSync[0]['inSync']
-                health = epResults[nodeId]['content']['quorum']['health']
-                if not isReady and not health == 'healing':
+                if not isReady and not nodeQuorum['health'] == 'healing':
                     # need to rejoin cluster as state table has become outOfSync
-                    health = 'healing'
+                    quorumSet['health'] = 'healing'
                     server.internal_job_add(joinClusterJob)
                     node_reset_cache(f"node {nodeId} is {health}")
             else:
-                isNodeInQuorum = False
+                if not nodeQuorum['inQuorum'] == False:
+                    quorumSet['inQuorum'] = False
+                if not quorumSet['health'] == 'unhealthy':
+                    quorumSet['health'] = 'unhealthy'
                 # since node is outOfQuorum, the local state table can no longer be trusted
                 server.clusters.state.update(**data['set'], where=data['where'])
-                #TODO - May need to check for existence of another /join job and cleanup
-                #TODO - Create unittest to test this
                 server.internal_job_add(joinClusterJob)
                 node_reset_cache(f"node {nodeId} is outOfQuorum")
-            server.clusters.quorum.update(
-                    **{
-                        'inQuorum': isNodeInQuorum, 
-                        'nodes': {'nodes': inQuorum},
-                        'ready': isReady,
-                        'health': health,
-                        'lastUpdateTime': float(time.time())
-                    }, 
-                    where={'node': nodeId}
-                    )
+            if nodeQuorum['nodes'] == None or not nodeQuorum['nodes']['nodes'] == inQuorum:
+                quorumSet['nodes'] = {'nodes': inQuorum}
+            if len(quorumSet) > 0:
+                quorumSet['lastUpdateTime'] = float(time.time())
+                server.clusters.quorum.update(
+                    **quorumSet, where={'node': nodeId})
             if isNodeInQuorum:
                 # remove outOfQuorum endpoint from cluster - cannot always guarantee the same DB will be available / re-join
                 for endpoint in outQuorum:
@@ -1499,7 +1504,6 @@ def run(server):
             "path": "/cluster/pyql/ready",
             "data": {'ready': True}
         }
-
         # Create Cron Jobs inside init node
         cronJobs = []
         cronJobs.append({
