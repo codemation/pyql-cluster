@@ -1129,7 +1129,15 @@ def run(server):
             # Trigger quorum update using any new endpoints if cluster name == pyql
             if clusterName == 'pyql':
                 cluster_quorum_check()
-                server.clusters.quorum.update(health='healthy', where={'node': nodeId})
+                result, rc = probe(
+                    f"http://{config['path']}/db/cluster/table/quorum/update",
+                    'POST',
+                    {
+                        'set': {'health': 'healthy'}, 
+                        'where': {'node': config['database']['uuid']}
+                    }
+                )
+                log.warning(f"set quorum state of endpoint healthy: result {result}")
             return {"message": f"join cluster {clusterName} for endpoint {config['name']} completed successfully"}, 200
     
     def re_queue_job(job):
