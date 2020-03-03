@@ -388,7 +388,7 @@ def run(server):
                     quorumSet['health'] = 'healing'
                     server.internal_job_add(joinClusterJob)
                     node_reset_cache(f"node {nodeId} is {health}")
-                if nodeQuorum['ready'] == False and isReady == True and inQuorum['health'] == 'healing':
+                if nodeQuorum['ready'] == False and isReady == True and nodeQuorum['health'] == 'healing':
                     quorumSet['health'] = 'healthy'
             else:
                 if not nodeQuorum['inQuorum'] == False:
