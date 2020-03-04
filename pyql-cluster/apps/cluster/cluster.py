@@ -538,6 +538,10 @@ def run(server):
         for state in tableEndpointState:
             endpoint = state['name'].split(table)[0]
             sync = 'inSync' if endpoint in endpoints['inSync'] else 'outOfSync'
+            if not endpoint in endpoints[sync]:
+                log.warning("mismatch in state / endpoints table, maybe caused by a reboot, removing stale state entries")
+                cluster_endpoint_delete(cluster, state['uuid'])
+                continue
             path = endpoints[sync][endpoint]['path']    
             db = endpoints[sync][endpoint]['dbname']
             tb['endpoints'][state['name']] = state
