@@ -346,8 +346,7 @@ def run(server):
             epList = []
             for endpoint in pyqlEndpoints:
                 epList.append(endpoint['uuid'])
-                endPointPath = endpoint['path']
-                endPointPath = f'http://{endPointPath}/pyql/quorum'
+                endPointPath = f"http://{endpoint['path']}/pyql/quorum"
                 epRequests[endpoint['uuid']] = {'path': endPointPath}
 
             if len(epList) == 0:
@@ -356,8 +355,7 @@ def run(server):
                 epResults = asyncrequest.async_request(epRequests)
             except Exception as e:
                 log.exception("Excepton found during cluster_quorum() check")
-            inQuorum = []
-            outQuorum = []
+            inQuorum, outQuorum = [], []
             log.warning(f"epResults - {epResults}")
             for endpoint in epResults:
                 if epResults[endpoint]['status'] == 200 or endpoint == nodeId:
@@ -418,12 +416,11 @@ def run(server):
                         endpointQuorum = epResults[endpoint]['content']['quorum']
                         if not endpointQuorum['nodes'] == None:
                             endpointNodes = endpointQuorum['nodes']['nodes']
-                            if len(inQuorum) < len(endpointNodes):
-                                for node in endpointNodes:
-                                    if not node in inQuorum and not node in outQuorum:
-                                        if not node in missingNodes:
-                                            missingNodes[node] = []
-                                        missingNodes[node].append(endpoint)
+                            for node in endpointNodes:
+                                if not node in inQuorum and not node in outQuorum:
+                                    if not node in missingNodes:
+                                        missingNodes[node] = []
+                                    missingNodes[node].append(endpoint)
                 for node in missingNodes:
                     if len(missingNodes[node]) / len(epList) >= 2/3:
                         log.warning(f"local endpoint {nodeId} is inQuorum but missing nodes")
