@@ -619,65 +619,6 @@ def run(server):
                         changeLogs['txns'].append(
                             get_txn(tb['endpoints'][failedEndpoint]['uuid'])
                         )
-                        """TODO -Delete
-                        changeLogs['txns'].append({
-                                'endpoint': tb['endpoints'][failedEndpoint]['uuid'],
-                                'uuid': requestUuid,
-                                'tableName': table,
-                                'cluster': cluster,
-                                'timestamp': transTime,
-                                'txn': {action: requestData}
-                            })
-                        """
-                # update state for outOfSyncNode
-                """TODO-Delete
-                statusData = {failedEndpoint: {'inSync': False} for failedEndpoint in failTrack}
-                if cluster == 'pyql':
-                    if not table == 'state':
-                        mesage, rc = post_update_table_conf(cluster, table,'sync','status', statusData)
-                else:
-                    mesage, rc = post_update_table_conf(cluster, table,'sync','status', statusData)
-                    log.warning(f"post_update_table_conf result{message} result {rc}")
-                    if not rc == 200:
-                        quorumCheck, rc = cluster_quorum(False, True)
-                        log.error(f"failed to update outOfSyncNode(s) {statusData} quorumCheck {quorumCheck}")
-                        log.error(f"rolling-back un-commited txn")
-                        # RollBack cached commands  
-                        epCancelRequests = {}
-                        for endpoint in endpointResponse:
-                            db = get_db_name(cluster, endpoint)
-                            epCancelRequests[endpoint] = {
-                                'path': get_endpoint_url(cluster, endpoint, db, table, action, cancel=True),
-                                'data': endpointResponse[endpoint]
-                            }
-                        asyncResults = asyncrequest.async_request(epCancelRequests, 'POST')
-                        log.error(message)
-                        return {"message": message}, 500
-                """
-                """TODO - delete
-                for failedEndpoint in failTrack:
-                    if not tb['endpoints'][failedEndpoint]['state'] == 'new':
-                        # Prevent writing transaction logs for failed transaction log changes
-                        if cluster == 'pyql':
-                            log.warning(f"{failedEndpoint} is outOfSync for pyql table {table}")
-                            #if table == 'transactions' or table == 'jobs' or table =='state':
-                            if table == 'transactions':
-                                continue
-
-                        # Write data to a change log for resyncing
-                        changeLogs['txns'].append(
-                            get_txn(tb['endpoints'][failedEndpoint]['uuid'])
-                        )
-                        
-                        changeLogs['txns'].append({
-                                'endpoint': tb['endpoints'][failedEndpoint]['uuid'],
-                                'uuid': requestUuid,
-                                'tableName': table,
-                                'cluster': cluster,
-                                'timestamp': transTime,
-                                'txn': {action: requestData}
-                            })
-                """
             # All endpoints failed request - 
             elif len(failTrack) == len(tableEndpoints['inSync']):
                 error=f"All endpoints failed request {failTrack} using {requestData} thus will not update logs" 
@@ -701,16 +642,6 @@ def run(server):
                     changeLogs['txns'].append(
                         get_txn(tb['endpoints'][tbEndpoint]['uuid'])
                     )
-                    """TODO - Delete
-                    changeLogs['txns'].append({
-                            'endpoint': tb['endpoints'][tbEndpoint]['uuid'],
-                            'uuid': requestUuid,
-                            'tableName': table,
-                            'cluster': cluster,
-                            'timestamp': transTime,
-                            'txn': {action: requestData}
-                        })
-                    """
                 else:
                     log.info(f"post_request_tables  table is new {tb['endpoints'][tbEndpoint]['state']}")
             
@@ -733,20 +664,7 @@ def run(server):
                 }
             
             asyncResults = asyncrequest.async_request(epCommitRequests, 'POST')
-            print(asyncResults)
-            """
-            { # Example asyncResults
-                "message": {
-                    "272c59da-5a19-11ea-914a-b7044606fac3": {
-                    "content": {
-                        "message": "KeyError('lasterror')",
-                        "status": 400
-                    },
-                    "status": 400
-                    }
-                }
-                }
-            """
+            log.info(asyncResults)
             # if a commit fails - due to a timeout or other internal - need to mark endpoint OutOfSync
             success, fail = set(), set()
             for endpoint in asyncResults:
