@@ -311,7 +311,7 @@ def run(server):
     @server.route('/auth/token/join')
     @server.is_authenticated('cluster')
     def cluster_service_join_token():
-        serviceId = server.cluster_table_select(
+        serviceId, rc = server.cluster_table_select(
             server.env['PYQL_UUID'],
             'auth', {
                 'select': '*', 
