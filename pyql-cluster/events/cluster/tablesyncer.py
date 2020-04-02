@@ -17,15 +17,14 @@ def log(log):
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 
-nodeIp = os.environ['PYQL_ENDPOINT']
-log(f"started with endpoint {nodeIp}")
-
 def set_db_env(path):
     sys.path.append(path)
     import pydb
     database = pydb.get_db()
     global env
     env = database.tables['env']
+    global nodeId
+    nodeId = env['PYQL_ENDPOINT']
 
 
 def probe(path, method='GET', data=None, timeout=3.0, auth=None, **kw):

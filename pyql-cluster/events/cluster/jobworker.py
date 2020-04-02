@@ -13,6 +13,8 @@ def set_db_env(path):
     print(database.tables)
     global env
     env = database.tables['env']
+    global nodeId
+    nodeId = env['PYQL_ENDPOINT']
 
 def probe(path, method='GET', data=None, timeout=3.0, auth=None):
     path = f'{path}'
@@ -31,7 +33,7 @@ def probe(path, method='GET', data=None, timeout=3.0, auth=None):
     except Exception as e:
         return r.text, r.status_code
 
-nodeId = os.environ['PYQL_ENDPOINT']
+
 
 def set_job_status(jobId, jobtype, status, **kwargs):
     # Need to mark job finished/queued - # Using - /cluster/<jobtype>/<uuid>/<status>

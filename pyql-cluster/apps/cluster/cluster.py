@@ -42,6 +42,7 @@ def run(server):
         })
     nodeId = dbuuid
     os.environ['PYQL_ENDPOINT'] = dbuuid
+    server.env['PYQL_ENDPOINT'] = dbuuid
 
     os.environ['HOSTNAME'] = '-'.join(os.environ['PYQL_NODE'].split('.'))
 
