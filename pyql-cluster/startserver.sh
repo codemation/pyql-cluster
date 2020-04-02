@@ -14,6 +14,7 @@ if [ $? -eq 0 ]
 then
     # used by stand-alone / test pyql-cluster instances with a variable hostname 
     sed -i 's/PYQL_HOST/'$PYQL_HOST'/g' /etc/nginx/sites-enabled/sites-available-pyql-cluster
+fi
 
 service nginx start
 /opt/venv/bin/uwsgi --ini wsgi.ini
