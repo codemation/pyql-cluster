@@ -883,7 +883,7 @@ def run(server):
         if not len(endPointList) > 0:
             return {
                 "status": 500, "message": f"no inSync endpoints found in cluster {cluster}",
-                "note": note}, 500
+                "note": endPointList}, 500
         while len(endPointList) > 0:
             epIndex = randrange(len(endPointList))
             endpoint = endPointList[epIndex]
