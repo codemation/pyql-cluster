@@ -439,7 +439,7 @@ def run(server):
                 endPointPath = f"http://{endpoint['path']}/pyql/quorum"
                 epRequests[endpoint['uuid']] = {
                     'path': endPointPath, 
-                    'headers': get_auth_http_headers('cluster')
+                    'headers': get_auth_http_headers('remote', token=endpoint['token'])
                     }
             if len(epList) == 0:
                 return {"message": f"pyql node {nodeId} is still syncing"}, 200
