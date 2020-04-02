@@ -319,7 +319,7 @@ def run(server):
                 }
         )
         if len(serviceId) > 0:
-            return {"join": create_auth_token(request.auth, 'join', 'CLUSTER')}
+            return {"join": create_auth_token(serviceId, 'join', 'CLUSTER')}
         return {"error": f"unable to find a service account for user"}, 400
 
     # Retrieve current local / cluster token keys - requires auth 
