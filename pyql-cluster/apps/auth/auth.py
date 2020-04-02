@@ -314,7 +314,7 @@ def run(server):
         serviceId = server.cluster_table_select(
             server.env['PYQL_UUID'],
             'auth', {
-                'select': 'id', 
+                'select': '*', 
                 'where': {'parent': request.auth, 'type': 'service'}
                 },
             'POST'
