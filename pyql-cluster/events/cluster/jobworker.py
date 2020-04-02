@@ -6,25 +6,39 @@ import sys, datetime, time, requests, json, os
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 
-def probe(path, method='GET', data=None, timeout=3.0):
-    url = f'{path}'
+def set_db_env(path):
+    sys.path.append(path)
+    import pydb
+    database = pydb.get_db()
+    print(database.tables)
+    global env
+    env = database.tables['env']
+
+def probe(path, method='GET', data=None, timeout=3.0, auth=None):
+    path = f'{path}'
+    auth = 'PYQL_CLUSTER_SERVICE_TOKEN' if not auth == 'local' else 'PYQL_LOCAL_SERVICE_TOKEN'
+    headers = {
+        'Accept': 'application/json', "Content-Type": "application/json",
+        "Authentication": f"Token {env[auth]}"}
     if method == 'GET':
-        r = requests.get(url, headers={'Accept': 'application/json'}, timeout=timeout)
+        r = requests.get(path, headers=headers,
+                timeout=1.0)
     else:
-        r = requests.post(url, headers={'Accept': 'application/json', "Content-Type": "application/json"}, data=json.dumps(data), timeout=timeout)
+        r = requests.post(path, headers=headers,
+                data=json.dumps(data), timeout=1.0)
     try:
         return r.json(),r.status_code
-    except:
+    except Exception as e:
         return r.text, r.status_code
 
 nodeId = os.environ['PYQL_ENDPOINT']
 
-
 def set_job_status(jobId, jobtype, status, **kwargs):
     # Need to mark job finished/queued - # Using - /cluster/<jobtype>/<uuid>/<status>
-    return probe(f"{clusterSvcName}/cluster/{jobtype}/{jobId}/{status}",
-                'POST',
-                kwargs)
+    return probe(
+        f"{clusterSvcName}/cluster/pyql/{jobtype}/{jobId}/{status}",
+        'POST',
+        kwargs)
 def log(log):
     time = datetime.datetime.now().isoformat()
     print(f"{time} {os.environ['HOSTNAME']} jobworker - {log}")
@@ -63,6 +77,7 @@ if __name__=='__main__':
     args = sys.argv
     if len(args) > 2:
         jobpath, delay  = args[1], float(args[2])
+        set_db_env(args[-1])
         print(f"jobworker.py started with endpoint {nodeId} path {jobpath}")
         start = time.time() - 5
         while True:

@@ -4,6 +4,7 @@ def run(server):
     log = server.log
 
     @server.route('/db/<database>/tables')
+    @server.is_authenticated('local')
     def get_all_tables_func(database):
         if not database in server.data:
             return {"message": f"no database with name {database} attached to endpoint"}, 400
@@ -21,6 +22,9 @@ def run(server):
         return {"tables": tablesConfig}, 200
 
     @server.route('/db/<database>/table/<table>')
+    @server.is_authenticated('local')
+    def db_get_table_func(database,table):
+        return get_table_func(database, table)
     def get_table_func(database,table):
         message, rc = server.check_db_table_exist(database,table)
         if not rc == 200:
@@ -40,6 +44,7 @@ def run(server):
     server.get_table_func = get_table_func
 
     @server.route('/db/<database>/table/<table>/sync', methods=['POST'])
+    @server.is_authenticated('local')
     def sync_table_func(database, table):
         if not database in server.data or not table in server.data[database].tables:
             message = f"{database} or {table} not found in memory"
@@ -56,11 +61,13 @@ def run(server):
         return {"message": f"{database} {table} sync successful"}, 200
 
     @server.route('/db/<database>/table/<table>/create', methods=['POST'])
+    @server.is_authenticated('local')
     def database_table_create(database, table):
         newTableConfig = request.get_json()
         return create_table_func(database, newTableConfig)
         
     @server.route('/db/<database>/table/create', methods=['POST'])
+    @server.is_authenticated('local')
     def create_table_func(database, config=None):
         if database in server.data:
             db = server.data[database]

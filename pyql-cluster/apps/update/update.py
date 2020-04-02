@@ -2,6 +2,9 @@
 def run(server):
     from flask import request
     @server.route('/db/<database>/table/<table>/update', methods=['POST'])
+    @server.is_authenticated('local')
+    def db_update_func(database, table, params=None):
+        return update_func(database, table, params)
     def update_func(database, table, params=None):
         message, rc = server.check_db_table_exist(database,table)
         if not rc == 200:

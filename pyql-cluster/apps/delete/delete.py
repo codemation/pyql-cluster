@@ -2,6 +2,7 @@
 def run(server):
     from flask import request
     @server.route('/db/<database>/table/<table>/delete', methods=['POST'])
+    @server.is_authenticated('local')
     def delete_func(database,table, params=None):
         message, rc = server.check_db_table_exist(database,table)
         if rc == 200:

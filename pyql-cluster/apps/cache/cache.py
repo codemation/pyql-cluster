@@ -6,6 +6,7 @@ def run(server):
     txnMaxWaitTimeInSec = 0.125
 
     @server.route('/db/<database>/cache/<table>/txn/<action>', methods=['POST'])
+    @server.is_authenticated('local')
     def cache_txn_manage(database, table, action, trans=None):
         """
             method for managing txns - canceling / commiting
@@ -91,8 +92,8 @@ def run(server):
                     where={'id': txnId}
                 )
                 return {'deleted': txnId}, 200
-
     @server.route('/db/<database>/cache/<table>/<action>/<txuuid>', methods=['POST'])
+    @server.is_authenticated('local')
     def cache_action(database, table, action,txuuid):
         transaction = request.get_json()
         server.data[database].tables['cache'].insert(**{

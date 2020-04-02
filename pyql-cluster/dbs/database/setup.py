@@ -27,8 +27,18 @@ def attach_tables(server):
     from dbs.database.tables import quorum
     quorum.db_attach(server)
 
-    from dbs.database.tables import pyql
-    pyql.db_attach(server)
     from dbs.database.tables import internaljobs
     internaljobs.db_attach(server)
+            
+    from dbs.database.tables import authlocal
+    authlocal.db_attach(server)
+            
+    from dbs.database.tables import auth
+    auth.db_attach(server)
+
+    from dbs.database.tables import pyql
+    pyql.db_attach(server)
+        
+    from dbs.database.tables import env
+    env.db_attach(server)
             

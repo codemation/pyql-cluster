@@ -3,6 +3,7 @@ def run(server):
     from flask import request
     log = server.log
     @server.route('/db/<database>/table/<table>/insert', methods=['POST'])
+    @server.is_authenticated('local')
     def insert_func(database,table, params=None):
         message, rc = server.check_db_table_exist(database,table)
         if rc == 200:

@@ -2,14 +2,16 @@ import asyncio
 import requests
 from aiohttp import ClientSession
 
+headersDefault = {'Accept': 'application/json', "Content-Type": "application/json"}
+
 async def async_get_request(session, url):
     for urlId, config in url.items():
         #print(f"{url} started")
         try:
             async with session.get(
                 config['path'] if 'http' in config['path'] else f"http://{config['path']}",
-                headers={'Accept': 'application/json', 'Content-Type': 'application/json'},
-                timeout=2.0
+                headers=headersDefault if not 'headers' in config else config['headers'],
+                timeout=2.0 if not 'timeout' in config else config['timeout']
                 ) as r:
                 jsonBody = await r.json()
             #print(f"{url} completed")
@@ -22,9 +24,9 @@ async def async_post_request(session, url):
         try:
             async with session.post(
                 config['path'] if 'http' in config['path'] else f"http://{config['path']}",
-                headers={'Accept': 'application/json', "Content-Type": "application/json"},
+                headers=headersDefault if not 'headers' in config else config['headers'],
                 json=config['data'] if 'data' in config else None,
-                timeout=2.0
+                timeout=2.0 if not 'timeout' in config else config['timeout']
             ) as r:
                 jsonBody = await r.json()
             return urlId, {'content': jsonBody, 'status': r.status}
@@ -34,7 +36,7 @@ async def async_post_request(session, url):
 async def async_request_pool(urls, method):
     async with ClientSession() as session:
         if method == 'GET':
-            return await asyncio.gather(*[async_get_request(session, {url: urls[url]}) for url in urls])
+            return await asyncio.gather(*[async_get_request(session, {url: urls[url]}, ) for url in urls])
         elif method == 'POST':
             return await asyncio.gather(*[async_post_request(session, {url: urls[url]}) for url in urls])
 
