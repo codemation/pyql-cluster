@@ -316,7 +316,8 @@ def run(server):
             'auth', {
                 'select': 'id', 
                 'where': {'parent': request.auth, 'type': 'service'}
-                }
+                },
+            'POST'
         )
         if len(serviceId) > 0:
             return {"join": create_auth_token(serviceId[0]['id'], 'join', 'CLUSTER')}
