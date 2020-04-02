@@ -2,6 +2,7 @@ server {
     listen 80;
     server_name localhost
                 HOSTIP
+                PYQL_HOST
                 pyql-cluster
                 *.default.svc.cluster.local;
 
