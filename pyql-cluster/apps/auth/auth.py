@@ -319,6 +319,7 @@ def run(server):
                 },
             'POST'
         )
+        log.warning(f"join token creating for - {serviceId}")
         if len(serviceId) > 0:
             return {"join": create_auth_token(serviceId[0]['id'], 'join', 'CLUSTER')}
         return {"error": f"unable to find a service account for user"}, 400
