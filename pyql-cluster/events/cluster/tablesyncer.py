@@ -278,8 +278,20 @@ def sync_table_job(cluster, table, job=None):
                 log(f"{job} {table} - #SYNC set {table} {setInSync} result: {statusResult} {rc}")
                 log(f"{job} {table} - #SYNC marking outOfSync endpoint {tableEndpoint} in {cluster} as {setInSync}")
                 if cluster == 'pyql' and table == 'state':
-                    sync_cluster_table_logs(clusterId, table, uuid, endpointPath, token)
-                    sync_status(clusterId, table, 'POST', setInSync)
+                    #sync_cluster_table_logs(clusterId, table, uuid, endpointPath, token)
+                    #sync_status(clusterId, table, 'POST', setInSync)
+                    #update state table - which was out of sync - with inSync True
+                    status, rc = probe(
+                        f'{endpointPath}/update', 
+                        'POST', 
+                        {'set': {
+                            'state': 'loaded', 'inSync': True},
+                            'where': {'uuid': endpoint, 'tableName': 'state'}
+                        },
+                        token=token
+                    )
+                    log(f"{job} {table} - #SYNC marking outOfSync endpoint for table state as inSync on the outOfSync, to be in line with other tables - {status} {rc}")
+
             except Exception as e:
                 log_exception(job, table, e)
                 log(f"{job} {table} - #SYNC Worker rolling back pause / inSync")
