@@ -279,7 +279,7 @@ def sync_table_job(cluster, table, job=None):
                 statusResult, rc = sync_status(clusterId, table, 'POST', setInSync)
                 log(f"{job} {table} - #SYNC set {table} {setInSync} result: {statusResult} {rc}")
                 log(f"{job} {table} - #SYNC marking outOfSync endpoint {tableEndpoint} in {cluster} as {setInSync}")
-                if cluster == pyqlId and table == 'state':
+                if clusterId == pyqlId and table == 'state':
                     #sync_cluster_table_logs(clusterId, table, uuid, endpointPath, token)
                     #sync_status(clusterId, table, 'POST', setInSync)
                     #update state table - which was out of sync - with inSync True
