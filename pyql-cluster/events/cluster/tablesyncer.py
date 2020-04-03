@@ -25,6 +25,8 @@ def set_db_env(path):
     env = database.tables['env']
     global nodeId
     nodeId = env['PYQL_ENDPOINT']
+    global pyqlId
+    pyqlId = env['PYQL_UUID']
 
 
 def probe(path, method='GET', data=None, timeout=3.0, auth=None, **kw):
@@ -229,7 +231,7 @@ def sync_table_job(cluster, table, job=None):
             state = {endpoint: {'state': 'loaded'}}
             set_table_state(clusterId, table, state)
             # Worker completes initial insertions from select * of TB.
-            if clusterId == env['PYQL_UUID'] and table == 'transactions':
+            if clusterId == pyqlId and table == 'transactions':
                 #need to blackout changes to these tables during copy as txn logs not generated
                 message, rc = table_cutover(clusterId, table, 'start')
                 response, rc = table_copy(clusterId, table, inSyncPath, inSyncToken, endpointPath, token)
@@ -263,7 +265,7 @@ def sync_table_job(cluster, table, job=None):
         log(f"{job} {table} - #SYNC Worker starts to pull changes from change logs")
         sync_cluster_table_logs(clusterId, table, uuid, endpointPath, token)
 
-        if clusterId == env['PYQL_UUID'] and table == 'transactions':
+        if clusterId == pyqlId and table == 'transactions':
             pass
         else:
             log(f"{job} {table} - #SYNC Worker completes pull of change logs & issues a cutover by pausing table.")
@@ -277,7 +279,7 @@ def sync_table_job(cluster, table, job=None):
                 statusResult, rc = sync_status(clusterId, table, 'POST', setInSync)
                 log(f"{job} {table} - #SYNC set {table} {setInSync} result: {statusResult} {rc}")
                 log(f"{job} {table} - #SYNC marking outOfSync endpoint {tableEndpoint} in {cluster} as {setInSync}")
-                if cluster == 'pyql' and table == 'state':
+                if cluster == pyqlId and table == 'state':
                     #sync_cluster_table_logs(clusterId, table, uuid, endpointPath, token)
                     #sync_status(clusterId, table, 'POST', setInSync)
                     #update state table - which was out of sync - with inSync True
