@@ -180,6 +180,7 @@ def sync_table_job(cluster, table, job=None):
         - Worker sets new TB endpoint as inSync=True & unpauses TB
         - SYNC job is completed
     """
+    pyqlId = env['PYQL_UUID']
     # get table endpoints
     tableEndpoints, rc =  get_table_endpoints(cluster, table)
     if not rc == 200:
