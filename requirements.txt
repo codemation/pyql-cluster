@@ -2,3 +2,4 @@ jawf
 pyql-db
 requests
 aiohttp
+pyjwt
