@@ -1,4 +1,4 @@
-import sys
+import sys, os
 """TODO - Delete later
 if 'PYQL_TYPE' in os.environ:
     if os.environ['PYQL_TYPE'] == 'K8S':
