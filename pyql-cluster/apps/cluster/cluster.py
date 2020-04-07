@@ -1357,6 +1357,7 @@ def run(server):
                 jobSelect['where']['node'] = None
 
             jobList, rc = table_select(pyql, 'jobs', jobSelect, 'POST')
+            log.warning(f"jobList {jobList} {rc}")
             jobList = jobList['data']
 
             for i, job in enumerate(jobList):
@@ -1367,19 +1368,23 @@ def run(server):
                     if not job['node'] == None:
                         if time.time() - float(job['next_run_time']) > 120.0:
                             log.error(f"job # {job['id']} may be stuck / inconsistent, updating to requeue")
-                            jobUpdate = {'set': {'node': None}, 'where': {'id': job['id']}}
-                            post_request_tables(pyql, 'jobs', 'update', jobUpdate)
+                            re_queue_job(pyql, job['id'])
+                            #jobUpdate = {'set': {'node': None}, 'where': {'id': job['id']}}
+                            #post_request_tables(pyql, 'jobs', 'update', jobUpdate)
 
             if not len(jobList) > 0:
                 info = f"queue {queue} - no jobs to process at this time"
                 log.warning(info)
                 return {"message": info}, 200 
-
-            latest = 3 if len(jobList) >= 3 else len(jobList)
-            jobIndex = randrange(latest-1) if latest -1 > 0 else 0
-
-            job = jobList[jobIndex]
-
+            if jobtype == 'cron':
+                jobList = sorted(jobList, key=lambda job: job['next_run_time'])
+                job = jobList[0]
+            else:
+                latest = 3 if len(jobList) >= 3 else len(jobList)
+                jobIndex = randrange(latest-1) if latest -1 > 0 else 0
+                job = jobList[jobIndex]
+            
+            """ TODO - delete if tests pass 
             if jobtype == 'cron':
                 lowest = time.time()
                 # Run cron job waiting the longest to begin
@@ -1387,6 +1392,7 @@ def run(server):
                     if 'next_run_time' in job:
                         if float(job['next_run_time']) < lowest:
                             jobIndex = i
+            """
 
             jobSelect['where']['id'] = job['id']
 
