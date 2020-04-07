@@ -23,10 +23,12 @@ if __name__ == '__main__':
         os.environ['PYQL_PORT'] = port
         os.environ['PYQL_CLUSTER_SVC'] = cluster
         os.environ['PYQL_CLUSTER_ACTION'] = clusterAction
+        if clusterAction == 'join':
+            os.environ['']
         main(port)
 else:
     # For loading when triggered by uWSGI
-    if os.environ['PYQL_TYPE'] == 'K8S':
+    if os.environ['PYQL_TYPE'] == 'K8S' or os.environ['PYQL_TYPE'] == 'DOCKER':
         os.environ['PYQL_NODE'] = socket.gethostbyname(socket.getfqdn())
 
     import setup

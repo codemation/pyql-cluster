@@ -1,5 +1,5 @@
-import sys, time, requests, json, os
-
+import sys, 
+"""TODO - Delete later
 if 'PYQL_TYPE' in os.environ:
     if os.environ['PYQL_TYPE'] == 'K8S':
         import socket
@@ -7,7 +7,7 @@ if 'PYQL_TYPE' in os.environ:
 
 if 'PYQL_NODE' in os.environ:
     nodeIP = os.environ['PYQL_NODE']
-
+"""
 if 'PYQL_TYPE' in os.environ:
     if os.environ['PYQL_TYPE'] == 'K8S':
         import socket
