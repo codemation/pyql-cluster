@@ -419,7 +419,7 @@ def run(server):
         return {"message": f"quorum updated on {nodeId}", 'quorum': quorum},200
 
     @server.route('/pyql/quorum', methods=['GET', 'POST'])
-    @server.is_authenticated('pyql')
+    @server.is_authenticated('local')
     def cluster_quorum_query(check=False, get=False):
         return cluster_quorum(check, get)
 
