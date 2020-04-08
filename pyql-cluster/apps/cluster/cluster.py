@@ -158,7 +158,7 @@ def run(server):
         """
             resets local db table 'cache' 
         """
-        reason = request.get_json() if reason == None else reasonf
+        reason = request.get_json() if reason == None else reason
         log.warning(f"cache reset called for {reason}")
         server.reset_cache()
     server.node_reset_cache = node_reset_cache
