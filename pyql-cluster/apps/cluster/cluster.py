@@ -483,7 +483,7 @@ def run(server):
             else:
                 if not nodeQuorum['inQuorum'] == False:
                     quorumSet['inQuorum'] = False
-                if not quorumSet['health'] == 'unhealthy':
+                if not nodeQuorum['health'] == 'unhealthy':
                     quorumSet['health'] = 'unhealthy'
                 # since node is outOfQuorum, the local state table can no longer be trusted
                 server.clusters.state.update(**data['set'], where=data['where'])
@@ -1384,16 +1384,6 @@ def run(server):
                 jobIndex = randrange(latest-1) if latest -1 > 0 else 0
                 job = jobList[jobIndex]
             
-            """ TODO - delete if tests pass 
-            if jobtype == 'cron':
-                lowest = time.time()
-                # Run cron job waiting the longest to begin
-                for i, job in enumerate(jobList):
-                    if 'next_run_time' in job:
-                        if float(job['next_run_time']) < lowest:
-                            jobIndex = i
-            """
-
             jobSelect['where']['id'] = job['id']
 
             log.warning(f"Attempt to reserve job {job} if no other node has taken ")
