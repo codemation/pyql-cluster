@@ -374,7 +374,7 @@ def run(server):
             endPointPath = f'http://{endPointPath}/pyql/quorum'
             epRequests[endpoint['uuid']] = {
                 'path': endPointPath, 'data': None,
-                'headers': get_auth_http_headers('cluster')
+                'headers': get_auth_http_headers('remote', token=endpoint['token'])
                 }
 
         # check if quorum table contains stale endpoints & cleanup
