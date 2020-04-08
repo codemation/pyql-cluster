@@ -169,7 +169,7 @@ def run(server):
         url = f'{path}'
         try:
             if method == 'GET':
-                r = requests.get(url, headers=headers, timeout=1.0)
+                r = requests.get(url, headers=headers, timeout=2.0)
             else:
                 r = requests.post(url, headers=headers, data=json.dumps(data), timeout=timeout)
         except Exception as e:
