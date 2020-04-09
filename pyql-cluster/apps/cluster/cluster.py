@@ -420,6 +420,7 @@ def run(server):
         quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
         """
         return {"message": f"cluster_quorum_check completed on {nodeId}", 'results': epResults }, 200
+        
 
     @server.route('/pyql/quorum', methods=['GET', 'POST'])
     @server.is_authenticated('local')
@@ -1558,7 +1559,7 @@ def run(server):
                         })
             for cluster in jobs:
                 if cluster == pyql:
-                    order = ['clusters', 'auth', 'endpoints', 'databases', 'tables', 'state', 'jobs', 'transactions']
+                    order = ['state','clusters', 'auth', 'endpoints', 'databases', 'tables', 'jobs', 'transactions']
                     stateCheck = False
                     jobsToRunOrdered = []
                     while len(order) > 0:
