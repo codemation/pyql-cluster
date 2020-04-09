@@ -907,7 +907,7 @@ def run(server):
                     r = requests.get(
                         get_endpoint_url(cluster, endpoint, db, table, 'select'),
                         headers=headers,
-                        timeout=2.0
+                        timeout=4.0
                         )
                     break
                 else:
@@ -916,7 +916,7 @@ def run(server):
                         get_endpoint_url(cluster, endpoint, db, table, 'select'),
                         headers=headers, 
                         data=json.dumps(data),
-                        timeout=2.0
+                        timeout=4.0
                         )
                     break
             except Exception as e:
