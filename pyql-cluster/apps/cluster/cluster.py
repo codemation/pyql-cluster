@@ -508,7 +508,6 @@ def run(server):
             if 'PYQL_TYPE' in os.environ and os.environ['PYQL_TYPE'] == 'K8S':
                 if isNodeInQuorum:
                     # remove outOfQuorum endpoint from cluster - cannot always guarantee the same DB will be available / re-join
-                    if 'PYQL_TYPE' in os.environ and os.environ['PYQL_TYPE'] == 'K8S':
                     for endpoint in outQuorum:
                         # removal prevents new quorum issues if node is created with a different ID as 2/3 ratio must be maintained
                         cluster_endpoint_delete(pyql, endpoint)
