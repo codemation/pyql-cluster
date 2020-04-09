@@ -31,6 +31,7 @@ def run(server):
         jobId = str(uuid.uuid1())
         server.clusters.internaljobs.insert(**{
             'id': jobId,
+            'name': job['job'],
             'status': 'queued',
             'config': job
         })
