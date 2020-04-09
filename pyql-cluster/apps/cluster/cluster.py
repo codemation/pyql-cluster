@@ -1251,6 +1251,10 @@ def run(server):
                     )
                 else:
                     post_request_tables(pyql, 'endpoints', 'update', updateSet)
+                    post_request_tables(
+                        pyql, 'state', 'update', 
+                        {'set': {'inSync': False}, 
+                        'where': {'uuid': config['database']['uuid'], 'cluster': clusterId}})
             tables = server.clusters.tables.select('name', where={'cluster': clusterId})
             tables = [table['name'] for table in tables]
             # if tables not exist, add
