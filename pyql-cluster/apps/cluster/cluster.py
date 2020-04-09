@@ -390,6 +390,8 @@ def run(server):
         except Exception as e:
             log.exception("Excepton found during cluster_quorum() check")
         log.warning(f"quorum/check - results {epResults}")
+
+        """ TODO - Delete after testing, this func should not touch quorum tables as this is handled by cluster_quorum
         inQuorum = []
         for endpoint in epResults:
             if not endpoint in quorumNodes:
@@ -416,7 +418,8 @@ def run(server):
                 where={'node': nodeId}
                 )
         quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
-        return {"message": f"quorum updated on {nodeId}", 'quorum': quorum},200
+        """
+        return {"message": f"cluster_quorum_check completed on {nodeId}", 'results': epResults }, 200
 
     @server.route('/pyql/quorum', methods=['GET', 'POST'])
     @server.is_authenticated('local')
@@ -426,23 +429,22 @@ def run(server):
     def cluster_quorum(check=False, get=False):
         pyql = server.env['PYQL_UUID']
         if request.method == 'POST' or check == True:
-            # cannot trust local endpoints table if
+            # list of endpoints to verify quorum
             pyqlEndpoints = server.clusters.endpoints.select('*', where={'cluster': pyql})
-            if not len(pyqlEndpoints) > 0:
+            if len(pyqlEndpoints) == 0:
                 warning = f"{os.environ['HOSTNAME']} - pyql node is still syncing"
                 log.warning(warning)
                 return {"message": warning}, 200
             epRequests = {}
-            epList = []
             for endpoint in pyqlEndpoints:
-                epList.append(endpoint['uuid'])
-                endPointPath = f"http://{endpoint['path']}/pyql/quorum"
                 epRequests[endpoint['uuid']] = {
-                    'path': endPointPath, 
+                    'path': f"http://{endpoint['path']}/pyql/quorum", 
                     'headers': get_auth_http_headers('remote', token=endpoint['token'])
                     }
-            if len(epList) == 0:
+            if len(epRequests) == 0:
                 return {"message": f"pyql node {nodeId} is still syncing"}, 200
+
+            # invokes /pyql/quorum GET on each endpoint 
             try:
                 epResults = asyncrequest.async_request(epRequests)
             except Exception as e:
@@ -459,28 +461,35 @@ def run(server):
             isReady = False
             health = 'unhealthy'
             data = {'set': {'inSync': False}, 'where': {'uuid': nodeId, 'cluster': pyql}}
-            if 'quorum' in epResults[nodeId]['content']:
+            if nodeId in epResults and 'quorum' in epResults[nodeId]['content']:
                 nodeQuorum = epResults[nodeId]['content']['quorum']
             else:
                 nodeQuorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
-            if float(len(inQuorum) / len(epList)) >= float(2/3):
+            # Check for 2 out of 3 quorum ratio requirement 
+            if float(len(inQuorum) / len(epRequests)) >= float(2/3):
+                # ready status is dependent on local state table sync status
                 stateInSync = server.clusters.state.select(
                     'inSync', 
-                    where={'uuid': nodeId, 'tableName': 'state', 'cluster': pyql})
-                if not nodeQuorum['ready'] == stateInSync[0]['inSync']:
-                    quorumSet['ready'] = stateInSync[0]['inSync']
+                    where={'uuid': nodeId, 'tableName': 'state', 'cluster': pyql}
+                )[0]['inSync']
+                # sync quorum ready status 
+                if not nodeQuorum['ready'] == stateInSync:
+                    quorumSet['ready'] = stateInSync
+                # mark node inQuorum if outOfQuorum
                 if not nodeQuorum['inQuorum'] == True:
                     quorumSet['inQuorum'] = True
                 isNodeInQuorum = True
-                isReady = stateInSync[0]['inSync']
+                isReady = stateInSync
+                # set quorum health to 'healing' & trigger cluster re-join job
                 if not isReady and not nodeQuorum['health'] == 'healing':
-                    # need to rejoin cluster as state table has become outOfSync
+                    log.error("CRITCAL: need to rejoin cluster as state table has become outOfSync")
                     quorumSet['health'] = 'healing'
                     server.internal_job_add(joinClusterJob)
                     node_reset_cache(f"node {nodeId} is {health}")
+                # quorum was not-ready before but should be now - updating health
                 if nodeQuorum['ready'] == False and isReady == True and nodeQuorum['health'] == 'healing':
                     quorumSet['health'] = 'healthy'
-            else:
+            else: # Node is outOfQuorum
                 if not nodeQuorum['inQuorum'] == False:
                     quorumSet['inQuorum'] = False
                 if not nodeQuorum['health'] == 'unhealthy':
@@ -500,6 +509,7 @@ def run(server):
                 for endpoint in outQuorum:
                     # removal prevents new quorum issues if node is created with a different ID as 2/3 ratio must be maintained
                     cluster_endpoint_delete(pyql, endpoint)
+                # Compary other node quorum results to determine if a node is missing
                 missingNodes = {}
                 for endpoint in epResults:
                     if endpoint == nodeId or endpoint in outQuorum:
@@ -514,7 +524,7 @@ def run(server):
                                         missingNodes[node] = []
                                     missingNodes[node].append(endpoint)
                 for node in missingNodes:
-                    if len(missingNodes[node]) / len(epList) >= 2/3:
+                    if len(missingNodes[node]) / len(epRequests) >= 2/3:
                         log.warning(f"local endpoint {nodeId} is inQuorum but missing nodes")
                         log.warning(f"marking local endpoint tables inSync False as need to resync")
                         # make job to rejoin cluster
