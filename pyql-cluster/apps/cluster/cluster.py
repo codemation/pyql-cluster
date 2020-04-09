@@ -505,28 +505,29 @@ def run(server):
                 quorumSet['lastUpdateTime'] = float(time.time())
                 server.clusters.quorum.update(
                     **quorumSet, where={'node': nodeId})
-            if isNodeInQuorum:
-                # remove outOfQuorum endpoint from cluster - cannot always guarantee the same DB will be available / re-join
-                for endpoint in outQuorum:
-                    # removal prevents new quorum issues if node is created with a different ID as 2/3 ratio must be maintained
-                    cluster_endpoint_delete(pyql, endpoint)
-                # Compary other node quorum results to determine if a node is missing
-                missingNodes = {}
-                for endpoint in epResults:
-                    if endpoint == nodeId or endpoint in outQuorum:
-                        continue
-                    if 'content' in epResults[endpoint] and 'quorum' in epResults[endpoint]['content']:
-                        endpointQuorum = epResults[endpoint]['content']['quorum']
-                        if not endpointQuorum['nodes'] == None:
-                            endpointNodes = endpointQuorum['nodes']['nodes']
-                            for node in endpointNodes:
-                                if not node in inQuorum and not node in outQuorum:
-                                    if not node in missingNodes:
-                                        missingNodes[node] = []
-                                    missingNodes[node].append(endpoint)
-                for node in missingNodes:
-                    if len(missingNodes[node]) / len(epRequests) >= 2/3:
-                        if 'PYQL_TYPE' in os.environ and os.environ['PYQL_TYPE'] == 'K8S':
+            if 'PYQL_TYPE' in os.environ and os.environ['PYQL_TYPE'] == 'K8S':
+                if isNodeInQuorum:
+                    # remove outOfQuorum endpoint from cluster - cannot always guarantee the same DB will be available / re-join
+                    if 'PYQL_TYPE' in os.environ and os.environ['PYQL_TYPE'] == 'K8S':
+                    for endpoint in outQuorum:
+                        # removal prevents new quorum issues if node is created with a different ID as 2/3 ratio must be maintained
+                        cluster_endpoint_delete(pyql, endpoint)
+                    # Compary other node quorum results to determine if a node is missing
+                    missingNodes = {}
+                    for endpoint in epResults:
+                        if endpoint == nodeId or endpoint in outQuorum:
+                            continue
+                        if 'content' in epResults[endpoint] and 'quorum' in epResults[endpoint]['content']:
+                            endpointQuorum = epResults[endpoint]['content']['quorum']
+                            if not endpointQuorum['nodes'] == None:
+                                endpointNodes = endpointQuorum['nodes']['nodes']
+                                for node in endpointNodes:
+                                    if not node in inQuorum and not node in outQuorum:
+                                        if not node in missingNodes:
+                                            missingNodes[node] = []
+                                        missingNodes[node].append(endpoint)
+                    for node in missingNodes:
+                        if len(missingNodes[node]) / len(epRequests) >= 2/3:
                             log.warning(f"local endpoint {nodeId} is inQuorum but missing nodes")
                             log.warning(f"marking local endpoint tables inSync False as need to resync")
                             # make job to rejoin cluster
