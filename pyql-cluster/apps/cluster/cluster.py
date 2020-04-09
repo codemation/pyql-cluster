@@ -903,6 +903,11 @@ def run(server):
             db = tableEndpoints['inSync'][endpoint]['dbname']
             headers = get_auth_http_headers('remote', token=tableEndpoints['inSync'][endpoint]['token'])
             try:
+                if cluster == pyql and endpoint == nodeId:
+                    return {
+                        'data': server.data['cluster'].tables[table].select(
+                            *data['select'], where=data['where'])
+                    }, 200
                 if method == 'GET':
                     r = requests.get(
                         get_endpoint_url(cluster, endpoint, db, table, 'select'),
