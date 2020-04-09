@@ -325,7 +325,8 @@ def run(server):
     @server.is_authenticated('cluster')
     def cluster_ready(ready=None):
         if request.method == 'GET':
-            quorum, rc = cluster_quorum(True)
+            #quorum, rc = cluster_quorum(True)
+            quorum, rc = cluster_quorum_update()
             log.warning(f"readycheck - {quorum}")
             if "quorum" in quorum and quorum['quorum']["ready"] == True:
                 return quorum['quorum'], 200
@@ -425,9 +426,49 @@ def run(server):
     @server.route('/pyql/quorum', methods=['GET', 'POST'])
     @server.is_authenticated('local')
     def cluster_quorum_query(check=False, get=False):
-        return cluster_quorum(check, get)
+        if request.method == 'POST':
+            #return cluster_quorum(check, get)
+            return cluster_quorum_update()
+        return {'quorum': server.clusters.quorum.select('*', where={'node': nodeId})}, 200
 
-    def cluster_quorum(check=False, get=False):
+    def cluster_quorum_update():
+        pyql = server.env['PYQL_UUID']
+        endpoints = server.clusters.endpoints.select('*', where={'cluster': pyql})
+        if len(endpoints) == 0:
+            # may be a new node / still syncing
+            return {"message": f"cluster_quorum_update node {nodeId} is still syncing"}, 200
+        epRequests = {}
+        for endpoint in endpoints:
+            epRequests[endpoint['uuid']] = {
+                'path': f"http://{endpoint['path']}/pyql/node"
+            }
+        try:
+            epResults = asyncrequest.async_request(epRequests)
+        except Exception as e:
+            log.exception("Excepton found during cluster_quorum_update, failed to update")
+            return {"error": f'{repr(e)}'}, 500
+        # Check results
+        inQuorumNodes = []
+        for endpoint in epResults:
+            if epResults[endpoint]['status'] == 200:
+                inQuorumNodes.append(endpoint)
+        inQuorum = False
+        if len(inQuorumNodes) / len(endpoints) >= 2/3:
+            inQuorum = True
+        server.clusters.quorum.update(
+            inQuorum=inQuorum, 
+            nodes={"nodes": inQuorumNodes},
+            lastUpdateTime=float(time.time()),
+            where={'node': nodeId}
+        )
+        return {
+            "message": f"cluster_quorum_update on node {nodeId} updated successfully",
+            'quorum': server.clusters.quorum.select('*', where={'node': nodeId})[0]}, 200
+
+    def cluster_quorum():
+        return {'quorum': server.clusters.quorum.select('*', where={'node': nodeId})[0]}, 200
+
+    def cluster_quorum_old(check=False, get=False):
         pyql = server.env['PYQL_UUID']
         if request.method == 'POST' or check == True:
             # list of endpoints to verify quorum
@@ -614,7 +655,7 @@ def run(server):
             expects cluster uuid for cluster
         """
         pyql = server.env['PYQL_UUID']
-        quorum, rc = cluster_quorum(False, True)
+        quorum, rc = cluster_quorum()
         if not 'inQuorum' in quorum['quorum'] or quorum['quorum']['inQuorum'] == False:
             return {
                 "message": f"cluster pyql is not in quorum",
@@ -878,7 +919,7 @@ def run(server):
             if cluster == server.env['PYQL_UUID']:
                 request.clusterName = 'pyql'
         """
-        quorum, rc = cluster_quorum(False, True)
+        quorum, rc = cluster_quorum()
         print(f'table_select quorum_check {quorum}')
         if not 'quorum' in quorum or quorum['quorum']['inQuorum'] == False:
             return {
@@ -1350,9 +1391,9 @@ def run(server):
         """
         pyql = cluster
         node = request.get_json()['node']
-        quorumCheck, rc = cluster_quorum(False, True)
+        quorumCheck, rc = cluster_quorum()
          # check this node is inQuorum and if worker requesting job is from an inQuorum node
-        
+        print(f"cluster_jobqueue - quorumCheck {quorumCheck}, {rc}")
         if not 'quorum' in quorumCheck or not quorumCheck['quorum']['inQuorum'] == True or not node in quorumCheck['quorum']['nodes']['nodes']:
             warning = f"{node} is not inQuorum with pyql cluster {quorumCheck}, cannot pull job"
             log.warning(warning)
@@ -1475,7 +1516,7 @@ def run(server):
             run when all table-endpoints are inSync=False
         """
         #need to check quorum as all endpoints are currently inSync = False for table
-        quorumCheck, rc = cluster_quorum(False, True)
+        quorumCheck, rc = cluster_quorum()
         if quorumCheck['quorum']['inQuorum'] == True:
             # Need to check all endpoints for the most up-to-date loaded table
             select = {'select': ['path', 'dbname', 'uuid'], 'where': {'cluster': cluster}}
@@ -1534,7 +1575,7 @@ def run(server):
             invoked regularly by cron or ondemand to create jobs to sync OutOfSync Endpoints.
         """
         pyql = server.env['PYQL_UUID']
-        quorumCheck, rc = cluster_quorum(check=True)
+        quorumCheck, rc = cluster_quorum_update()
         if action == 'check':
             jobsToCreate = {}
             jobs = {}
@@ -1735,6 +1776,7 @@ def run(server):
 
     server.clusters.quorum.insert(**{
         'node': nodeId,
+        'nodes': {'nodes': [nodeId]},
         'inQuorum': readyAndQuorum,
         'health': health,
         'lastUpdateTime': float(time.time()),
