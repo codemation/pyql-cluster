@@ -526,12 +526,13 @@ def run(server):
                                     missingNodes[node].append(endpoint)
                 for node in missingNodes:
                     if len(missingNodes[node]) / len(epRequests) >= 2/3:
-                        log.warning(f"local endpoint {nodeId} is inQuorum but missing nodes")
-                        log.warning(f"marking local endpoint tables inSync False as need to resync")
-                        # make job to rejoin cluster
-                        server.clusters.state.update(**data['set'], where=data['where'])
-                        node_reset_cache(f"node {nodeId} is inQuorum, but missing nodes, need to rejoin cluster and resync")
-                        server.internal_job_add(joinClusterJob)
+                        if 'PYQL_TYPE' in os.environ and os.environ['PYQL_TYPE'] == 'K8S':
+                            log.warning(f"local endpoint {nodeId} is inQuorum but missing nodes")
+                            log.warning(f"marking local endpoint tables inSync False as need to resync")
+                            # make job to rejoin cluster
+                            server.clusters.state.update(**data['set'], where=data['where'])
+                            node_reset_cache(f"node {nodeId} is inQuorum, but missing nodes, need to rejoin cluster and resync")
+                            server.internal_job_add(joinClusterJob)
             quorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
             return {"message": f"quorum updated on {nodeId}", 'quorum': quorum},200
         else:
