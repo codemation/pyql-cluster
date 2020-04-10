@@ -849,7 +849,7 @@ def run(server):
                 for endpoint in fail:
                     stateSet = {
                         "set": {"inSync": False},
-                        "where": {"name": failedEndpoint}
+                        "where": {"name": f"{endpoint}{table}"}
                     }
                     post_request_tables(pyql, 'state', 'update', stateSet)
                 log.warning(f"commit failure for endpoints {fail}")
