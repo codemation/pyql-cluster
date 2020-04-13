@@ -975,7 +975,7 @@ def run(server):
             return r.json(), r.status_code
         except Exception as e:
             log.exception("Exception encountered during table_select")
-            return {"data": [], "error": f"{repr(e)}"}, 400
+            return {"data": [], "error": repr(e)}, 400
     server.cluster_table_select = table_select
 
     @server.route('/cluster/<cluster>/table/<table>', methods=['GET'])
