@@ -1435,7 +1435,7 @@ def run(server):
                     if not job['node'] == None:
                         if time.time() - float(job['next_run_time']) > 120.0:
                             log.error(f"job # {job['id']} may be stuck / inconsistent, updating to requeue")
-                            re_queue_job(pyql, job['id'])
+                            re_queue_job(pyql, job)
                             #jobUpdate = {'set': {'node': None}, 'where': {'id': job['id']}}
                             #post_request_tables(pyql, 'jobs', 'update', jobUpdate)
 
