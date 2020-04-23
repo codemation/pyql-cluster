@@ -465,7 +465,9 @@ def run(server):
             "message": f"cluster_quorum_update on node {nodeId} updated successfully",
             'quorum': server.clusters.quorum.select('*', where={'node': nodeId})[0]}, 200
 
-    def cluster_quorum():
+    def cluster_quorum(update=False):
+        if update == True:
+            cluster_quorum_update()
         return {'quorum': server.clusters.quorum.select('*', where={'node': nodeId})[0]}, 200
 
     def cluster_quorum_old(check=False, get=False):
@@ -1006,7 +1008,11 @@ def run(server):
                     break
             except Exception as e:
                 log.exception(f"Encountered exception accessing {endpoint} for {cluster} {table} select")
-            endPointList.pop(epIndex)
+            if cluster == pyql: 
+                quorum, rc = cluster_quorum(update=True)
+                endPointList = pyql_table_select_endpoints(cluster, table, quorum, tableEndpoints)
+            else:
+                endPointList.pop(epIndex)
             continue
         try:
             return r.json(), r.status_code
