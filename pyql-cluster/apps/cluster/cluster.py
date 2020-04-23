@@ -177,7 +177,7 @@ def run(server):
             return error, 500
         try:
             return r.json(),r.status_code
-        except:
+        except Exception:
             return r.text, r.status_code
     server.probe = probe
     def wait_on_jobs(pyql, curInd, jobList, waitingOn=None):
@@ -612,10 +612,30 @@ def run(server):
         """
         tableEndpoints = {'inSync': {}, 'outOfSync': {}}
 
+        endpoints = server.clusters.endpoints.select(
+            '*', 
+            join={'state': {'endpoints.uuid': 'state.uuid', 'endpoints.cluster': 'state.cluster'}}, 
+            where={'state.cluster': cluster, 'state.tableName': table}
+            )
+        
+        endpointsKeySplit = []
+        for endpoint in endpoints:
+            renamed = {}
+            for k,v in endpoint.items():
+                renamed[k.split('.')[1]] = v
+            endpointsKeySplit.append(renamed)
+        for endpoint in endpointsKeySplit:
+            sync = 'inSync' if endpoint['inSync'] == True else 'outOfSync'
+            tableEndpoints[sync][endpoint['uuid']] = endpoint
+        if not clusterName == None:
+            tableEndpoints['clusterName'] = clusterName
+        log.warning(f"get_table_endpoints result {tableEndpoints}")
+        return tableEndpoints
+        """ TODO - Delete after testing
         endpointsInCluster = server.clusters.endpoints.select(
             '*',
             where={'cluster': cluster}
-        )
+        ) 
         tablesEndpointState = server.clusters.state.select('*', where={'cluster': cluster, 'tableName': table})
         for endpoint in endpointsInCluster:
             tableEndpoint = f"{endpoint['uuid']}{table}"
@@ -628,6 +648,7 @@ def run(server):
             tableEndpoints['clusterName'] = clusterName
         log.warning(f"get_table_endpoints result {tableEndpoints}")
         return tableEndpoints
+        """
 
     def get_db_name(cluster, endpoint):
         database = server.clusters.endpoints.select('dbname', where={'uuid': endpoint, 'cluster': cluster})
@@ -688,12 +709,31 @@ def run(server):
         return {"message": f"updated {table} in {cluster} with {data}"}, 200
 
     def get_table_info(cluster, table, endpoints):
-        #TODO - Determine if this func can be trusted if tables & state are not inSync
+        """TODO - Delete after testing
+        endpoints = server.clusters.endpoints.select(
+            '*', 
+            join={'state': {'endpoints.uuid': 'state.uuid', 'endpoints.cluster': 'state.cluster'}}, 
+            where={'state.cluster': cluster, 'state.tableName': table}
+            )
+        for endpoint in endpoints:
+        tableEndpoints = {'inSync': {}, 'outOfSync': {}}
+        ####
+        """
         tb = server.clusters.tables.select(
             '*',
             where={'cluster': cluster, 'name': table}
             )[0]
         tb['endpoints'] = {}
+        for sync in ['inSync', 'outOfSync']:
+            for endpoint in endpoints[sync]:
+                path = endpoints[sync][endpoint]['path']
+                db = endpoints[sync][endpoint]['dbname']
+                name = endpoints[sync][endpoint]['name']
+                tb['endpoints'][name] = endpoints[sync][endpoint]
+                tb['endpoints'][name]['path'] = f"http://{path}/db/{db}/table/{tb['name']}"
+        return tb
+
+        """TODO - Delete after testing
         tableEndpointState = server.clusters.state.select(
             '*',
             where={'cluster': cluster, 'tableName': table}
@@ -710,6 +750,7 @@ def run(server):
             tb['endpoints'][state['name']] = state
             tb['endpoints'][state['name']]['path'] = f"http://{path}/db/{db}/table/{tb['name']}"
         return tb
+        """
 
     def post_request_tables(cluster, table, action, requestData=None, **kw):
         """
@@ -888,10 +929,9 @@ def run(server):
             if endpoint in quorum['quorum']['nodes']['nodes']:
                 inQuorumInSync.append(endpoint)
         return inQuorumInSync
-    def pyql_table_select_endpoints(cluster, table, quorum):
-        tableEndpoints = get_table_endpoints(cluster, table)
+    def pyql_table_select_endpoints(cluster, table, quorum, tableEndpoints):
         endPointList = pyql_get_inquorum_insync_endpoints(quorum, tableEndpoints)
-        if not len(endPointList) > 0:
+        if len(endPointList) == 0:
             #"this condition can occur if the cluster IS IN Quorum, but the only inSync i.e 'source of truth' for table is offline / outOfQuorum / path has changed"
             if table == 'jobs':
                 #TODO - write unittest for testing recovery in this condition
@@ -928,7 +968,7 @@ def run(server):
 
         tableEndpoints = get_table_endpoints(cluster, table)
         if cluster == pyql:
-            endPointList = pyql_table_select_endpoints(cluster, table, quorum)
+            endPointList = pyql_table_select_endpoints(cluster, table, quorum, tableEndpoints)
         else:
             endPointList = [endpoint for endpoint in tableEndpoints['inSync']]
 
@@ -954,12 +994,9 @@ def run(server):
                         )
                     break
                 else:
-                    if cluster == pyql and endpoint == nodeId:
-                        return {
-                            'data': server.data['cluster'].tables[table].select(
-                                *data['select'], where=data['where'])
-                        }, 200
                     data = request.get_json() if data == None else data
+                    if cluster == pyql and endpoint == nodeId:
+                        return server.actions['select']('cluster', table, data)
                     r = requests.post(
                         get_endpoint_url(cluster, endpoint, db, table, 'select'),
                         headers=headers, 
@@ -1570,7 +1607,7 @@ def run(server):
                     )
             else:
                 cluster_table_update(pyql, 'state', updateSetInSync)
-            print(f"table_sync_recovery completed selecting an endpoint as inSync -  {latest['endpoint']} - need to requeue job and resync remaining nodes")
+            log.warning(f"table_sync_recovery completed selecting an endpoint as inSync -  {latest['endpoint']} - need to requeue job and resync remaining nodes")
             return {"message": "table_sync_recovery completed"}, 200
 
     @server.route('/cluster/pyql/tablesync/<action>', methods=['POST'])

@@ -15,7 +15,7 @@ if __name__ == '__main__':
         clusterAction = sys.argv[4] if len(sys.argv) > 4 else 'join'
         if clusterAction == 'join':
             clusterToken = sys.argv[5] if len(sys.argv) > 5 else ''
-    except:
+    except Exception as e:
         print("expected input: ")
         print("python server.py <node-ip> <node-port> <clusterIp:port> init|join")
     if not port == None:

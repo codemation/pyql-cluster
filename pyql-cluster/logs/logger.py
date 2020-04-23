@@ -9,9 +9,11 @@ def run(server):
     i_handler = logging.StreamHandler()
     c_handler = logging.StreamHandler()
     f_handler = logging.FileHandler('pyql-cluster.log')
+    d_handler = logging.StreamHandler()
     i_handler.setLevel(logging.INFO)
     c_handler.setLevel(logging.WARNING)
     f_handler.setLevel(logging.ERROR)
+    d_handler.setLevel(logging.DEBUG)
 
     # Create formatters and add it to handlers
     c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
@@ -24,4 +26,6 @@ def run(server):
     logger.addHandler(i_handler)
     logger.addHandler(c_handler)
     logger.addHandler(f_handler)
+    logger.addHandler(d_handler)
+    
     server.log = logger
