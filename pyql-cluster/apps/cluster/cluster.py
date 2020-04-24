@@ -314,7 +314,7 @@ def run(server):
     #TODO - Need to determine if this is used & delete
     @server.route('/cluster/pyql/state/<action>', methods=['GET','POST'])
     def cluster_state(action):
-        endpoints = get_table_endpoints('pyql', 'state')['inSync']
+        endpoints = get_table_endpoints('pyql', 'state', caller='cluster_state')['inSync']
         if request.method == 'GET':
             pass
         if request.method == 'POST':
@@ -593,21 +593,22 @@ def run(server):
     @server.is_authenticated('pyql')
     def get_db_table_path(cluster, table):
         paths = {'inSync': {}, 'outOfSync': {}}
-        tableEndpoints = get_table_endpoints(cluster, table)
+        tableEndpoints = get_table_endpoints(cluster, table, caller='get_db_table_path')
         tb = get_table_info(cluster, table, tableEndpoints)
         for pType in paths:
             for endpoint in tableEndpoints[pType]:
-                dbName = get_db_name(cluster, endpoint)
+                #dbName = get_db_name(cluster, endpoint)
+                dbName = tb['endpoints'][f'{endpoint}{table}']['dbname']
                 paths[pType][endpoint] = tb['endpoints'][f'{endpoint}{table}']['path']
         return paths, 200
 
     @server.route('/cluster/<cluster>/table/<table>/endpoints')
     @server.is_authenticated('pyql')
-    def cluster_get_table_endpoints(cluster, table):
+    def cluster_get_table_endpoints(cluster, table, caller=):
         clusterName = request.__dict__.get('clusterName')
-        return get_table_endpoints(cluster, table, clusterName)
+        return get_table_endpoints(cluster, table, clusterName, caller='cluster_get_table_endpoints')
 
-    def get_table_endpoints(cluster, table, clusterName=None):
+    def get_table_endpoints(cluster, table, clusterName=None, caller=None):
         """
         Usage:
             get_table_endpoints('cluster_uuid', 'tableName')
@@ -631,7 +632,7 @@ def run(server):
             tableEndpoints[sync][endpoint['uuid']] = endpoint
         if not clusterName == None:
             tableEndpoints['clusterName'] = clusterName
-        log.warning(f"get_table_endpoints result {tableEndpoints}")
+        log.warning(f"{caller} --> get_table_endpoints result {tableEndpoints}")
         return tableEndpoints
         """ TODO - Delete after testing
         endpointsInCluster = server.clusters.endpoints.select(
@@ -651,12 +652,13 @@ def run(server):
         log.warning(f"get_table_endpoints result {tableEndpoints}")
         return tableEndpoints
         """
-
+    """TODO - Delete after testing
     def get_db_name(cluster, endpoint):
         database = server.clusters.endpoints.select('dbname', where={'uuid': endpoint, 'cluster': cluster})
         if len(database) > 0:
             return database[0]['dbname']
         log.error(f"No DB found with {cluster} endpoint {endpoint}")
+    """
 
     def get_endpoint_url(cluster, endpoint, db, table, action, **kw):
         endPointPath = server.clusters.endpoints.select('path', where={'uuid': endpoint, 'cluster': cluster})
@@ -758,7 +760,7 @@ def run(server):
         """
             use details=True as arg to return tb['endpoints'] in response
         """
-        tableEndpoints = get_table_endpoints(cluster, table)
+        tableEndpoints = get_table_endpoints(cluster, table, caller='post_request_tables')
         pyql = server.env['PYQL_UUID']
         try:
             if requestData == None:
@@ -785,7 +787,8 @@ def run(server):
                     'txn': {action: requestData}
                 }
             for endpoint in tableEndpoints['inSync']:
-                db = get_db_name(cluster, endpoint)
+                db = tableEndpoints['inSync'][endpoint]['dbname']
+                #db = get_db_name(cluster, endpoint)
                 token = tableEndpoints['inSync'][endpoint]['token']
                 epRequests[endpoint] = {
                     'path': get_endpoint_url(cluster, endpoint, db, table, action, cache=requestUuid),
@@ -867,7 +870,8 @@ def run(server):
             # Commit cached commands  
             epCommitRequests = {}
             for endpoint in endpointResponse:
-                db = get_db_name(cluster, endpoint)
+                #db = get_db_name(cluster, endpoint)
+                db = tableEndpoints['inSync'][endpoint]['dbname']
                 token = tableEndpoints['inSync'][endpoint]['token']
                 epCommitRequests[endpoint] = {
                     'path': get_endpoint_url(cluster, endpoint, db, table, action, commit=True),
@@ -948,7 +952,7 @@ def run(server):
                 # set this nodes' jobs table inSync=true
                 updateWhere = {'set': {'inSync': True}, 'where': {'uuid': nodeId, 'tableName': 'jobs'}}
                 post_request_tables(cluster, 'state', 'update', updateWhere)
-                newTableEndpoints = get_table_endpoints(cluster, table)
+                newTableEndpoints = get_table_endpoints(cluster, table, caller='pyql_table_select_endpoints')
                 endPointList = pyql_get_inquorum_insync_endpoints(quorum, newTableEndpoints)
         return endPointList
             
@@ -968,7 +972,7 @@ def run(server):
                 "message": f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum",
                 "quorum": quorum}, 500
 
-        tableEndpoints = get_table_endpoints(cluster, table)
+        tableEndpoints = get_table_endpoints(cluster, table, caller='table_select')
         if cluster == pyql:
             endPointList = pyql_table_select_endpoints(cluster, table, quorum, tableEndpoints)
         else:
@@ -1025,7 +1029,7 @@ def run(server):
     @server.is_authenticated('cluster')
     @cluster_name_to_uuid
     def cluster_table_config(cluster, table):
-        endpoints = get_table_endpoints(cluster, table)['inSync']
+        endpoints = get_table_endpoints(cluster, table, caller='cluster_table_config')['inSync']
         inSyncEndpoints = [ep for ep in endpoints]
         if len(inSyncEndpoints) == 0:
             return {"message": f"no inSync endpoints to pull config in cluster {cluster} table {table}"}, 400
@@ -1114,7 +1118,7 @@ def run(server):
             tb = get_table_info(
                 cluster, 
                 table,
-                get_table_endpoints(cluster, table)
+                get_table_endpoints(cluster, table, caller='cluster_table_state')
                 )
             endpoints = {endpoint: tb['endpoints'][f'{endpoint}{table}'] for endpoint in config['endpoints']}
             return endpoints, 200
@@ -1127,7 +1131,7 @@ def run(server):
     def cluster_table_sync(cluster, table, action):
         if action == 'status':
             if request.method == 'GET':
-                endpoints = get_table_endpoints(cluster, table)
+                endpoints = get_table_endpoints(cluster, table, caller='cluster_table_sync')
                 tb = get_table_info(cluster, table, endpoints)
                 return tb, 200
 
@@ -1451,7 +1455,7 @@ def run(server):
 
         queue = f'{jobtype}s' if not jobtype == 'cron' else jobtype
 
-        jobEndpoints = get_table_endpoints(pyql, 'jobs')
+        jobEndpoints = get_table_endpoints(pyql, 'jobs', caller='cluster_jobqueue')
         if not len(jobEndpoints['inSync'].keys()) > 0:
             # trigger tablesync check - no inSync job endpoints available for
             cluster_tablesync_mgr('check')
@@ -1633,11 +1637,11 @@ def run(server):
             for table in tables:
                 cluster = table['cluster']
                 tableName = table['name']
-                endpoints = get_table_endpoints(cluster,tableName)
+                endpoints = get_table_endpoints(cluster,tableName, caller='tablesync_mgr')
                 if not len(endpoints['inSync'].keys()) > 0:
                     log.warning(f"cluster_tablesync_mgr - detected all endpoints for {cluster} {tableName} are outOfSync")
                     table_sync_recovery(cluster, tableName)
-                    endpoints = get_table_endpoints(cluster,tableName)
+                    endpoints = get_table_endpoints(cluster,tableName, caller='tablesync_mgr')
                 endpoints = endpoints['outOfSync']
                 for endpoint in endpoints:
                     endpointPath = endpoints[endpoint]['path']
