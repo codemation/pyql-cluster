@@ -28,5 +28,6 @@ def run(server):
     logger.addHandler(f_handler)
     if server.PYQL_DEBUG == True:    
         logger.addHandler(d_handler)
+        logger.setLevel(logging.DEBUG)
     
     server.log = logger
