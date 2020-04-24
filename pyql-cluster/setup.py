@@ -1,9 +1,24 @@
 # pyql-rest
 def run(server):
+    import os
+    ## LOAD ENV Vars & Default values
+    environVars = [
+            {'PYQL_DEBUG': False}
+        ]
+    for env in environVars:
+        for e, v in env.items(): 
+            if e in os.environ:
+                t = type(v)
+                try:
+                    setattr(server, e, t(os.environ[e]))
+                except Exception as e:
+                    print(f"unable to set {e} from env vars, not a {t} capable value {os.environ[e]}, using default value {v}")
+                    setattr(server, e, v)
+            else:
+                setattr(server, e, v)
     try:
         server.data = dict()
         server.jobs = []
-        import os
         cmddirPath = None
         realPath = None
         with open('./.cmddir', 'r') as cmddir:

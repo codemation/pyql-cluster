@@ -17,6 +17,8 @@ def run(server):
                     dbName = os.getenv('DB_NAME').rstrip()
                     config['database'] = f'{projectPath}dbs/database/{dbName}'
         config['logger'] = log
+        if server.PYQL_DEBUG == True:
+            config['debug'] = True
         #USE ENV PATH for PYQL library or /pyql/
         #sys.path.append('/pyql/' if os.getenv('PYQL_PATH') == None else os.getenv('PYQL_PATH'))
         #try:

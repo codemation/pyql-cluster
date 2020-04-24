@@ -1,6 +1,6 @@
 def run(server):
 
-    import logging
+    import logging, os
 
     # Create a custom logger
     logger = logging.getLogger('pyql-cluster')
@@ -26,6 +26,7 @@ def run(server):
     logger.addHandler(i_handler)
     logger.addHandler(c_handler)
     logger.addHandler(f_handler)
-    logger.addHandler(d_handler)
+    if server.PYQL_DEBUG == True:    
+        logger.addHandler(d_handler)
     
     server.log = logger
