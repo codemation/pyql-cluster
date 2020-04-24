@@ -604,7 +604,7 @@ def run(server):
 
     @server.route('/cluster/<cluster>/table/<table>/endpoints')
     @server.is_authenticated('pyql')
-    def cluster_get_table_endpoints(cluster, table, caller=):
+    def cluster_get_table_endpoints(cluster, table):
         clusterName = request.__dict__.get('clusterName')
         return get_table_endpoints(cluster, table, clusterName, caller='cluster_get_table_endpoints')
 
