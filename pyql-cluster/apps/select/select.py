@@ -9,7 +9,7 @@ def run(server):
     def select_func(database,table, params=None):
         message, rc = server.check_db_table_exist(database,table)
         if rc == 200:
-            if request.method == 'GET':
+            if request.method == 'GET' and params == None:
                 response = server.data[database].tables[table].select('*')
                 return {"status": 200, "data": response}, 200
             else:
