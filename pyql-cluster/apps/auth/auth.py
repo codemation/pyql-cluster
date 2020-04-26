@@ -316,11 +316,12 @@ def run(server):
     def cluster_service_join_token():
         serviceId, rc = server.cluster_table_select(
             server.env['PYQL_UUID'],
-            'auth', {
+            'auth', 
+            data={
                 'select': '*', 
                 'where': {'parent': request.auth, 'type': 'service'}
                 },
-            'POST'
+            method='POST'
         )
         log.warning(f"join token creating for - {serviceId}")
         if len(serviceId['data']) > 0:
