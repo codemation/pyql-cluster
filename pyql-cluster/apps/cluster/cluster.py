@@ -1002,7 +1002,7 @@ def run(server):
                 else:
                     data = request.get_json() if data == None else data
                     if cluster == pyql and endpoint == nodeId:
-                        return server.actions['select']('cluster', table, data)
+                        return {'data': server.actions['select']('cluster', table, data)}, 200
                     r = requests.post(
                         get_endpoint_url(cluster, endpoint, db, table, 'select'),
                         headers=headers, 
@@ -1470,7 +1470,7 @@ def run(server):
             if not jobtype == 'cron':
                 jobSelect['where']['node'] = None
 
-            jobList, rc = table_select(pyql, 'jobs', jobSelect, 'POST')
+            jobList, rc = table_select(pyql, 'jobs', data=jobSelect, method='POST')
             log.warning(f"jobList {jobList} {rc}")
             jobList = jobList['data']
 
@@ -1511,8 +1511,8 @@ def run(server):
             # verify if job was reserved by node and pull config
             jobSelect['where']['node'] = node
             jobSelect['select'] = ['*']
-            jobCheck, rc = table_select(pyql, 'jobs', jobSelect, 'POST')
-            if not len(jobCheck['data']) > 0:
+            jobCheck, rc = table_select(pyql, 'jobs', data=jobSelect, method='POST')
+            if len(jobCheck['data']) == 0:
                 continue
             log.warning(f"cluster_jobqueue - pulled job {jobCheck['data'][0]} for node {node}")
             return jobCheck['data'][0], 200
