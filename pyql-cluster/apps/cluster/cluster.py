@@ -1002,7 +1002,7 @@ def run(server):
                 else:
                     data = request.get_json() if data == None else data
                     if cluster == pyql and endpoint == nodeId:
-                        return {'data': server.actions['select']('cluster', table, data)}, 200
+                        return server.actions['select']('cluster', table, data)
                     r = requests.post(
                         get_endpoint_url(cluster, endpoint, db, table, 'select'),
                         headers=headers, 
@@ -1435,15 +1435,14 @@ def run(server):
                     
         return {"message": f"job manager cleanup completed"}, 200
 
-    @server.route('/cluster/<cluster>/jobqueue/<jobtype>', methods=['POST'])
-    @server.is_authenticated('cluster')
-    @cluster_name_to_uuid
-    def cluster_jobqueue(cluster, jobtype):
+    @server.route('/cluster/jobqueue/<jobtype>', methods=['POST'])
+    @server.is_authenticated('pyql')
+    def cluster_jobqueue(jobtype):
         """
             Used by jobworkers or tablesyncers to pull jobs from clusters job queues
             jobtype = 'job|syncjob|cron'
         """
-        pyql = cluster
+        pyql = server.env['PYQL_UUID']
         node = request.get_json()['node']
         quorumCheck, rc = cluster_quorum()
          # check this node is inQuorum and if worker requesting job is from an inQuorum node
@@ -1698,13 +1697,11 @@ def run(server):
             log.info(f"cluster_tablesync_mgr created {jobs} for outofSync endpoints")
             return {"jobs": jobs}, 200
                     
-    @server.route('/cluster/<cluster>/<jobtype>/add', methods=['POST'])
-    @server.is_authenticated('cluster')
-    @cluster_name_to_uuid
-    def cluster_jobs_add(cluster, jobtype):
-        pyql = cluster
-        return jobs_add(pyql, jobtype)
-    def jobs_add(pyql, jobtype, job=None, **kw):
+    @server.route('/cluster/<jobtype>/add', methods=['POST'])
+    @server.is_authenticated('pyql')
+    def cluster_jobs_add(jobtype):
+        return jobs_add(jobtype)
+    def jobs_add(jobtype, job=None, **kw):
         """
         meant to be used by node workers which will load jobs into cluster job queue
         to avoiding delays from locking during change operations
@@ -1715,6 +1712,7 @@ def run(server):
         cluster_jobs_add('syncjobs', jobconfig, status='WAITING')
 
         """
+        pyql = server.env['PYQL_UUID']
         job = request.get_json() if job == None else job
         log.warning(f"cluster {jobtype} add for job {job} started")
         jobId = f'{uuid.uuid1()}'
@@ -1806,7 +1804,7 @@ def run(server):
                 "job": f"addCronJob{job['job']}",
                 "jobType": 'cluster',
                 "method": "POST",
-                "path": "/cluster/pyql/cron/add",
+                "path": "/cluster/cron/add",
                 "data": job,
             }
             log.warning(f"adding job {job['job']} to internaljobs queue")

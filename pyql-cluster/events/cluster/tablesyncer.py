@@ -41,10 +41,10 @@ def probe(path, method='GET', data=None, timeout=3.0, auth=None, **kw):
         "Authentication": f"Token {token}"}
     if method == 'GET':
         r = requests.get(path, headers=headers,
-                timeout=3.0)
+                timeout=timeout)
     else:
         r = requests.post(path, headers=headers,
-                data=json.dumps(data), timeout=1.0)
+                data=json.dumps(data), timeout=timeout)
     try:
         return r.json(),r.status_code
     except Exception as e:

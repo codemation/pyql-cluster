@@ -70,20 +70,20 @@ def get_and_process_job(path):
                 #Distribute to cluster job queue
                 print(f"adding job {job} to cluster jobs queue")
                 if 'joinCluster' in job['job']: # need to use joinToken
-                    message, rc = probe(f"{clusterSvcName}{job['path']}", job['method'], job['data'], token=job['joinToken'])
+                    message, rc = probe(f"{clusterSvcName}{job['path']}", job['method'], job['data'], token=job['joinToken'], timeout=10)
                 else:
-                    message, rc = probe(f"{clusterSvcName}/cluster/pyql/jobs/add", 'POST', job)
+                    message, rc = probe(f"{clusterSvcName}/cluster/jobs/add", 'POST', job, timeout=10)
                 print(f"finished adding job {job} to cluster jobs queue {message} {rc}")
             elif job['jobType'] == 'node':
                 auth = 'local' if not 'initCluster' in job['job'] else 'cluster'
-                message, rc = probe(f"{nodePath}{job['path']}", job['method'], job['data'], auth=auth)
+                message, rc = probe(f"{nodePath}{job['path']}", job['method'], job['data'], auth=auth, timeout=10)
             elif job['jobType'] == 'tablesync':
                 print(f"adding job {job} to tablesync queue")
-                message, rc = add_job_to_queue(f'/cluster/pyql/syncjobs/add', job)
+                message, rc = add_job_to_queue(f'/cluster/syncjobs/add', job, timeout=10)
             else:
                 message, rc =  f"{job['job']} is missing jobType field", 200
             if not rc == 200:
-                probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST', auth='local')
+                probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST', auth='local', timeout=10)
             else:
                 try:
                     probe(f'{nodePath}/internal/job/{jobId}/finished', 'POST', auth='local')
@@ -91,7 +91,8 @@ def get_and_process_job(path):
                     print(f"{os.environ['HOSTNAME']} worker.py encountered exception finishing job, need to cleanup {jobId} later")
                     probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST', auth='local')
         except Exception as e:
-            print(f"{os.environ['HOSTNAME']} worker.py encountered exception hanlding job {job} - add back to queue")
+            message = f"{os.environ['HOSTNAME']} worker.py encountered exception {repr(e)} hanlding job {job} - add back to queue"
+            print(message)
             probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST', auth='local')
         return message,rc
     return job,rc

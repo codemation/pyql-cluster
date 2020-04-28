@@ -9,7 +9,7 @@ def run(server):
     def select_func(database,table, params=None):
         message, rc = server.check_db_table_exist(database,table)
         if not rc == 200:
-            return {"error": f"received non 200 rec with message {message}, rc {rc} during check_db_table_exist", 500
+            return {"error": f"received non 200 rec with message {message}, rc {rc} during check_db_table_exist"}, 500
         if request.method == 'GET' and params == None:
             response = server.data[database].tables[table].select('*')
         else:
