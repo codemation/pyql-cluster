@@ -12,6 +12,7 @@ logging.basicConfig()
 def log(log):
     time = datetime.datetime.now().isoformat()
     print(f"{time} {os.environ['HOSTNAME']} tablesyncer - {log}")
+    return log
     
 
 
@@ -180,6 +181,7 @@ def sync_table_job(cluster, table, job=None):
         - Worker sets new TB endpoint as inSync=True & unpauses TB
         - SYNC job is completed
     """
+    pyqlSyncExclusions = {'transactions', 'state'}
     pyqlId = env['PYQL_UUID']
     # get table endpoints
     tableEndpoints, rc =  get_table_endpoints(cluster, table)
@@ -229,28 +231,46 @@ def sync_table_job(cluster, table, job=None):
 
         def load_table():
             # Issue POST to /cluster/<cluster>/table/<table>/state/set -> loaded 
-            state = {endpoint: {'state': 'loaded'}}
-            set_table_state(clusterId, table, state)
             # Worker completes initial insertions from select * of TB.
-            if clusterId == pyqlId and table == 'transactions':
+            if clusterId == pyqlId and table in pyqlSyncExclusions:
                 #need to blackout changes to these tables during copy as txn logs not generated
                 message, rc = table_cutover(clusterId, table, 'start')
                 response, rc = table_copy(clusterId, table, inSyncPath, inSyncToken, endpointPath, token)
                 if rc == 500:
-                    #TODO - Handle table not yet existing yet, create table using out of f'{clusterSvcName}/cluster/{cluster}/table/{table}
-                    response, rc = table_sync_recovery(clusterId, table)
-                    return log_exception(job, table, response), 500
-
-                tableEndpoint = f'{endpoint}{table}'
-                setInSync = {tableEndpoint: {'inSync': True, 'state': 'loaded'}}
-                statusResult, rc = sync_status(clusterId, table, 'POST', setInSync)
+                    if 'not able to find an inSync endpoints' in response:
+                        response, rc = table_sync_recovery(clusterId, table)
+                        log_exception(job, table, response)
+                    else:
+                        # Table create failed
+                        log("table create failed")
+                else: 
+                    tableEndpoint = f'{endpoint}{table}'
+                    setInSync = {tableEndpoint: {'inSync': True, 'state': 'loaded'}}
+                    statusResult, rc = sync_status(clusterId, table, 'POST', setInSync)
+                    if table == 'state':
+                        #sync_cluster_table_logs(clusterId, table, uuid, endpointPath, token)
+                        #sync_status(clusterId, table, 'POST', setInSync)
+                        #update state table - which was out of sync - with inSync True
+                        status, rc = probe(
+                            f'{endpointPath}/update', 
+                            'POST', 
+                            {'set': {
+                                'state': 'loaded', 'inSync': True},
+                                'where': {'uuid': endpoint, 'tableName': 'state'}
+                            },
+                            token=token
+                        )
+                        log(f"{job} {table} - #SYNC marking outOfSync endpoint for table state as inSync on the outOfSync, to be in line with other tables - {status} {rc}")
                 message, rc = table_cutover(clusterId, table, 'stop')
-                return
-            response, rc = table_copy(clusterId, table, inSyncPath, inSyncToken, endpointPath, token)
-            if rc == 500:
-                response, rc = table_sync_recovery(clusterId, table)
-                return log_exception(job, table, response), 500
-
+            else: 
+                response, rc = table_copy(clusterId, table, inSyncPath, inSyncToken, endpointPath, token)
+                if rc == 500 and 'not able to find an inSync endpoints' in response:
+                    response, rc = table_sync_recovery(clusterId, table)
+                    log_exception(job, table, response)
+                else:
+                    # Table create failed
+                    log("table create failed")
+            
         if tableState == 'new':
             log(f"{job} {table} - #SYNC table {table} never loaded, needs to be initialize")
             load_table()
@@ -266,7 +286,7 @@ def sync_table_job(cluster, table, job=None):
         log(f"{job} {table} - #SYNC Worker starts to pull changes from change logs")
         sync_cluster_table_logs(clusterId, table, uuid, endpointPath, token)
 
-        if clusterId == pyqlId and table == 'transactions':
+        if clusterId == pyqlId and table in pyqlSyncExclusions:
             pass
         else:
             log(f"{job} {table} - #SYNC Worker completes pull of change logs & issues a cutover by pausing table.")
@@ -275,36 +295,16 @@ def sync_table_job(cluster, table, job=None):
             try:
                 log(f"{job} {table} - #SYNC Worker checks for any new change logs that were commited just before the table was paused, and also syncs these")
                 sync_cluster_table_logs(clusterId, table, uuid, endpointPath, token)
-                log(f"{job} {table} - #SYNC Worker sets new TB endpoint as inSync=True")
-                setInSync = {tableEndpoint: {'inSync': True, 'state': 'loaded'}}
-                statusResult, rc = sync_status(clusterId, table, 'POST', setInSync)
-                log(f"{job} {table} - #SYNC set {table} {setInSync} result: {statusResult} {rc}")
-                log(f"{job} {table} - #SYNC marking outOfSync endpoint {tableEndpoint} in {cluster} as {setInSync}")
-                log(f"{job} {table} - #SYNC cluster id {clusterId} pyqlId {pyqlId}")
-                if clusterId == pyqlId and table == 'state':
-                    #sync_cluster_table_logs(clusterId, table, uuid, endpointPath, token)
-                    #sync_status(clusterId, table, 'POST', setInSync)
-                    #update state table - which was out of sync - with inSync True
-                    status, rc = probe(
-                        f'{endpointPath}/update', 
-                        'POST', 
-                        {'set': {
-                            'state': 'loaded', 'inSync': True},
-                            'where': {'uuid': endpoint, 'tableName': 'state'}
-                        },
-                        token=token
-                    )
-                    log(f"{job} {table} - #SYNC marking outOfSync endpoint for table state as inSync on the outOfSync, to be in line with other tables - {status} {rc}")
-
             except Exception as e:
                 log_exception(job, table, e)
                 log(f"{job} {table} - #SYNC Worker rolling back pause / inSync")
-                setInSync = {tableEndpoint: {'inSync': False, 'state': 'loaded'}}
-                statusResult, rc = sync_status(clusterId, table, 'POST', setInSync)
                 #UnPause
                 message, rc = table_cutover(clusterId, table, 'stop')
                 return log_exception(job, table, e), 500
-
+            log(f"{job} {table} - #SYNC Worker sets new TB endpoint as inSync=True")
+            setInSync = {tableEndpoint: {'inSync': True, 'state': 'loaded'}}
+            statusResult, rc = sync_status(clusterId, table, 'POST', setInSync)
+            log(f"{job} {table} - #SYNC marking outOfSync endpoint {tableEndpoint} in {cluster} {table} -> {setInSync} result: {statusResult} {rc}")
             # Un-Pause
             log(f"{job} {table} - #SYNC Worker -  completes cutover by un-pausing table")
             message, rc = table_cutover(clusterId, table, 'stop')

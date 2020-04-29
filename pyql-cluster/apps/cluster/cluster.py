@@ -1567,55 +1567,61 @@ def run(server):
             run when all table-endpoints are inSync=False
         """
         #need to check quorum as all endpoints are currently inSync = False for table
-        quorumCheck, rc = cluster_quorum()
-        if quorumCheck['quorum']['inQuorum'] == True:
-            # Need to check all endpoints for the most up-to-date loaded table
-            select = {'select': ['path', 'dbname', 'uuid'], 'where': {'cluster': cluster}}
-            clusterEndpoints = server.clusters.endpoints.select(
-                'path', 'dbname', 'uuid', 
-                where={'cluster': cluster}
+        pyql = server.env['PYQL_UUID']
+        if cluster == pyql:
+            quorumCheck, rc = cluster_quorum()
+            if not quorumCheck['quorum']['inQuorum'] == True:
+                error = f"unable to perform table_sync_recovery while outOfQuorum - quorum {quorumCheck}"
+                log.error(error)
+                return {"error": error}, 500
+
+        # Need to check all endpoints for the most up-to-date loaded table
+        select = {'select': ['path', 'dbname', 'uuid'], 'where': {'cluster': cluster}}
+        clusterEndpoints = server.clusters.endpoints.select(
+            'path', 'dbname', 'uuid', 
+            where={'cluster': cluster}
+        )
+        latest = {'endpoint': None, 'lastModTime': 0.0}
+        log.warning(f"table_sync_recovery - cluster {cluster} endpoints {clusterEndpoints}")
+        findLatest = {'select': ['lastModTime'], 'where': {'tableName': table}}
+        for endpoint in clusterEndpoints:
+            if cluster == pyql and not endpoint['uuid'] in quorumCheck['quorum']['nodes']['nodes']:
+                log.warning(f"table_sync_recovery - endpoint {endpoint} is not in quorum, so assumed as dead")
+                continue
+            dbname = endpoint['dbname'] if cluster == pyql else 'pyql'
+            pyqlTbCheck, rc = probe(
+                f"http://{endpoint['path']}/db/{dbname}/table/pyql/select",
+                method='POST',
+                data=findLatest,
+                timeout=10.0
             )
-            latest = {'endpoint': None, 'lastModTime': 0.0}
-            log.warning(f"table_sync_recovery - cluster {cluster} endpoints {clusterEndpoints}")
-            findLatest = {'select': ['lastModTime'], 'where': {'tableName': table}}
+            print(f"table_sync_recovery - checking lastModTime on cluster {cluster} endpoint {endpoint}")
+            if pyqlTbCheck['data'][0]['lastModTime'] > latest['lastModTime']:
+                latest['endpoint'] = endpoint['uuid']
+                latest['lastModTime'] = pyqlTbCheck['data'][0]['lastModTime']
+        print(f"table_sync_recovery latest endpoint is {latest['endpoint']}")
+        updateSetInSync = {
+            'set': {'inSync': True}, 
+            'where': {
+                'name': f"{latest['endpoint']}{table}"
+                }
+            }
+        if cluster == pyql and table == 'state':
+            #special case - cannot update inSync True via clusterSvcName - still no inSync endpoints
             for endpoint in clusterEndpoints:
-                # TODO - URGENT FIX - this logic will not work if cluster is not pyql
                 if not endpoint['uuid'] in quorumCheck['quorum']['nodes']['nodes']:
                     log.warning(f"table_sync_recovery - endpoint {endpoint} is not in quorum, so assumed as dead")
                     continue
-                pyqlTbCheck, rc = probe(
-                    f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/pyql/select",
+                stateUpdate, rc = probe(
+                    f"http://{endpoint['path']}/db/cluster/table/state/update",
                     'POST',
-                    findLatest,
+                    updateSetInSync,
                     timeout=2.0
                 )
-                print(f"table_sync_recovery - checking lastModTime on cluster {cluster} endpoint {endpoint}")
-                if pyqlTbCheck['data'][0]['lastModTime'] > latest['lastModTime']:
-                    latest['endpoint'] = endpoint['uuid']
-                    latest['lastModTime'] = pyqlTbCheck['data'][0]['lastModTime']
-            print(f"table_sync_recovery latest endpoint is {latest['endpoint']}")
-            updateSetInSync = {
-                'set': {'inSync': True}, 
-                'where': {
-                    'name': f"{latest['endpoint']}{table}"
-                    }
-                }
-            if cluster == pyql and table == 'state':
-                #special case - cannot update inSync True via clusterSvcName - still no inSync endpoints
-                for endpoint in clusterEndpoints:
-                    if not endpoint['uuid'] in quorumCheck['quorum']['nodes']['nodes']:
-                        log.warning(f"table_sync_recovery - endpoint {endpoint} is not in quorum, so assumed as dead")
-                        continue
-                    stateUpdate, rc = probe(
-                        f"http://{endpoint['path']}/db/cluster/table/state/update",
-                        'POST',
-                        updateSetInSync,
-                        timeout=2.0
-                    )
-            else:
-                cluster_table_update(pyql, 'state', updateSetInSync)
-            log.warning(f"table_sync_recovery completed selecting an endpoint as inSync -  {latest['endpoint']} - need to requeue job and resync remaining nodes")
-            return {"message": "table_sync_recovery completed"}, 200
+        else:
+            cluster_table_update(pyql, 'state', updateSetInSync)
+        log.warning(f"table_sync_recovery completed selecting an endpoint as inSync -  {latest['endpoint']} - need to requeue job and resync remaining nodes")
+        return {"message": "table_sync_recovery completed"}, 200
 
     @server.route('/cluster/pyql/tablesync/<action>', methods=['POST'])
     @server.is_authenticated('pyql')
