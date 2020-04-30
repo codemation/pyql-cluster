@@ -1855,7 +1855,7 @@ def run(server):
                                 },
                                 token=token
                             )
-                    r, rc = table_cutover(clusterId, table, 'stop')
+                    r, rc = table_pause(clusterId, table, 'stop')
                     track(f'PYQL - end of cutover, resuming table result: {r} rc: {rc}')
                 else: 
                     r, rc = table_copy(clusterId, table, inSyncPath, inSyncToken, endpointPath, token)
