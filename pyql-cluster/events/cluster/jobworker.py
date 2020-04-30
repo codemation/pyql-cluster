@@ -38,7 +38,7 @@ def probe(path, method='GET', data=None, timeout=3.0, auth=None):
 def set_job_status(jobId, jobtype, status, **kwargs):
     # Need to mark job finished/queued - # Using - /cluster/<jobtype>/<uuid>/<status>
     return probe(
-        f"{clusterSvcName}/cluster/pyql/{jobtype}/{jobId}/{status}",
+        f"{clusterSvcName}/cluster/job/{jobtype}/{jobId}/{status}",
         'POST',
         kwargs)
 def log(log):
