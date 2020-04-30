@@ -30,7 +30,7 @@ def set_db_env(path):
     pyqlId = env['PYQL_UUID']
 
 
-def probe(path, method='GET', data=None, timeout=3.0, auth=None, **kw):
+def probe(path, method='GET', data=None, timeout=60.0, auth=None, **kw):
     path = f'{path}'
     if not 'token' in kw:
         auth = 'PYQL_CLUSTER_SERVICE_TOKEN' if not auth == 'local' else 'PYQL_LOCAL_SERVICE_TOKEN'
@@ -54,7 +54,7 @@ def probe(path, method='GET', data=None, timeout=3.0, auth=None, **kw):
 def set_job_status(jobId, status, **kwargs):
     # Using - /cluster/<jobtype>/<uuid>/<status>
     return probe(
-        f"{clusterSvcName}/cluster/pyql/syncjob/{jobId}/{status}",
+        f"{clusterSvcName}/cluster/job/syncjob/{jobId}/{status}",
         'POST',
         kwargs, 
         auth='cluster'
@@ -180,6 +180,13 @@ def sync_table_job(cluster, table, job=None):
         - Worker checks for any new change logs that were commited just before the table was paused, and also syncs these.
         - Worker sets new TB endpoint as inSync=True & unpauses TB
         - SYNC job is completed
+    """
+    r, rc = probe(
+        f'{clusterSvcName}/cluster/{cluster}/table/{table}/sync',
+        method='POST',
+        data={'job': job}
+        )
+    return r, rc
     """
     pyqlSyncExclusions = {'transactions', 'state'}
     pyqlId = env['PYQL_UUID']
@@ -312,6 +319,7 @@ def sync_table_job(cluster, table, job=None):
         message = f'{job} {table} - #SYNC finished syncing {endpoint[0]} for table {table} in cluster {cluster}'
         log(message)
     return {"message": message}, 200
+    """
     
 def get_and_run_job(path):
     job, rc = probe(path,'POST', {'node': nodeId}, timeout=30.0, auth='cluster') # TODO - Parameterize timeout
