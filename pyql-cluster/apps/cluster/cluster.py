@@ -1881,10 +1881,9 @@ def run(server):
                         if tryCount <= 2:
                             track(f"Encountered exception trying to to pull tablelogs, retry # {tryCount}")
                             continue
-                        break
-                if not rc == 200:
-                    track(f"error when pulling logs - {logsToSync} {rc}")
-                    return
+                        error = track(f"error when pulling logs")
+                        log.exception(error)
+                        return {"error": error}, 500
                 commitedLogs = []
                 track(f"logs to process - count {len(logsToSync)}")
                 txns = sorted(logsToSync['data'], key=lambda txn: txn['timestamp'])
