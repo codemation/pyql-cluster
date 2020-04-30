@@ -1116,7 +1116,7 @@ def run(server):
         """
         pyql = server.env['PYQL_UUID']
         setConfig = request.get_json() if config == None else config
-        validInputs = ['inSync', 'loaded']
+        validInputs = ['inSync', 'state']
         for cfg in setConfig:
             if not cfg in validInputs:
                 return {"error": f"invalid input {cfg}, supported config inputs {validInputs}"}, 400
