@@ -1919,7 +1919,7 @@ def run(server):
             track("starting to sync from change logs")
             sync_cluster_table_logs()
 
-            if clusterId == pyqlId and table in pyqlSyncExclusions:
+            if clusterId == pyql and table in pyqlSyncExclusions:
                 pass
             else:
                 track("completed initial pull of change logs & starting a cutover by pausing table")
