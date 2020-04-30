@@ -1187,36 +1187,35 @@ def run(server):
         requires cluster uuid for cluster
         """
         pyql = server.env['PYQL_UUID']
-        if request.method == 'GET' or 'GET' in kw:
-            clusterTableEndpointTxns = {
-                'select': None,
-                'where': {
-                    'endpoint': endpoint,
-                    'cluster': cluster,
-                    'tableName': table
-                    }
-            }
-            if action == 'count':
-                clusterTableEndpointTxns['select'] = ['uuid']
+        clusterTableEndpointTxns = {
+            'select': None,
+            'where': {
+                'endpoint': endpoint,
+                'cluster': cluster,
+                'tableName': table
+                }
+        }
+        if action == 'count':
+            clusterTableEndpointTxns['select'] = ['uuid']
 
-            if action == 'getAll':
-                clusterTableEndpointTxns['select'] = ['*']
-            response, rc = table_select(
-                pyql, 
-                'transactions',
-                clusterTableEndpointTxns,
-                'POST'
-                )
-            if not rc == 200:
-                log.error(f"get_cluster_table_endpoint_logs GET - non 200 rc encountered {response} {rc}")
-                return response, rc
-            if action == 'count':
-                return {"availableTxns": len(response['data'])}, rc
-            elif action == 'getAll':
-                #log.info(f"#get_cluster_table_endpoint_logs getAll {response}")
-                return response, rc
-            else:
-                return {"message": f"get_cluster_table_endpoint_logs -invalid action provided"}, 400
+        if action == 'getAll':
+            clusterTableEndpointTxns['select'] = ['*']
+        response, rc = table_select(
+            pyql, 
+            'transactions',
+            clusterTableEndpointTxns,
+            'POST'
+            )
+        if not rc == 200:
+            log.error(f"get_cluster_table_endpoint_logs GET - non 200 rc encountered {response} {rc}")
+            return response, rc
+        if action == 'count':
+            return {"availableTxns": len(response['data'])}, rc
+        elif action == 'getAll':
+            #log.info(f"#get_cluster_table_endpoint_logs getAll {response}")
+            return response, rc
+        else:
+            return {"message": f"get_cluster_table_endpoint_logs -invalid action provided"}, 400
     def commit_table_endpoint_logs(cluster, table, endpoint, txns=None):
         """
             expects input 
