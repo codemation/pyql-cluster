@@ -1427,8 +1427,8 @@ def run(server):
                 log.warning(f"completed auth setup for new pyql endpoint: result {result} {rc}")
             return {"message": f"join cluster {clusterName} for endpoint {config['name']} completed successfully"}, 200
     
-    def re_queue_job(pyql, job):
-        job_update(pyql, job['type'], job['id'],'queued', {"message": "job was requeued"})
+    def re_queue_job(job):
+        job_update(job['type'], job['id'],'queued', {"message": "job was requeued"})
 
     @server.route('/cluster/pyql/jobmgr/cleanup', methods=['POST'])
     @server.is_authenticated('pyql')
@@ -1443,7 +1443,7 @@ def run(server):
                 # Cron Jobs 
                 if time.time() - float(job['next_run_time']) > 240.0:
                     if not job['node'] == None:
-                        re_queue_job(pyql, job)
+                        re_queue_job(job)
                         continue
                     else:
                         log.error(f"job {job['id']} next_run_time is set but stuck for an un-known reason")
@@ -1452,11 +1452,11 @@ def run(server):
                 if timeRunning > 240.0:
                     # job has been running for more than 4 minutes
                     log.warning(f"job {job['id']} has been {job['status']} for more than {timeRunning} seconds - requeuing")
-                    re_queue_job(pyql, job)
+                    re_queue_job(job)
                 if job['status'] == 'queued':
                     if timeRunning > 30.0:
                         log.warning(f"job {job['id']} has been queued for more {timeRunning} seconds - requeuing")
-                        re_queue_job(pyql, job)
+                        re_queue_job(job)
             else:
                 if job['status'] == 'queued':
                     # add start_time to check if job is stuck
@@ -1475,7 +1475,7 @@ def run(server):
                             break
                 if waitingOn == None:
                     log.warning(f"Job {job['id']} was waiting on another job which did not correctly queue, queuing now.")
-                    re_queue_job(pyql, job)
+                    re_queue_job(job)
                     
         return {"message": f"job manager cleanup completed"}, 200
 
@@ -1525,7 +1525,7 @@ def run(server):
                     if not job['node'] == None:
                         if time.time() - float(job['next_run_time']) > 120.0:
                             log.error(f"job # {job['id']} may be stuck / inconsistent, updating to requeue")
-                            re_queue_job(pyql, job)
+                            re_queue_job(job)
                             #jobUpdate = {'set': {'node': None}, 'where': {'id': job['id']}}
                             #post_request_tables(pyql, 'jobs', 'update', jobUpdate)
 
