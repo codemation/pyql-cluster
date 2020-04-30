@@ -1221,6 +1221,7 @@ def run(server):
             expects input 
             {'txns': ['uuid1', 'uuid2', 'uuid3']}
         """
+        pyql = server.env['PYQL_UUID']
         # get list of commited txns
         commitedTxns = request.get_json() if txns == None else txns
         for txn in commitedTxns['txns']:
