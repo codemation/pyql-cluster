@@ -1623,7 +1623,7 @@ def run(server):
         # Need to check all endpoints for the most up-to-date loaded table
         select = {'select': ['path', 'dbname', 'uuid'], 'where': {'cluster': cluster}}
         clusterEndpoints = server.clusters.endpoints.select(
-            'path', 'dbname', 'uuid', 
+            'path', 'dbname', 'uuid', 'token',
             where={'cluster': cluster}
         )
         latest = {'endpoint': None, 'lastModTime': 0.0}
@@ -1637,6 +1637,7 @@ def run(server):
             pyqlTbCheck, rc = probe(
                 f"http://{endpoint['path']}/db/{dbname}/table/pyql/select",
                 method='POST',
+                token=endpoint['token'],
                 data=findLatest,
                 timeout=10.0
             )
@@ -1859,6 +1860,7 @@ def run(server):
                     track(f'PYQL - end of cutover, resuming table result: {r} rc: {rc}')
                 else: 
                     r, rc = table_copy(clusterId, table, inSyncPath, inSyncToken, endpointPath, token)
+                    track(f"table_copy results: {r} {rc}")
                     if rc == 500:
                         if 'not able to find an inSync endpoints' in r:
                             track("table_copy could not able to find an inSync endpoints, triggering table_sync_recovery")
