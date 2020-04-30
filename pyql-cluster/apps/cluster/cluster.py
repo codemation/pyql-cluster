@@ -1910,7 +1910,7 @@ def run(server):
             else:
                 # Check for un-commited logs - otherwise full resync needs to occur.
                 track("table already loaded, checking for change logs")
-                count, rc = check_for_table_logs(clusterId, table, uuid)
+                count, rc = get_table_endpoint_logs(clusterId, table, uuid, 'count')
                 if rc == 200:
                     if count['availableTxns'] == 0:
                         track("no change logs found for table, need to reload table - drop / load")
