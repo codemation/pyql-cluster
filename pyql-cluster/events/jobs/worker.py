@@ -79,7 +79,7 @@ def get_and_process_job(path):
                 message, rc = probe(f"{nodePath}{job['path']}", job['method'], job['data'], auth=auth, timeout=10)
             elif job['jobType'] == 'tablesync':
                 print(f"adding job {job} to tablesync queue")
-                message, rc = add_job_to_queue(f'/cluster/syncjobs/add', job, timeout=10)
+                message, rc = add_job_to_queue(f'/cluster/syncjobs/add', job)
             else:
                 message, rc =  f"{job['job']} is missing jobType field", 200
             if not rc == 200:

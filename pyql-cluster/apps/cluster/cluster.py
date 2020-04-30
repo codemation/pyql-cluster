@@ -1743,7 +1743,7 @@ def run(server):
                     wait_on_jobs(pyql, 0, jobsToRunOrdered)
                 else:
                     for job in jobs[cluster]:
-                        server.internal_job_add(job)
+                        jobs_add('syncjobs', job)
             log.info(f"cluster_tablesync_mgr created {jobs} for outofSync endpoints")
             return {"jobs": jobs}, 200
     
