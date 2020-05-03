@@ -1169,6 +1169,7 @@ def run(server):
         return table_pause(cluster, table, pause)
     def table_pause(cluster, table, pause):
         pyql = server.env['PYQL_UUID']
+        pause = True if pause == 'start' else False
         pauseSet = {
             'set': {'isPaused': pause},
             'where': {'cluster': cluster, 'name': table}
