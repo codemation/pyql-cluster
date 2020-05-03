@@ -3,7 +3,7 @@ def run(server):
     import os
     ## LOAD ENV Vars & Default values
     environVars = [
-            {'PYQL_DEBUG': False}
+            {'PYQL_DEBUG': True}
         ]
     for env in environVars:
         for e, v in env.items(): 

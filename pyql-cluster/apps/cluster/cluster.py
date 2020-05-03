@@ -94,8 +94,7 @@ def run(server):
         if clusterAllowed == None:
             env = kwargs
             warning = f"user {userId} access to cluster with name {clusterName}, no cluster was found which user has access rights or none exists - env {env}"
-            log.warning(warning)
-            return {"warning": warning}, 404
+            return {"warning": log.warning(warning)}, 404
         return str(clusterAllowed), 200
     server.get_clusterid_by_name_authorized = get_clusterid_by_name_authorized
 
@@ -174,7 +173,7 @@ def run(server):
                 r = requests.post(url, headers=headers, data=json.dumps(data), timeout=timeout)
         except Exception as e:
             error = f"tablesyncer - Encountered exception when probing {path} - {repr(e)}"
-            return error, 500
+            return {"error": log.error(error)}, 500
         try:
             return r.json(),r.status_code
         except Exception:
@@ -363,8 +362,7 @@ def run(server):
         quorumNodes = {q['node']: q for q in quorum}
         if not len(pyqlEndpoints) > 0:
             warning = f"{os.environ['HOSTNAME']} - pyql node is still syncing endpoints - {pyqlEndpoints} - quorum {quorum}"
-            log.warning(warning)
-            return {"message": warning}, 200
+            return {"message": log.warning(warning)}, 200
         epRequests = {}
         epList = []
         for endpoint in pyqlEndpoints:
@@ -443,8 +441,8 @@ def run(server):
         try:
             epResults = asyncrequest.async_request(epRequests)
         except Exception as e:
-            log.exception("Excepton found during cluster_quorum_update, failed to update")
-            return {"error": f'{repr(e)}'}, 500
+            error = log.exception(f"Excepton found during cluster_quorum_update, failed to update - {repr(e)}")
+            return {"error": error}, 500
         # Check results
         inQuorumNodes = []
         for endpoint in epResults:
@@ -468,6 +466,7 @@ def run(server):
             cluster_quorum_update()
         return {'quorum': server.clusters.quorum.select('*', where={'node': nodeId})[0]}, 200
 
+    """TODO - Delete after testing in K8s env
     def cluster_quorum_old(check=False, get=False):
         pyql = server.env['PYQL_UUID']
         if request.method == 'POST' or check == True:
@@ -475,8 +474,7 @@ def run(server):
             pyqlEndpoints = server.clusters.endpoints.select('*', where={'cluster': pyql})
             if len(pyqlEndpoints) == 0:
                 warning = f"{os.environ['HOSTNAME']} - pyql node is still syncing"
-                log.warning(warning)
-                return {"message": warning}, 200
+                return {"message": log.warning(warning)}, 200
             epRequests = {}
             for endpoint in pyqlEndpoints:
                 epRequests[endpoint['uuid']] = {
@@ -544,8 +542,7 @@ def run(server):
                 quorumSet['nodes'] = {'nodes': inQuorum}
             if len(quorumSet) > 0:
                 quorumSet['lastUpdateTime'] = float(time.time())
-                server.clusters.quorum.update(
-                    **quorumSet, where={'node': nodeId})
+                server.clusters.quorum.update(**quorumSet, where={'node': nodeId})
             if 'PYQL_TYPE' in os.environ and os.environ['PYQL_TYPE'] == 'K8S':
                 if isNodeInQuorum:
                     # remove outOfQuorum endpoint from cluster - cannot always guarantee the same DB will be available / re-join
@@ -586,6 +583,7 @@ def run(server):
                 log.error(f"exception occured during cluster_quorum for {nodeId} {quorum} ")
                 quorum = []
             return {'message':'OK', 'quorum': quorum}, 200
+    """
    
     @server.route('/cluster/<cluster>/table/<table>/path')
     @server.is_authenticated('pyql')
@@ -767,9 +765,8 @@ def run(server):
             if requestData == None:
                 requestData = request.get_json()
         except Exception as e:
-            message = str(repr(e)) + f"missing input for {cluster} {table} {action}"
-            log.exception(message)
-            return {"message": message}, 400
+            message = f"missing input for {cluster} {table} {action} - {repr(e)}"
+            return {"message": log.exception(message)}, 400
         failTrack = []
         tb = get_table_info(cluster, table, tableEndpoints)
         def process_request():
@@ -836,8 +833,7 @@ def run(server):
             # All endpoints failed request - 
             elif len(failTrack) == len(tableEndpoints['inSync']):
                 error=f"All endpoints failed request {failTrack} using {requestData} thus will not update logs" 
-                log.error(error)
-                return {"message": error, "results": asyncResults}, 400
+                return {"message": log.error(error), "results": asyncResults}, 400
             else:
                 # No InSync failures
                 pass
@@ -891,7 +887,7 @@ def run(server):
                     success.add(endpoint)
             if len(success) == 0:
                 return {
-                    "message": f"failed to commit {requestData} to inSync {table} endpoints", 
+                    "message": log.error(f"failed to commit {requestData} to inSync {table} endpoints"), 
                     "details": asyncResults}, 400
             if len(fail) > 0:
                 for endpoint in fail:
@@ -909,7 +905,6 @@ def run(server):
                 write_change_logs(changeLogs)
                 for failedEndpoint in failTrack:
                     post_request_tables(pyql, 'state', 'update', {'set': {'inSync': False}, 'where': {'name': failedEndpoint}})
-            # need to check if
 
             return {"message": asyncResults}, 200
         if tb['isPaused'] == False:
@@ -926,10 +921,9 @@ def run(server):
             else:
                 #TODO - create a counter stat to track how often this occurs
                 error = "table is paused preventing changes, maybe an issue occured during sync cutover, try again later"
-                log.error(error)
-                return {"message": error}, 500
+                return {"message": log.error(error)}, 500
 
-
+    """ TODO - Delete after testing
     def pyql_get_inquorum_insync_endpoints(quorum, tbEndpoints):
         inQuorumInSync = []
         for endpoint in tbEndpoints['inSync']:
@@ -956,8 +950,25 @@ def run(server):
                 newTableEndpoints = get_table_endpoints(cluster, table, caller='pyql_table_select_endpoints')
                 endPointList = pyql_get_inquorum_insync_endpoints(quorum, newTableEndpoints)
         return endPointList
-            
-
+        """
+    def pyql_reset_jobs_table():
+        """
+        this func should run if the cluster is in the following conditions:
+        - Is IN Quorum - at least 2/3 nodes are active
+        - The only inSync i.e 'source of truth' for table is offline / outOfQuorum / path has changed
+        """
+        log.warning(f"pyql_reset_jobs_table starting")
+        pyql = server.env['PYQL_UUID']
+        updateWhere = {'set': {'inSync': False}, 'where': {'tableName': 'jobs', 'cluster': pyql}}
+        post_request_tables(pyql, 'state', 'update', updateWhere)
+        # delete all non-cron jobs in local jobs tb
+        for jType in ['jobs', 'syncjobs']:
+            deleteWhere = {'where': {'type': jType}}
+            server.clusters.jobs.delete(**deleteWhere)
+         # set this nodes' jobs table inSync=true
+        updateWhere = {'set': {'inSync': True}, 'where': {'uuid': nodeId, 'tableName': 'jobs'}}
+        post_request_tables(pyql, 'state', 'update', updateWhere)
+        log.warning(f"pyql_reset_jobs_table finished")
 
     def table_select(cluster, table, data=None, method='GET'):
         pyql = server.env['PYQL_UUID']
@@ -967,18 +978,20 @@ def run(server):
                 request.clusterName = 'pyql'
         """
         quorum, rc = cluster_quorum()
-        print(f'table_select quorum_check {quorum}')
         if not 'quorum' in quorum or quorum['quorum']['inQuorum'] == False:
             return {
-                "message": f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum",
+                "message": log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {quorum}"),
                 "quorum": quorum}, 500
 
-        tableEndpoints = get_table_endpoints(cluster, table, caller='table_select')
+        #tableEndpoints = get_table_endpoints(cluster, table, caller='table_select')
         if cluster == pyql:
-            endPointList = pyql_table_select_endpoints(cluster, table, quorum, tableEndpoints)
+            return endpoint_probe(cluster, table, '/select', data=data, quorum=quorum, method=method)
+            #endPointList = pyql_table_select_endpoints(cluster, table, quorum, tableEndpoints)
         else:
-            endPointList = [endpoint for endpoint in tableEndpoints['inSync']]
+            return endpoint_probe(cluster, table, '/select', data=data,  method=method)
+            #endPointList = [endpoint for endpoint in tableEndpoints['inSync']]
 
+        """TODO - delete after testing
         log.warning(f"table select endPointList {endPointList}")
 
         if not len(endPointList) > 0:
@@ -1024,28 +1037,88 @@ def run(server):
         except Exception as e:
             log.exception("Exception encountered during table_select")
             return {"data": [], "error": repr(e)}, 400
+        """
     server.cluster_table_select = table_select
 
-    @server.route('/cluster/<cluster>/table/<table>', methods=['GET'])
+    def get_random_table_endpoint(cluster, table, quorum=None):
+        endpoints = get_table_endpoints(cluster, table, caller='cluster_table_config')['inSync']
+        inSyncEndpoints = [ep for ep in endpoints]
+        if len(inSyncEndpoints) == 0 and table == 'jobs':
+            pyql_reset_jobs_table()
+            endpoints = get_table_endpoints(cluster, table, caller='cluster_table_config')['inSync']
+            inSyncEndpoints = [ep for ep in endpoints]
+        while len(inSyncEndpoints) > 0:  
+            if len(inSyncEndpoints) > 1:
+                endpointChoice = inSyncEndpoints.pop(randrange(len(inSyncEndpoints)))
+            else:
+                endpointChoice = inSyncEndpoints.pop(0)
+            if not quorum == None:
+                if not endpointChoice in quorum['quorum']['nodes']['nodes']:
+                    log.warning(f"get_random_table_endpoint skipped pyql endpoint {endpointChoice} as not in quorum")
+                    if len(inSyncEndpoints) == 0 and table == 'jobs':
+                        pyql_reset_jobs_table()
+                        endpoints = get_table_endpoints(cluster, table, caller='cluster_table_config')['inSync']
+                        inSyncEndpoints = [ep for ep in endpoints]
+                    continue
+            yield endpoints[endpointChoice]
+        yield None
+    def endpoint_probe(cluster, table, path='', timeout=4.0, quorum=None, **kw):
+        data = None
+        errors = []
+        if request.method in ['POST', 'PUT']:
+            try:
+                data = request.get_json()
+            except Exception as e:
+                return {"error": log.error("expected json input for request")}, 400
+        for endpoint in get_random_table_endpoint(cluster, table, quorum):
+            if endpoint == None:
+                return {"message": f"no inSync endpoints in cluster {cluster} table {table} or all failed - errors {errors}"}, 400
+            try:
+                path = f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/{table}{path}"
+                return probe(
+                    path,
+                    method=request.method if not 'method' in kw else kw['method'],
+                    data=data if not 'data' in kw else kw['data'],
+                    token=endpoint['token'],
+                    timeout=timeout
+                )
+            except Exception as e:
+                errors.append({endpoint: log.exception(f"exception encountered with {endpoint}")})
+    
+    @server.route('/cluster/<cluster>/table/<table>', methods=['GET', 'PUT', 'POST'])
+    @server.is_authenticated('cluster')
+    @cluster_name_to_uuid
+    def cluster_table(cluster, table):
+        if request.method == 'GET':
+            return endpoint_probe(cluster, table)
+        return cluster_table_insert(cluster, table)
+
+    @server.route('/cluster/<cluster>/table/<table>/<key>', methods=['GET', 'POST', 'DELETE'])
+    @server.is_authenticated('cluster')
+    @cluster_name_to_uuid
+    def cluster_table_key(cluster, table, key):
+        if request.method == 'GET':
+            return endpoint_probe(cluster, table, path=f'/{key}')
+        data = None
+        try:
+            data = request.get_json()
+        except Exception as e:
+            return {"error": log.error("expected json input for request")}, 400
+        primary = server.clusters.tables.select(
+            'config', 
+            where={'cluster': cluster, 'name': table})
+        print(primary)
+        primary = primary[0]['config'][table]['primaryKey']
+        if request.method == 'POST':
+            return table_update(cluster, table, {'set': data, 'where': {primary: key}})
+        if request.method == 'DELETE':
+            return table_delete(cluster, table, {'where': {primary: key}})
+
+    @server.route('/cluster/<cluster>/table/<table>/config', methods=['GET'])
     @server.is_authenticated('cluster')
     @cluster_name_to_uuid
     def cluster_table_config(cluster, table):
-        endpoints = get_table_endpoints(cluster, table, caller='cluster_table_config')['inSync']
-        inSyncEndpoints = [ep for ep in endpoints]
-        if len(inSyncEndpoints) == 0:
-            return {"message": f"no inSync endpoints to pull config in cluster {cluster} table {table}"}, 400
-        if len(inSyncEndpoints) > 1:
-            endpointChoice = inSyncEndpoints[randrange(len(inSyncEndpoints))]
-        else:
-            endpointChoice = inSyncEndpoints[0]
-        endpoint = endpoints[endpointChoice]
-        try:
-            return probe(f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/{table}")
-        except Exception as e:
-            error = f"exception encountered when pulling config from {endpoint}"
-            log.exception(error)
-            return {"error": error}, 500
-    
+        return endpoint_probe(cluster, table, path=f'/config')
 
     @server.route('/cluster/<cluster>/table/<table>/select', methods=['GET','POST'])
     @server.is_authenticated('cluster')
@@ -1883,9 +1956,8 @@ def run(server):
                         if tryCount <= 2:
                             track(f"Encountered exception trying to to pull tablelogs, retry # {tryCount}")
                             continue
-                        error = track(f"error when pulling logs")
-                        log.exception(error)
-                        return {"error": error}, 500
+                        error = track(f"error when pulling logs - {repr(e)}")
+                        return {"error": log.exception(error)}, 500
                 commitedLogs = []
                 track(f"logs to process - count {len(logsToSync)}")
                 txns = sorted(logsToSync['data'], key=lambda txn: txn['timestamp'])
@@ -1987,8 +2059,7 @@ def run(server):
             if rc == 200:
                 jobCheck= jobCheck['data']
             else:
-                log.error(f"could not verify if job exists in table")
-                return {"message": f"job {job} not added, could not verify existing name, try again later"}, 400
+                return {"message": f'job {job} not added, {log.error(f"could not verify if job exists in table")}, try again later'}, 400
             if len(jobCheck) > 0:
                 jobStatus = f"job {jobCheck[0]['id'] }with name {job['job']} already exists"
                 log.warning(jobStatus)

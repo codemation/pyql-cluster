@@ -12,10 +12,13 @@ def run(server):
             data = {}
             for k,v in params.items(): 
                 if not k in table.columns:
-                    error = f"invalid key provided {k} not found in table {table}"
+                    error = f"invalid key provided '{k}' not found in table {table.name}, valid keys {[col for col in table.columns]}"
                     log.error(error)
                     return {"error": error}, 400
-            response = table.insert(**params)
+            try:
+                response = table.insert(**params)
+            except Exception as e:
+                return {"error": log.exception(f"error inserting into {database} {table} using {params} - {repr(e)}")}, 400
             return {"status": 200, "message": "items added"}, 200
         else:
             return message, rc

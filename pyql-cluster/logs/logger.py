@@ -30,4 +30,17 @@ def run(server):
         logger.addHandler(d_handler)
         logger.setLevel(logging.DEBUG)
     
-    server.log = logger
+    def log_and_return(log_func):
+        def log(message):
+            log_func(message)
+            return message
+        return log
+    
+    class log_return:
+        def __init__(self, loggr):
+            self.debug = log_and_return(loggr.debug)
+            self.error = log_and_return(loggr.error)
+            self.warning = log_and_return(loggr.warning)
+            self.info = log_and_return(loggr.info)
+            self.exception = log_and_return(loggr.exception)
+    server.log = log_return(logger)
