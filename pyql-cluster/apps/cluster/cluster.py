@@ -1075,9 +1075,9 @@ def run(server):
             if endpoint == None:
                 return {"message": f"no inSync endpoints in cluster {cluster} table {table} or all failed - errors {errors}"}, 400
             try:
-                path = f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/{table}{path}"
+                url = f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/{table}{path}"
                 r, rc = probe(
-                    path,
+                    url,
                     method=request.method if not 'method' in kw else kw['method'],
                     data=data if not 'data' in kw else kw['data'],
                     token=endpoint['token'],
