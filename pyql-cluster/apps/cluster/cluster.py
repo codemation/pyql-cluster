@@ -970,14 +970,15 @@ def run(server):
         post_request_tables(pyql, 'state', 'update', updateWhere)
         log.warning(f"pyql_reset_jobs_table finished")
 
-    def table_select(cluster, table, data=None, method='GET'):
+    def table_select(cluster, table, data=None, method='GET', quorum=None):
         pyql = server.env['PYQL_UUID']
         """
         if not 'clusterName' in request.__dict__:
             if cluster == server.env['PYQL_UUID']:
                 request.clusterName = 'pyql'
         """
-        quorum, rc = cluster_quorum()
+        if quorum == None:
+            quorum, rc = cluster_quorum()
         if not 'quorum' in quorum or quorum['quorum']['inQuorum'] == False:
             return {
                 "message": log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {quorum}"),
@@ -1075,15 +1076,22 @@ def run(server):
                 return {"message": f"no inSync endpoints in cluster {cluster} table {table} or all failed - errors {errors}"}, 400
             try:
                 path = f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/{table}{path}"
-                return probe(
+                r, rc = probe(
                     path,
                     method=request.method if not 'method' in kw else kw['method'],
                     data=data if not 'data' in kw else kw['data'],
                     token=endpoint['token'],
                     timeout=timeout
                 )
+                if not rc == 200:
+                    errors.append({endpoint: log.exception(f"non 200 rc encountered with {endpoint} {rc}")})
+                    # Continue to try other endpoints
+                    continue
+                # Response OK returning values
+                return r,rc
             except Exception as e:
                 errors.append({endpoint: log.exception(f"exception encountered with {endpoint}")})
+                continue
     
     @server.route('/cluster/<cluster>/table/<table>', methods=['GET', 'PUT', 'POST'])
     @server.is_authenticated('cluster')
@@ -1567,15 +1575,15 @@ def run(server):
         print(f"cluster_jobqueue - quorumCheck {quorumCheck}, {rc}")
         if not 'quorum' in quorumCheck or not quorumCheck['quorum']['inQuorum'] == True or not node in quorumCheck['quorum']['nodes']['nodes']:
             warning = f"{node} is not inQuorum with pyql cluster {quorumCheck}, cannot pull job"
-            log.warning(warning)
-            return {"message": warning}, 200
+            return {"message": log.warning(warning)}, 200
 
         queue = f'{jobtype}s' if not jobtype == 'cron' else jobtype
-
+        """
         jobEndpoints = get_table_endpoints(pyql, 'jobs', caller='cluster_jobqueue')
         if not len(jobEndpoints['inSync'].keys()) > 0:
             # trigger tablesync check - no inSync job endpoints available for
             cluster_tablesync_mgr('check')
+        """
         while True:
             jobSelect = {
                 'select': ['id', 'name', 'type', 'next_run_time', 'node'], 
