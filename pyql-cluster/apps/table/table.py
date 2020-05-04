@@ -143,15 +143,15 @@ def run(server):
                     error = f'provided primaryKey {tableConfig[tableName]["primaryKey"]} is not a column with "columns": {colNames}'
                     return {'error': log.error(error)}, 400
                 if 'foreignKeys' in tableConfig[tableName]:
-                    for localKey, forignKey in tableConfig[tableName]['fKeys'].items():
+                    for localKey, forignKey in tableConfig[tableName]['foreignKeys'].items():
                         if not localKey in colNames:
-                            return {"error": log.error(f"localKey {localKey} is not a valid column")}, 400
+                            return {"error": log.error(f"localKey {localKey} is not a valid column for foreignKey {forignKey}")}, 400
                 # All required table configuration has been provided, Creating table.
                 db.create_table(
                     tableName, 
                     columns,
                     tableConfig[tableName]["primaryKey"],
-                    fKeys=tableConfig[tableName]["fKeys"]
+                    fKeys=tableConfig[tableName]["foreignKeys"]
                     )
                 server.db_check(database)
                 return {"message": log.warning(f"""table {tableName} created successfully """)}, 200
