@@ -1578,7 +1578,7 @@ def run(server):
             cluster_tablesync_mgr('check')
         while True:
             jobSelect = {
-                'select': ['id', 'name', 'next_run_time', 'node'], 
+                'select': ['id', 'name', 'type', 'next_run_time', 'node'], 
                 'where':{
                     'status': 'queued',
                     'type': queue
