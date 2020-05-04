@@ -1570,7 +1570,7 @@ def run(server):
         """
         pyql = server.env['PYQL_UUID']
         node = request.get_json()['node']
-        quorumCheck, rc = cluster_quorum()
+        quorumCheck, rc = cluster_quorum(update=True)
          # check this node is inQuorum and if worker requesting job is from an inQuorum node
         print(f"cluster_jobqueue - quorumCheck {quorumCheck}, {rc}")
         if not 'quorum' in quorumCheck or not quorumCheck['quorum']['inQuorum'] == True or not node in quorumCheck['quorum']['nodes']['nodes']:
