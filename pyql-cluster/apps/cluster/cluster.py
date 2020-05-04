@@ -448,6 +448,9 @@ def run(server):
         for endpoint in epResults:
             if epResults[endpoint]['status'] == 200:
                 inQuorumNodes.append(endpoint)
+        # Quorum always assumeds local checking node is alive
+        if not nodeId in inQuorumNodes:
+            inQuorumNodes.append(nodeId)
         inQuorum = False
         if len(inQuorumNodes) / len(endpoints) >= 2/3:
             inQuorum = True
