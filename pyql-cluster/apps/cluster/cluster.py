@@ -1084,13 +1084,13 @@ def run(server):
                     timeout=timeout
                 )
                 if not rc == 200:
-                    errors.append({endpoint: log.exception(f"non 200 rc encountered with {endpoint} {rc}")})
+                    errors.append({endpoint['name']: log.exception(f"non 200 rc encountered with {endpoint} {rc}")})
                     # Continue to try other endpoints
                     continue
                 # Response OK returning values
                 return r,rc
             except Exception as e:
-                errors.append({endpoint: log.exception(f"exception encountered with {endpoint}")})
+                errors.append({endpoint['name']: log.exception(f"exception encountered with {endpoint}")})
                 continue
     
     @server.route('/cluster/<cluster>/table/<table>', methods=['GET', 'PUT', 'POST'])
