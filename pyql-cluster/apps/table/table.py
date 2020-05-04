@@ -102,7 +102,7 @@ def run(server):
         if not table in server.data[database].tables:
             return {'message': log.error(f"{table} not found in database {database}")}, 400
         dataToSync = request.get_json()
-        tableConfig, _ = get_table_func(database, table)
+        tableConfig, _ = db_get_table_config(database, table)
         server.data[database].run(f'drop table {table}')
         message, rc = create_table_func(database, tableConfig)
         log.warning(f"table /sync create_table_func response {message} {rc}")
