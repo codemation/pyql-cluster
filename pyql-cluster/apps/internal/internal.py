@@ -26,6 +26,7 @@ def run(server):
                 if not table[0] in server.data[database].tables:
                     server.data[database].load_tables()
         return {"messages": f"{database} status ok", "tables": list(server.data[database].tables.keys())}, 200
+    server.db_check = db_check
     
     def internal_job_add(job):
         jobId = str(uuid.uuid1())
