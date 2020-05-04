@@ -2,7 +2,9 @@
     Cluster Job Worker
 """
 
-import sys, datetime, time, requests, json, os
+import sys, datetime, time, requests, json, os, logging
+
+logging.basicConfig()
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 
@@ -16,18 +18,18 @@ def set_db_env(path):
     global nodeId
     nodeId = env['PYQL_ENDPOINT']
 
-def probe(path, method='GET', data=None, timeout=3.0, auth=None):
-    path = f'{path}'
+def probe(path, method='GET', data=None, auth=None, timeout=10.0, **kw):
+    path = f'{path}'   
     auth = 'PYQL_CLUSTER_SERVICE_TOKEN' if not auth == 'local' else 'PYQL_LOCAL_SERVICE_TOKEN'
     headers = {
         'Accept': 'application/json', "Content-Type": "application/json",
-        "Authentication": f"Token {env[auth]}"}
+        "Authentication": f"Token {env[auth] if not 'token' in kw else kw['token']}"}
     if method == 'GET':
         r = requests.get(path, headers=headers,
-                timeout=3.0)
+                timeout=timeout)
     else:
         r = requests.post(path, headers=headers,
-                data=json.dumps(data), timeout=3.0)
+                data=json.dumps(data), timeout=timeout)
     try:
         return r.json(),r.status_code
     except Exception as e:
@@ -42,8 +44,9 @@ def set_job_status(jobId, jobtype, status, **kwargs):
         'POST',
         kwargs)
 def log(log):
-    time = datetime.datetime.now().isoformat()
-    print(f"{time} {os.environ['HOSTNAME']} jobworker - {log}")
+    log = f" {os.environ['HOSTNAME']} - jobworker - {log}"
+    logging.warning(log)
+    return log
 
 def get_and_process_job(path):
     job, rc = probe(path,'POST', {'node': nodeId}, timeout=60.0)
@@ -51,27 +54,43 @@ def get_and_process_job(path):
         if not rc == 200 or 'message' in job:
             return job,rc
         log(f"job pulled {job['name']}")
-        jobType = job['config']['jobType']
+        jobConfig = job['config']
+        jobType = jobConfig['jobType']
 
-        log(f'cluster jobworker - running {job["config"]["path"]}')
-        set_job_status(job['id'], jobType, 'running', 
-                        message=f"starting {job['config']['job']}")
+        log(f'cluster jobworker - running {jobConfig["path"]}')
+        set_job_status(job['id'], jobType, 'running', message=f"starting {jobConfig['job']}")
+
         try:
-            #job['config']['data'] = None if not 'data' in job['config'] else job['config']['data']
-            jobConfigData = None if not 'data' in job['config'] else job['config']['data']
-            url = f"{clusterSvcName if not 'node' in job['config'] else job['config']['node']}{job['config']['path']}"
-            message, rc = probe(url, job['config']['method'], jobConfigData)
-            if rc == 200:
-                log(f"job {job['name']} response {message} rc {rc} marking finished")
-                set_job_status(job['id'], jobType,'finished')
-                if 'nextJob' in job['config']:
-                    set_job_status(job['config']['nextJob'], 'jobs','queued')
-            else:
+            # prepare job config
+            url = f"{clusterSvcName if not 'node' in jobConfig else jobConfig['node']}{jobConfig['path']}"
+            jobData = None if not 'data' in jobConfig else jobConfig['data']
+            config = {
+                'method': jobConfig['method'], 
+                'data': jobData}
+
+            # Handle join cluster jobs 
+            if 'joinToken' in jobConfig:
+                config['token'] = jobConfig['joinToken']
+
+            # Execute Job # 
+            message, rc = probe(url, **config)
+            if not rc == 200:
+                # Re queuing job
                 log(f"job {job} response {message} rc {rc}")
                 set_job_status(job['id'], jobType,'queued')
+
+            # Job was successfully run
+            log(f"job {job['name']} response {message} rc {rc} marking finished")
+
+            # Running next job if there is one waiting on current job
+            set_job_status(job['id'], jobType,'finished')
+            if 'nextJob' in jobConfig:
+                set_job_status(jobConfig['nextJob'], 'jobs','queued')
+
         except Exception as e:
             log(f"Exception when proceessing job {job} {repr(e)}")
             set_job_status(job['id'], jobType, 'queued', lastError=f"Exception when proceessing job")
+
         return message,rc       
     return process_job(job,rc)
 

@@ -1,4 +1,12 @@
-import sys, time, requests, json, os
+import sys, time, requests, json, os, logging
+
+
+def log(log):
+    log = f" {os.environ['HOSTNAME']} - internal-worker - {log}"
+    logging.warning(log)
+    return log
+
+
 """TODO - Delete later
 if 'PYQL_TYPE' in os.environ:
     if os.environ['PYQL_TYPE'] == 'K8S':
@@ -45,14 +53,14 @@ def add_job_to_queue(path, job):
     try:
         message, rc = probe(f'{clusterSvcName}{path}', 'POST', job)
     except Exception as e:
-        message = f"{os.environ['HOSTNAME']} worker.py encountered exception {repr(e)} with {clusterSvcName}{path} for  job {job}"
+        message = f"encountered exception {repr(e)} with {clusterSvcName}{path} for  job {job}"
+        logging.exception(log(message))
         rc = 500
-        print(message)
     
     if rc == 200:
-        print(f"added {job['job']} to {path} queue")
+        log(f"added {job['job']} to {path} queue")
     else:
-        print(f"error adding {job['job']} to {path} queue, error: {message} {rc}")
+        log(f"error adding {job['job']} to {path} queue, error: {message} {rc}")
     return message,rc
 
 def get_and_process_job(path):
@@ -68,17 +76,17 @@ def get_and_process_job(path):
         try:
             if job['jobType'] == 'cluster':
                 #Distribute to cluster job queue
-                print(f"adding job {job} to cluster jobs queue")
-                if 'joinCluster' in job['job']: # need to use joinToken
-                    message, rc = probe(f"{clusterSvcName}{job['path']}", job['method'], job['data'], token=job['joinToken'], timeout=10)
-                else:
-                    message, rc = probe(f"{clusterSvcName}/cluster/jobs/add", 'POST', job, timeout=10)
-                print(f"finished adding job {job} to cluster jobs queue {message} {rc}")
+                log(f"adding job {job} to cluster jobs queue")
+                #if 'joinCluster' in job['job']: # need to use joinToken
+                #    message, rc = probe(f"{clusterSvcName}{job['path']}", job['method'], job['data'], token=job['joinToken'], timeout=10)
+                #else:
+                message, rc = probe(f"{clusterSvcName}/cluster/jobs/add", 'POST', job, timeout=10)
+                log(f"finished adding job {job} to cluster jobs queue {message} {rc}")
             elif job['jobType'] == 'node':
                 auth = 'local' if not 'initCluster' in job['job'] else 'cluster'
                 message, rc = probe(f"{nodePath}{job['path']}", job['method'], job['data'], auth=auth, timeout=10)
             elif job['jobType'] == 'tablesync':
-                print(f"adding job {job} to tablesync queue")
+                log(f"adding job {job} to tablesync queue")
                 message, rc = add_job_to_queue(f'/cluster/syncjobs/add', job)
             else:
                 message, rc =  f"{job['job']} is missing jobType field", 200
@@ -88,11 +96,12 @@ def get_and_process_job(path):
                 try:
                     probe(f'{nodePath}/internal/job/{jobId}/finished', 'POST', auth='local')
                 except Exception as e:
-                    print(f"{os.environ['HOSTNAME']} worker.py encountered exception finishing job, need to cleanup {jobId} later")
+                    warning = f'encountered exception finishing job, need to cleanup {jobId} later'
+                    logging.exception(log(warning))
                     probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST', auth='local')
         except Exception as e:
             message = f"{os.environ['HOSTNAME']} worker.py encountered exception {repr(e)} hanlding job {job} - add back to queue"
-            print(message)
+            logging.exception(log(message))
             probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST', auth='local')
         return message,rc
     return job,rc
@@ -103,7 +112,7 @@ if __name__== '__main__':
     if len(args) > 2:
         jobpath, delay  = args[1], float(args[2])
         set_db_env(args[-1])
-        print(f"starting worker for monitoring {jobpath} with delay of {delay}")
+        log(f"starting worker for monitoring {jobpath} with delay of {delay}")
         start = time.time() - 5
         while True:
             delayed = time.time() - start
@@ -111,7 +120,7 @@ if __name__== '__main__':
                 try:
                     result, rc = get_and_process_job(jobpath)
                 except Exception as e:
-                    print(repr(e))
+                    logging.exception(log(f"error runnng get_and_process_job using {jobpath}"))
                 start = time.time()
                 continue
             time.sleep(delay - delayed)

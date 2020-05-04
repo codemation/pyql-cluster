@@ -8,12 +8,11 @@ import sys, datetime, time, requests, json, os, random
 import logging
 
 logging.basicConfig()
-
-def log(log):
-    time = datetime.datetime.now().isoformat()
-    print(f"{time} {os.environ['HOSTNAME']} tablesyncer - {log}")
-    return log
     
+def log(log):
+    log = f" {os.environ['HOSTNAME']} - tablesyncer - {log}"
+    logging.warning(log)
+    return log
 
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
@@ -73,8 +72,7 @@ def table_copy(cluster, table, inSyncPath, inSyncToken, outOfSyncPath, outOfSync
     tableCopy, rc = probe(f'{inSyncPath}/select', token=inSyncToken)
     if rc == 500:
         error = f"#CRITICAL - tablesyncer was not able to find an inSync endpoints"
-        log(error)
-        return error, rc
+        return log(error), rc
     #/db/<database>/table/<table>/sync
     print(outOfSyncPath)
     response, rc = probe(f'{outOfSyncPath}/sync', 'POST', tableCopy, token=outOfSyncToken)
@@ -340,17 +338,15 @@ def get_and_run_job(path):
             return error, 500
         log(f"#SYNC get_and_run_job result {result} {rc}")
         if not rc == 200:
-            log(f"job {job['id']} completed with non-200 rc, requeuing")
-            set_job_status(job['id'],'queued', node=None, warning=f"job completed with non-200 rc, requeuing")
+            warning = log(f"job {job['id']} completed with non-200 rc, requeuing")
+            set_job_status(job['id'],'queued', node=None, warning=warning)
             return "job-requeued", 500
         set_job_status(job['id'],'finished')
         if 'nextJob' in job['config']:
-            set_job_status(job['config']['nextJob'],'queued')
-        result = f'tablesyncer - #SYNC completed job {job}'
-        log(result)
-        return result, 200
+            set_job_status(job['config']['nextJob'],'queued')        
+        return log(f'tablesyncer - #SYNC completed job {job}'), 200
     log(f"#SYNC tablesyncer get_and_run_job - no job in {job}")
-    return f"no job in {job}", 500
+    return log(f"no job in {job}"), 500
 if __name__=='__main__':
     args = sys.argv
     if len(args) > 1:
@@ -363,6 +359,5 @@ if __name__=='__main__':
                 try:
                     result, rc = get_and_run_job(f'{clusterSvcName}{jobpath}')
                 except Exception as e:
-                    log(f"exception when pulling / running job")
-                    log(repr(e))
+                    logging.exception(log(f"exception when pulling / running job"))
                 start = time.time()
