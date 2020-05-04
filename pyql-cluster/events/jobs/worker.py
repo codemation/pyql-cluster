@@ -76,11 +76,13 @@ def get_and_process_job(path):
         try:
             if job['jobType'] == 'cluster':
                 #Distribute to cluster job queue
-                log(f"adding job {job} to cluster jobs queue")
-                #if 'joinCluster' in job['job']: # need to use joinToken
-                #    message, rc = probe(f"{clusterSvcName}{job['path']}", job['method'], job['data'], token=job['joinToken'], timeout=10)
-                #else:
-                message, rc = probe(f"{clusterSvcName}/cluster/jobs/add", 'POST', job, timeout=10)
+                
+                if 'joinCluster' in job['job']: # need to use joinToken
+                    log(f"join cluster job {job}, attempting to join")
+                    message, rc = probe(f"{clusterSvcName}{job['path']}", job['method'], job['data'], token=job['joinToken'], timeout=10)
+                else:
+                    log(f"adding job {job} to cluster jobs queue")
+                    message, rc = probe(f"{clusterSvcName}/cluster/jobs/add", 'POST', job, timeout=10)
                 log(f"finished adding job {job} to cluster jobs queue {message} {rc}")
             elif job['jobType'] == 'node':
                 auth = 'local' if not 'initCluster' in job['job'] else 'cluster'

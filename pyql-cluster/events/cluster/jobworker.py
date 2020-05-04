@@ -68,10 +68,6 @@ def get_and_process_job(path):
                 'method': jobConfig['method'], 
                 'data': jobData}
 
-            # Handle join cluster jobs 
-            if 'joinToken' in jobConfig:
-                config['token'] = jobConfig['joinToken']
-
             # Execute Job # 
             message, rc = probe(url, **config)
             if not rc == 200:
