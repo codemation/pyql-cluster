@@ -336,14 +336,12 @@ def get_and_run_job(path):
         except Exception as e:
             error = f"encountered exception syncing job {job['id']} re-queueing"
             logging.exception(error)
-            log(error)
-            log(f"Exception {repr(e)}")
-            set_job_status(job['id'],'queued', node=None)
+            set_job_status(job['id'],'queued', node=None, error=error)
             return error, 500
         log(f"#SYNC get_and_run_job result {result} {rc}")
         if not rc == 200:
             log(f"job {job['id']} completed with non-200 rc, requeuing")
-            set_job_status(job['id'],'queued', node=None)
+            set_job_status(job['id'],'queued', node=None, warning=f"job completed with non-200 rc, requeuing")
             return "job-requeued", 500
         set_job_status(job['id'],'finished')
         if 'nextJob' in job['config']:

@@ -27,7 +27,7 @@ def probe(path, method='GET', data=None, timeout=3.0, auth=None):
                 timeout=3.0)
     else:
         r = requests.post(path, headers=headers,
-                data=json.dumps(data), timeout=1.0)
+                data=json.dumps(data), timeout=3.0)
     try:
         return r.json(),r.status_code
     except Exception as e:
@@ -71,7 +71,7 @@ def get_and_process_job(path):
                 set_job_status(job['id'], jobType,'queued')
         except Exception as e:
             log(f"Exception when proceessing job {job} {repr(e)}")
-            set_job_status(job['id'], jobType,'queued', lastError=str(repr(e)))
+            set_job_status(job['id'], jobType, 'queued', lastError=f"Exception when proceessing job")
         return message,rc       
     return process_job(job,rc)
 
