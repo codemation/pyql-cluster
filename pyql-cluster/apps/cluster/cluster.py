@@ -359,8 +359,8 @@ def run(server):
             epResults = asyncrequest.async_request(epRequests)
         except Exception as e:
             return {"error": log.exception(f"Excepton found during get_alive_endpoints")}, 500
-        log.warning(f"get_alive_endpoints - {epRequests}")
-        return epRequests
+        log.warning(f"get_alive_endpoints - {epResults}")
+        return epResults
 
     @server.route('/pyql/quorum/check', methods=['POST'])
     @server.is_authenticated('pyql')
@@ -371,7 +371,14 @@ def run(server):
         pyql = server.env['PYQL_UUID']
         log.warning(f"received cluster_quorum_check for cluster {pyql}")
         pyqlEndpoints = server.clusters.endpoints.select('*', where={'cluster': pyql})
+
+        # Check which pyqlEndpoints are alive
         aliveEndpoints = get_alive_endpoints(pyqlEndpoints)
+        aliveEndpointsNodes = {}
+        for endpoint in aliveEndpoints:
+            if aliveEndpoints[endpoint]['status'] = 
+
+        # Compare live endpoints to current quorum 
         quorum = server.clusters.quorum.select('*')
         quorumNodes = {q['node']: q for q in quorum}
         if not len(pyqlEndpoints) > 0:
