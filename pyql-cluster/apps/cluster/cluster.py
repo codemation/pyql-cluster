@@ -763,6 +763,7 @@ def run(server):
         """
             use details=True as arg to return tb['endpoints'] in response
         """
+        pyqlTxnExceptions = {'transactions', 'state', 'tables'}
         tableEndpoints = get_table_endpoints(cluster, table, caller='post_request_tables')
         pyql = server.env['PYQL_UUID']
         try:
@@ -825,11 +826,9 @@ def run(server):
                         post_request_tables(pyql, 'state', 'update', stateSet)
                     # Creating txn log for future replay for table endpoint
                     if not tb['endpoints'][failedEndpoint]['state'] == 'new':
-                        if cluster == pyql:
+                        if cluster == pyql and table in pyqlTxnExceptions:
                             log.warning(f"{failedEndpoint} is outOfSync for pyql table {table}")
-                            #if table == 'transactions' or table == 'jobs' or table =='state':
-                            if table == 'transactions':
-                                continue
+                            continue
                         # Write data to a change log for resyncing
                         changeLogs['txns'].append(
                             get_txn(tb['endpoints'][failedEndpoint]['uuid'])
@@ -849,9 +848,8 @@ def run(server):
                     continue
                 if not tb['endpoints'][tbEndpoint]['state'] == 'new':
                     # Prevent writing transaction logs for failed transaction log changes
-                    if cluster == pyql:
-                        if table == 'transactions' or table == 'jobs' or table == 'state':
-                            continue
+                    if cluster == pyql and table in pyqlTxnExceptions:
+                        continue 
                     log.warning(f"new outOfSyncEndpoint {tbEndpoint} need to write to db logs")
                     changeLogs['txns'].append(
                         get_txn(tb['endpoints'][tbEndpoint]['uuid'])
@@ -864,7 +862,7 @@ def run(server):
                     # Better solution - maintain transactions table for transactions, table sync and logic is already available
                     for txn in changeLogs['txns']:
                         post_request_tables(pyql,'transactions','insert', txn)
-            if cluster == pyql and table == 'state':
+            if cluster == pyql and table in pyqlTxnExceptions:
                 pass
             else:
                 write_change_logs(changeLogs)
@@ -901,14 +899,19 @@ def run(server):
                     }
                     post_request_tables(pyql, 'state', 'update', stateSet)
                 log.warning(f"commit failure for endpoints {fail}")
-                write_change_logs(
-                    {'txns': [get_txn(endpoint) for endpoint in fail]}
-                )
+                if cluster == pyql and table in pyqlTxnExceptions:
+                    pass
+                else:
+                    write_change_logs(
+                        {'txns': [get_txn(endpoint) for endpoint in fail]}
+                    )
             #pyql state table changes must be commited before logs to prevent loop
+            """TODO - Delete after testing - state txn logs not used. 
             if cluster == pyql and table == 'state':
                 write_change_logs(changeLogs)
                 for failedEndpoint in failTrack:
                     post_request_tables(pyql, 'state', 'update', {'set': {'inSync': False}, 'where': {'name': failedEndpoint}})
+            """
 
             return {"message": asyncResults}, 200
         if tb['isPaused'] == False:
