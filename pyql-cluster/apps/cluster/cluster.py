@@ -371,43 +371,52 @@ def run(server):
         pyql = server.env['PYQL_UUID']
         log.warning(f"received cluster_quorum_check for cluster {pyql}")
         pyqlEndpoints = server.clusters.endpoints.select('*', where={'cluster': pyql})
-
-        # Check which pyqlEndpoints are alive
-        aliveEndpoints = get_alive_endpoints(pyqlEndpoints)
-        aliveEndpointsNodes = {}
-        for endpoint in aliveEndpoints:
-            if aliveEndpoints[endpoint]['status'] = 
-
-        # Compare live endpoints to current quorum 
         quorum = server.clusters.quorum.select('*')
-        quorumNodes = {q['node']: q for q in quorum}
-        if not len(pyqlEndpoints) > 0:
-            warning = f"{os.environ['HOSTNAME']} - pyql node is still syncing endpoints - {pyqlEndpoints} - quorum {quorum}"
-            return {"message": log.warning(warning)}, 200
+        # Check which pyqlEndpoints are alive   
+        aliveEndpoints = get_alive_endpoints(pyqlEndpoints)
+        aliveEndpointsNodes = []
+        for endpoint in aliveEndpoints:
+            if aliveEndpoints[endpoint]['status'] = 200:
+                aliveEndpointsNodes.append(endpoint)
+        # Compare live endpoints to current quorum 
+        latestQuorumNodes = quorum[0]['nodes']['nodes']
+        if len(latestQuorumNodes) == len(aliveEndpointsNodes):
+            return {"message": log.warning("cluster_quorum_check completed, no detected quorum changes")}, 200
+        if len(aliveEndpointsNodes) / len(pyqlEndpoints) < 2/3: 
+            return {"message": log.warning(f"cluster_quorum_check detected node {nodeId} is outOfQuorum")}, 500
+
+        log.warning(f"cluster_quorum_check detected quorum change, triggering update on aliveEndpointsNodes {aliveEndpointsNodes}")
+
+        #quorumNodes = {q['node']: q for q in quorum}
+
         epRequests = {}
         epList = []
         for endpoint in pyqlEndpoints:
-            epList.append(endpoint['uuid'])
-            endPointPath = endpoint['path']
-            endPointPath = f'http://{endPointPath}/pyql/quorum'
-            epRequests[endpoint['uuid']] = {
-                'path': endPointPath, 'data': None, 'timeout': 5.0,
-                'headers': get_auth_http_headers('remote', token=endpoint['token'])
-                }
+            # only trigger a pyql/quorum update on live endpoints
+            if endpoint['uuid'] in aliveEndpointsNodes:
+                epList.append(endpoint['uuid'])
+                endPointPath = endpoint['path']
+                endPointPath = f'http://{endPointPath}/pyql/quorum'
+                epRequests[endpoint['uuid']] = {
+                    'path': endPointPath, 'data': None, 'timeout': 5.0,
+                    'headers': get_auth_http_headers('remote', token=endpoint['token'])
+                    }
 
+        """ TODO - Delete after testing
         # check if quorum table contains stale endpoints & cleanup
         for endpoint in quorumNodes:
             if not endpoint in epList:
                 server.clusters.quorum.delete(where={'node': endpoint})
+        """
 
-        log.warning(f"quorum/check - running using {epRequests}")
+        log.warning(f"cluster_quorum_check - running using {epRequests}")
         if len(epList) == 0:
             return {"message": f"pyql node {nodeId} is still syncing"}, 200
         try:
             epResults = asyncrequest.async_request(epRequests, 'POST')
         except Exception as e:
             log.exception("Excepton found during cluster_quorum() check")
-        log.warning(f"quorum/check - results {epResults}")
+        log.warning(f"cluster_quorum_check - results {epResults}")
 
         """ TODO - Delete after testing, this func should not touch quorum tables as this is handled by cluster_quorum
         inQuorum = []
