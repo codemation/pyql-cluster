@@ -359,7 +359,7 @@ def run(server):
             epResults = asyncrequest.async_request(epRequests)
         except Exception as e:
             return {"error": log.exception(f"Excepton found during get_alive_endpoints")}, 500
-        log.info(f"get_alive_endpoints - {epRequests}")
+        log.warning(f"get_alive_endpoints - {epRequests}")
         return epRequests
 
     @server.route('/pyql/quorum/check', methods=['POST'])
