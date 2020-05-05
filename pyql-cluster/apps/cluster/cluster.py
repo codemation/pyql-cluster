@@ -371,6 +371,8 @@ def run(server):
         pyql = server.env['PYQL_UUID']
         log.warning(f"received cluster_quorum_check for cluster {pyql}")
         pyqlEndpoints = server.clusters.endpoints.select('*', where={'cluster': pyql})
+        if len(pyqlEndpoints) == 0:
+            return {"message": log.warning("cluster_quorum_check found no pyqlEndpoints, cluster may still be initializing")}, 200
         quorum = server.clusters.quorum.select('*')
         # Check which pyqlEndpoints are alive   
         aliveEndpoints = get_alive_endpoints(pyqlEndpoints)
