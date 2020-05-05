@@ -370,7 +370,7 @@ def run(server):
             endPointPath = endpoint['path']
             endPointPath = f'http://{endPointPath}/pyql/quorum'
             epRequests[endpoint['uuid']] = {
-                'path': endPointPath, 'data': None,
+                'path': endPointPath, 'data': None, 'timeout': 5.0,
                 'headers': get_auth_http_headers('remote', token=endpoint['token'])
                 }
 
@@ -436,7 +436,8 @@ def run(server):
         epRequests = {}
         for endpoint in endpoints:
             epRequests[endpoint['uuid']] = {
-                'path': f"http://{endpoint['path']}/pyql/node"
+                'path': f"http://{endpoint['path']}/pyql/node",
+                'timeout': 1.0,
             }
         try:
             epResults = asyncrequest.async_request(epRequests)
