@@ -376,7 +376,7 @@ def run(server):
         aliveEndpoints = get_alive_endpoints(pyqlEndpoints)
         aliveEndpointsNodes = []
         for endpoint in aliveEndpoints:
-            if aliveEndpoints[endpoint]['status'] = 200:
+            if aliveEndpoints[endpoint]['status'] == 200:
                 aliveEndpointsNodes.append(endpoint)
         # Compare live endpoints to current quorum 
         latestQuorumNodes = quorum[0]['nodes']['nodes']
