@@ -846,6 +846,9 @@ def run(server):
             # and create a changelog for resync
             if len(failTrack) > 0 and len(failTrack) < len(tableEndpoints['inSync']):
                 log.warning(f"At least 1 successful response & at least 1 failure to update of inSync endpoints {failTrack}")
+                if cluster == pyql:
+                    log.warning("post_request_tables triggering cluster_quorum_check due at least 1 failure to update of inSync endpoints")
+                    cluster_quorum_check()
                 for failedEndpoint in failTrack:
                     # Marking failedEndpoint inSync=False for table endpoint
                     if cluster == pyql and table == 'state':
