@@ -1862,6 +1862,7 @@ def run(server):
     def cluster_table_sync_run(cluster, table):
         return table_sync_run(cluster, table)
     def table_sync_run(cluster, table, job=None):
+        syncResults = {}
         class tracker:
             def __init__(self):
                 self.step = 0
@@ -1904,9 +1905,9 @@ def run(server):
             # check if endpoint is alive
             r, rc = probe(f'http://{path}/pyql/node')
             if not rc == 200 and not rc==404:
-                warning = f"endpoint {uuid} is not alive or reachable with path {path} - cannot issue sync right now - {r} {rc}"
-                track(warning)
-                return {"warning": warning}, rc
+                warning = f"endpoint {uuid} is not alive or reachable with path {path} - cannot issue sync right now"
+                syncResults[endpoint] = track(warning)
+                continue
 
             def load_table():
                 track("load_table starting")
@@ -2031,9 +2032,9 @@ def run(server):
                 r, rc = table_pause(clusterId, table, 'stop')
                 track(f"completing cutover result: {r} rc: {rc}")
 
-            message = track(f"finished syncing {uuid} for table {table} in cluster {clusterId}")
+            syncResults[endpoint] = track(f"finished syncing {uuid} for table {table} in cluster {clusterId}")
         message = track(f"finished syncing cluster {cluster} table {table}")
-        return {"message": message}, 200
+        return {"message": message, "results": syncResults[endpoint]}, 200
 
                     
     @server.route('/cluster/<jobtype>/add', methods=['POST'])
