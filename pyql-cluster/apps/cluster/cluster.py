@@ -348,6 +348,19 @@ def run(server):
         server.clusters.state.delete(**deleteWhere)
         server.clusters.endpoints.delete(**deleteWhere)
 
+    def get_alive_endpoints(endpoints):
+        epRequests = {}
+        for endpoint in endpoints:
+            epRequests[endpoint['uuid']] = {
+                'path': f"http://{endpoint['path']}/pyql/node",
+                'timeout': 0.5,
+            }
+        try:
+            epResults = asyncrequest.async_request(epRequests)
+        except Exception as e:
+            return {"error": log.exception(f"Excepton found during get_alive_endpoints")}, 500
+        log.info(f"get_alive_endpoints - {epRequests}")
+        return epRequests
 
     @server.route('/pyql/quorum/check', methods=['POST'])
     @server.is_authenticated('pyql')
@@ -358,6 +371,7 @@ def run(server):
         pyql = server.env['PYQL_UUID']
         log.warning(f"received cluster_quorum_check for cluster {pyql}")
         pyqlEndpoints = server.clusters.endpoints.select('*', where={'cluster': pyql})
+        aliveEndpoints = get_alive_endpoints(pyqlEndpoints)
         quorum = server.clusters.quorum.select('*')
         quorumNodes = {q['node']: q for q in quorum}
         if not len(pyqlEndpoints) > 0:
