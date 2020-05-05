@@ -172,7 +172,7 @@ def run(server):
             else:
                 r = requests.post(url, headers=headers, data=json.dumps(data), timeout=timeout)
         except Exception as e:
-            error = f"tablesyncer - Encountered exception when probing {path} - {repr(e)}"
+            error = f"Encountered exception when probing {path} - {repr(e)}"
             return {"error": log.error(error)}, 500
         try:
             return r.json(),r.status_code
@@ -437,7 +437,7 @@ def run(server):
         for endpoint in endpoints:
             epRequests[endpoint['uuid']] = {
                 'path': f"http://{endpoint['path']}/pyql/node",
-                'timeout': 1.0,
+                'timeout': 0.5,
             }
         try:
             epResults = asyncrequest.async_request(epRequests)
