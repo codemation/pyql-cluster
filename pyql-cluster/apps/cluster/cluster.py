@@ -1879,7 +1879,7 @@ def run(server):
             step.incr()
             return message
             
-        pyqlSyncExclusions = {'transactions', 'state'}
+        pyqlSyncExclusions = {'transactions', 'state', 'tables'}
         pyql = server.env['PYQL_UUID']
         # get table endpoints
         tableEndpoints = get_table_endpoints(cluster, table, caller='cluster_table_sync_run')
