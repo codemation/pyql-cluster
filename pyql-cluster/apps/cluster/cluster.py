@@ -348,12 +348,12 @@ def run(server):
         server.clusters.state.delete(**deleteWhere)
         server.clusters.endpoints.delete(**deleteWhere)
 
-    def get_alive_endpoints(endpoints):
+    def get_alive_endpoints(endpoints, timeout=2.0):
         epRequests = {}
         for endpoint in endpoints:
             epRequests[endpoint['uuid']] = {
                 'path': f"http://{endpoint['path']}/pyql/node",
-                'timeout': 0.5,
+                'timeout':timeout,
             }
         try:
             epResults = asyncrequest.async_request(epRequests)
@@ -465,6 +465,7 @@ def run(server):
         if len(endpoints) == 0:
             # may be a new node / still syncing
             return {"message": f"cluster_quorum_update node {nodeId} is still syncing"}, 200
+        """
         epRequests = {}
         for endpoint in endpoints:
             epRequests[endpoint['uuid']] = {
@@ -476,9 +477,10 @@ def run(server):
         except Exception as e:
             error = log.exception(f"Excepton found during cluster_quorum_update, failed to update - {repr(e)}")
             return {"error": error}, 500
+        """
         # Check results
         inQuorumNodes = []
-        for endpoint in epResults:
+        for endpoint in get_alive_endpoints(endpoints):
             if epResults[endpoint]['status'] == 200:
                 inQuorumNodes.append(endpoint)
         # Quorum always assume local checking node is alive
