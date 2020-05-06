@@ -1612,7 +1612,7 @@ def run(server):
         """
         pyql = server.env['PYQL_UUID']
         node = request.get_json()['node']
-        quorumCheck, rc = cluster_quorum(update=True)
+        quorumCheck, rc = cluster_quorum()
          # check this node is inQuorum and if worker requesting job is from an inQuorum node
         print(f"cluster_jobqueue - quorumCheck {quorumCheck}, {rc}")
         if not 'quorum' in quorumCheck or not quorumCheck['quorum']['inQuorum'] == True or not node in quorumCheck['quorum']['nodes']['nodes']:
@@ -1637,7 +1637,7 @@ def run(server):
             if not jobtype == 'cron':
                 jobSelect['where']['node'] = None
 
-            jobList, rc = table_select(pyql, 'jobs', data=jobSelect, method='POST')
+            jobList, rc = table_select(pyql, 'jobs', data=jobSelect, method='POST', quorumCheck)
             log.warning(f"jobList {jobList} {rc}")
             jobList = jobList['data']
 
