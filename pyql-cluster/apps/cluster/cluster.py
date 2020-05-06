@@ -849,9 +849,6 @@ def run(server):
             # and create a changelog for resync
             if len(failTrack) > 0 and len(failTrack) < len(tableEndpoints['inSync']):
                 log.warning(f"At least 1 successful response & at least 1 failure to update of inSync endpoints {failTrack}")
-                if cluster == pyql:
-                    log.warning("post_request_tables triggering cluster_quorum_check due at least 1 failure to update of inSync endpoints")
-                    cluster_quorum_check()
                 for failedEndpoint in failTrack:
                     # Marking failedEndpoint inSync=False for table endpoint
                     if cluster == pyql and table == 'state':
@@ -1087,11 +1084,11 @@ def run(server):
     server.cluster_table_select = table_select
 
     def get_random_table_endpoint(cluster, table, quorum=None):
-        endpoints = get_table_endpoints(cluster, table, caller='cluster_table_config')['inSync']
+        endpoints = get_table_endpoints(cluster, table, caller='get_random_table_endpoint')['inSync']
         inSyncEndpoints = [ep for ep in endpoints]
         if len(inSyncEndpoints) == 0 and table == 'jobs':
             pyql_reset_jobs_table()
-            endpoints = get_table_endpoints(cluster, table, caller='cluster_table_config')['inSync']
+            endpoints = get_table_endpoints(cluster, table, caller='get_random_table_endpoint')['inSync']
             inSyncEndpoints = [ep for ep in endpoints]
         while len(inSyncEndpoints) > 0:  
             if len(inSyncEndpoints) > 1:
@@ -1103,12 +1100,12 @@ def run(server):
                     log.warning(f"get_random_table_endpoint skipped pyql endpoint {endpointChoice} as not in quorum")
                     if len(inSyncEndpoints) == 0 and table == 'jobs':
                         pyql_reset_jobs_table()
-                        endpoints = get_table_endpoints(cluster, table, caller='cluster_table_config')['inSync']
+                        endpoints = get_table_endpoints(cluster, table, caller='get_random_table_endpoint')['inSync']
                         inSyncEndpoints = [ep for ep in endpoints]
                     continue
             yield endpoints[endpointChoice]
         yield None
-    def endpoint_probe(cluster, table, path='', timeout=4.0, quorum=None, **kw):
+    def endpoint_probe(cluster, table, path='', timeout=1.0, quorum=None, **kw):
         data = None
         errors = []
         if request.method in ['POST', 'PUT']:
