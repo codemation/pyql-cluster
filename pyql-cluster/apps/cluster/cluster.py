@@ -1637,7 +1637,7 @@ def run(server):
             if not jobtype == 'cron':
                 jobSelect['where']['node'] = None
 
-            jobList, rc = table_select(pyql, 'jobs', data=jobSelect, method='POST', quorumCheck)
+            jobList, rc = table_select(pyql, 'jobs', data=jobSelect, method='POST', quorum=quorumCheck)
             log.warning(f"jobList {jobList} {rc}")
             jobList = jobList['data']
 
