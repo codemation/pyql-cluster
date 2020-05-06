@@ -18,7 +18,7 @@ def set_db_env(path):
     global nodeId
     nodeId = env['PYQL_ENDPOINT']
 
-def probe(path, method='GET', data=None, auth=None, timeout=10.0, **kw):
+def probe(path, method='GET', data=None, auth=None, timeout=30.0, **kw):
     path = f'{path}'   
     auth = 'PYQL_CLUSTER_SERVICE_TOKEN' if not auth == 'local' else 'PYQL_LOCAL_SERVICE_TOKEN'
     headers = {
