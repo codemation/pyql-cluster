@@ -478,9 +478,10 @@ def run(server):
             error = log.exception(f"Excepton found during cluster_quorum_update, failed to update - {repr(e)}")
             return {"error": error}, 500
         """
+        epResults = get_alive_endpoints(endpoints)
         # Check results
         inQuorumNodes = []
-        for endpoint in get_alive_endpoints(endpoints):
+        for endpoint in epResults:
             if epResults[endpoint]['status'] == 200:
                 inQuorumNodes.append(endpoint)
         # Quorum always assume local checking node is alive
