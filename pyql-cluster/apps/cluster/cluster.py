@@ -459,12 +459,14 @@ def run(server):
         # Compare live endpoints to current quorum 
         latestQuorumNodes = quorum[0]['nodes']['nodes']
         if len(latestQuorumNodes) == len(aliveEndpointsNodes):
+            trace.warning("cluster_quorum_check completed, no detected quorum changes"
+            # check each node to ensure quorum 
             return {"message": trace.warning("cluster_quorum_check completed, no detected quorum changes")}, 200
-        if len(aliveEndpointsNodes) / len(pyqlEndpoints) <= 2/3: 
-            return {"message": trace.warning(f"cluster_quorum_check detected node {nodeId} is outOfQuorum")}, 500
+        if len(aliveEndpointsNodes) / len(pyqlEndpoints) < 2/3: 
+            quorum = {'alive': aliveEndpointsNodes, 'members': pyqlEndpoints}
+            return {"message": trace.warning(f" detected node {nodeId} is outOfQuorum - quorum {quorum}")}, 500
 
         trace.warning(f"cluster_quorum_check detected quorum change, triggering update on aliveEndpointsNodes {aliveEndpointsNodes}")
-
         #quorumNodes = {q['node']: q for q in quorum}
 
         epRequests = {}
