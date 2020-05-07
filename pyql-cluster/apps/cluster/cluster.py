@@ -1940,7 +1940,7 @@ def run(server):
         """
         trace=kw['trace']
         pyql = server.env['PYQL_UUID']
-        quorumCheck, rc = cluster_quorum_update(trace=kw['trace'])
+        #quorumCheck, rc = cluster_quorum_update(trace=kw['trace'])
         if action == 'check':
             jobsToCreate = {}
             jobs = {}
