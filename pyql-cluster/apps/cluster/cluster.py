@@ -459,7 +459,7 @@ def run(server):
         # Compare live endpoints to current quorum 
         latestQuorumNodes = quorum[0]['nodes']['nodes']
         if len(latestQuorumNodes) == len(aliveEndpointsNodes):
-            trace.warning("cluster_quorum_check completed, no detected quorum changes"
+            #trace.warning("cluster_quorum_check completed, no detected quorum changes")
             # check each node to ensure quorum 
             return {"message": trace.warning("cluster_quorum_check completed, no detected quorum changes")}, 200
         if len(aliveEndpointsNodes) / len(pyqlEndpoints) < 2/3: 
