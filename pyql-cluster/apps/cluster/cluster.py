@@ -452,7 +452,7 @@ def run(server):
         quorum = server.clusters.quorum.select('*')
         # Check which pyqlEndpoints are alive   
         aliveEndpoints = get_alive_endpoints(pyqlEndpoints, trace=trace)
-        aliveEndpointsNodes = []
+        aliveEndpointsNodes = [nodeId]
         for endpoint in aliveEndpoints:
             if aliveEndpoints[endpoint]['status'] == 200:
                 aliveEndpointsNodes.append(endpoint)
@@ -460,7 +460,7 @@ def run(server):
         latestQuorumNodes = quorum[0]['nodes']['nodes']
         if len(latestQuorumNodes) == len(aliveEndpointsNodes):
             return {"message": trace.warning("cluster_quorum_check completed, no detected quorum changes")}, 200
-        if len(aliveEndpointsNodes) / len(pyqlEndpoints) < 2/3: 
+        if len(aliveEndpointsNodes) / len(pyqlEndpoints) <= 2/3: 
             return {"message": trace.warning(f"cluster_quorum_check detected node {nodeId} is outOfQuorum")}, 500
 
         trace.warning(f"cluster_quorum_check detected quorum change, triggering update on aliveEndpointsNodes {aliveEndpointsNodes}")
