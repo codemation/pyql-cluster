@@ -883,7 +883,7 @@ def run(server):
             use details=True as arg to return tb['endpoints'] in response
         """
         trace = kw['trace']
-        pyqlTxnExceptions = {'transactions', 'state', 'tables'}
+        pyqlTxnExceptions = {'transactions', 'jobs', 'state', 'tables'}
         tableEndpoints = get_table_endpoints(cluster, table, caller='post_request_tables', trace=kw['trace'])
         pyql = server.env['PYQL_UUID']
         try:
@@ -2056,7 +2056,7 @@ def run(server):
             step.incr()
             return message
             
-        pyqlSyncExclusions = {'transactions', 'state', 'tables'}
+        pyqlSyncExclusions = {'transactions', 'jobs', 'state', 'tables'}
         pyql = server.env['PYQL_UUID']
         # get table endpoints
         tableEndpoints = get_table_endpoints(cluster, table, caller='cluster_table_sync_run', trace=kw['trace'])
