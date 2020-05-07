@@ -1673,7 +1673,6 @@ def run(server):
             return {"message": trace.warning(f"join cluster {clusterName} for endpoint {config['name']} completed successfully")}, 200
     @server.trace
     def re_queue_job(job, **kw):
-        trace=kw['trace']
         job_update(job['type'], job['id'],'queued', {"message": "job was requeued"}, trace=kw['trace'])
 
     @server.route('/cluster/pyql/jobmgr/cleanup', methods=['POST'])
@@ -1718,11 +1717,11 @@ def run(server):
                 waitingOn = None
                 for jb in jobs:
                     if 'nextJob' in jb['config']:
-                        if jb['config']['nextJob'] == job['id']:
+                        if jb['config']['nextJob'] == job['name']:
                             waitingOn = jb['id']
                             break
                 if waitingOn == None:
-                    trace.warning(f"Job {job['id']} was waiting on another job which did not correctly queue, queuing now.")
+                    trace.warning(f"Job {job['name']} was waiting on another job which did not correctly queue, queuing now.")
                     re_queue_job(job, trace=kw['trace'])
                     
         return {"message": trace.warning(f"job manager cleanup completed")}, 200

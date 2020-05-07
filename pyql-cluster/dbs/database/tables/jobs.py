@@ -4,7 +4,7 @@ def db_attach(server):
     db.create_table(
        'jobs', [
            ('id', str, 'UNIQUE NOT NULL'),
-           ('name', str, 'NOT NULL'),
+           ('name', str, 'UNIQUE NOT NULL'),
            ('type', str, 'NOT NULL'), #tablesync - cluster
            ('status', str), # QUEUED, RUNNING, WAITING
            ('node', str),
