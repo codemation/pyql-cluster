@@ -954,8 +954,9 @@ def run(server):
                                 'data': stateSet,
                                 'timeout': 1.0,
                                 'headers': get_auth_http_headers('remote', token=token)
+                            }
                         trace(f"marking {failedEndpoint} as inSync=False on alive pyql state endpoints")
-                        epStateResults = asyncrequest.async_request(epRequests, 'POST')
+                        epStateResults = asyncrequest.async_request(epStateRequests, 'POST')
                         trace(f"marking {failedEndpoint} as inSync=False on alive pyql state endpoints - results: {epStateResults}")
                     else:
                         stateSet = {
