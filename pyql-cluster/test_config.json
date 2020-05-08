@@ -1,5 +1,5 @@
 {
     "clusterPort": 8090,
-    "clusterIp": "192.168.3.33",
+    "clusterIp": "172.20.10.3",
     "initAdminPw": "YWRtaW46YWJjZDEyMzQ="
 }

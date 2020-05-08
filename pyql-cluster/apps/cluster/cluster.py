@@ -1848,12 +1848,16 @@ def run(server):
             updateFrom = {'where': {'id': uuid}}
             if jobtype == 'cron':
                 cronSelect = {'select': ['id', 'config'], 'where': {'id': uuid}}
-                job = table_select(pyql, 'jobs', cronSelect, 'POST', trace=kw['trace'])[0]['data'][0]
+                job, rc = table_select(pyql, 'jobs', cronSelect, 'POST', trace=kw['trace'])[0]['data'][0]
                 updateFrom['set'] = {
                     'node': None, 
                     'status': 'queued',
-                    'start_time': None, 
-                    'next_run_time': str(time.time()+ job['config']['interval'])}
+                    'start_time': None}
+                if rc == 200:
+                    updateFrom['set']['next_run_time'] = str(time.time()+ job['config']['interval'])
+                else:
+                    updateFrom['set']['next_run_time'] = str(time.time() + 25.0)
+                    trace.error(f"error pulling cron job {uuid}, {job} {response} - proceeding to mark finished")
                 return post_request_tables(pyql, 'jobs', 'update', updateFrom, trace=kw['trace']) 
             return post_request_tables(pyql, 'jobs', 'delete', updateFrom)
         if status == 'running' or status == 'queued':
