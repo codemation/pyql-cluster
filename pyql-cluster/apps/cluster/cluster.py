@@ -952,7 +952,7 @@ def run(server):
                             epStateRequests[endpoint] = {
                                 'path': get_endpoint_url(path, action, trace=trace),
                                 'data': stateSet,
-                                'timeout': 1.0,
+                                'timeout': 2.0,
                                 'headers': get_auth_http_headers('remote', token=token)
                             }
                         trace(f"marking {failedEndpoint} as inSync=False on alive pyql state endpoints")
@@ -1016,7 +1016,7 @@ def run(server):
                 epCommitRequests[endpoint] = {
                     'path': get_endpoint_url(path, action, commit=True, trace=trace),
                     'data': endpointResponse[endpoint],
-                    'timeout': 1.0,
+                    'timeout': 2.0,
                     'headers': get_auth_http_headers('remote', token=token, trace=trace)
                 }
             
