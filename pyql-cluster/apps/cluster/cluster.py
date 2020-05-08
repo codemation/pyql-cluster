@@ -782,7 +782,7 @@ def run(server):
         log.error(f"No DB found with {cluster} endpoint {endpoint}")
     """
     @server.trace
-    def get_endpoint_url(path, db, table, action, **kw):
+    def get_endpoint_url(path, action, **kw):
         trace = kw['trace']
         cachePath = '/cache/'.join(path.split('/table/'))
         if 'commit' in kw or 'cancel' in kw:
@@ -915,7 +915,7 @@ def run(server):
                 #db = get_db_name(cluster, endpoint)
                 token = tableEndpoints['inSync'][endpoint]['token']
                 epRequests[endpoint] = {
-                    'path': get_endpoint_url(path, db, table, action, cache=requestUuid, trace=trace),
+                    'path': get_endpoint_url(path, action, cache=requestUuid, trace=trace),
                     'data': {'txn': requestData, 'time': transTime},
                     'timeout': 1.0,
                     'headers': get_auth_http_headers('remote', token=token)
@@ -938,8 +938,25 @@ def run(server):
                 trace.warning(f"At least 1 successful response & at least 1 failure to update of inSync endpoints {failTrack}")
                 for failedEndpoint in failTrack:
                     # Marking failedEndpoint inSync=False for table endpoint
-                    if cluster == pyql and table == 'state':
-                        pass
+                    stateSet = {
+                        "set": {"inSync": False},
+                        "where": {"name": failedEndpoint}
+                    }
+                    if cluster == pyql and table == 'state' and 'state' in failedEndpoint:
+                        # this is a pyql <endpoint>state table that is outOfSync,
+                        epStateRequests = {}
+                        for endpoint in endpointResponse:
+                            db = tableEndpoints['inSync'][endpoint]['dbname']
+                            path = tableEndpoints['inSync'][endpoint]['path']
+                            token = tableEndpoints['inSync'][endpoint]['token']
+                            epStateRequests[endpoint] = {
+                                'path': get_endpoint_url(path, action, trace=trace),
+                                'data': stateSet,
+                                'timeout': 1.0,
+                                'headers': get_auth_http_headers('remote', token=token)
+                        trace(f"marking {failedEndpoint} as inSync=False on alive pyql state endpoints")
+                        epStateResults = asyncrequest.async_request(epRequests, 'POST')
+                        trace(f"marking {failedEndpoint} as inSync=False on alive pyql state endpoints - results: {epStateResults}")
                     else:
                         stateSet = {
                             "set": {"inSync": False},
@@ -996,7 +1013,7 @@ def run(server):
                 path = tableEndpoints['inSync'][endpoint]['path']
                 token = tableEndpoints['inSync'][endpoint]['token']
                 epCommitRequests[endpoint] = {
-                    'path': get_endpoint_url(path, db, table, action, commit=True, trace=trace),
+                    'path': get_endpoint_url(path, action, commit=True, trace=trace),
                     'data': endpointResponse[endpoint],
                     'timeout': 1.0,
                     'headers': get_auth_http_headers('remote', token=token, trace=trace)
