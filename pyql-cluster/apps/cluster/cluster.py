@@ -1857,7 +1857,7 @@ def run(server):
                     updateFrom['set']['next_run_time'] = str(time.time()+ job['config']['interval'])
                 else:
                     updateFrom['set']['next_run_time'] = str(time.time() + 25.0)
-                    trace.error(f"error pulling cron job {uuid}, {job} {response} - proceeding to mark finished")
+                    trace.error(f"error pulling cron job {uuid}, {job} {rc} - proceeding to mark finished")
                 return post_request_tables(pyql, 'jobs', 'update', updateFrom, trace=kw['trace']) 
             return post_request_tables(pyql, 'jobs', 'delete', updateFrom)
         if status == 'running' or status == 'queued':
