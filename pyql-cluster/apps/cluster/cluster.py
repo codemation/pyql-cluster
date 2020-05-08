@@ -1678,7 +1678,7 @@ def run(server):
     @server.route('/cluster/pyql/jobmgr/cleanup', methods=['POST'])
     @server.is_authenticated('pyql')
     @server.trace
-    def cluster_jobmgr_cleanup():
+    def cluster_jobmgr_cleanup(**kw):
         """
             invoked on-demand or by cron to check for stale jobs & requeue
         """ 
