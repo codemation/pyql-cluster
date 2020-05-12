@@ -1,9 +1,15 @@
 # auth
 def run(server):
     from flask import request, make_response
-    import os, uuid, time, json, base64, jwt, string, random
+    import os, uuid, time, json, base64, jwt, string, random, socket
+    hostname = socket.getfqdn()
     charNums = string.ascii_letters + ''.join([str(i) for i in range(10)])
     log = server.log
+    def debug(error):
+        if os.environ.get('PYQL_DEBUG') == True:
+            error = f"{error} from pyql host {hostname}"
+        return error
+
     def encode(secret, **kw):
         try:
             return jwt.encode(kw, secret, algorithm='HS256').decode()
@@ -29,7 +35,7 @@ def run(server):
                 return {"message": f"Auth Ok", "userid": userSel[0]['id']}, 200
             except Exception as e:
                 log.exception(f"Auth failed for user {user} - invalid credentials")
-        return {"message": f"user / pw combination does not exist or is incorrect"}, 401
+        return {"message": debug(f"user / pw combination does not exist or is incorrect")}, 401
     def is_authenticated(location):
         """
         usage:
@@ -47,30 +53,24 @@ def run(server):
                     key = server.env[tokenType]
                     log.warning(f"checking auth from {check_auth.__name__} for {f} {args} {kwargs} {request.headers}")
                     if not 'Authentication' in request.headers:
-                        error = "missing Authentication"
-                        log.error(error)
-                        return {"error": error}, 401
+                        return {"error": debug(log.error("missing Authentication"))}, 401
                     auth = request.headers['Authentication']
                     if 'Token' in auth:
                         token = auth.split(' ')[1].rstrip()
                         #decodedToken = decode(token, os.environ[tokenType])
                         decodedToken = decode(token, key)
                         if decodedToken == None:
-                            error = f"token authentication failed"
-                            log.error(error)
-                            return {"error": error}
+                            return {"error": debug(log.error(f"token authentication failed"))}, 401
                         request.auth = decodedToken['id']
                         if 'join' in decodedToken['expiration']:
                             # Join tokens should only be used to join an endpoint to a cluster
                             if not 'join_cluster' in str(f):
-                                log.error(f"token authentication failed, join token auth attempted for {f}")
-                                error = f"invalid token supplied"
-                                return {"error": error}, 400
+                                error = log.error(f"token authentication failed, join token auth attempted for {f}")
+                                return {"error": debug(error)}, 401
                         if isinstance(decodedToken['expiration'], float):
                             if not decodedToken['expiration'] > time.time():
                                 warning = f"token valid but expired for user with id {decodedToken['id']}"
-                                log.warining(warning)
-                                return {"error": warning}, 401 #TODO - Check returncode for token expiration
+                                return {"error": debug(log.warining(warning))}, 401 #TODO - Check returncode for token expiration
                         log.warning(f"token auth successful for {request.auth} using type {tokenType} key {key}")
                     if 'Basic' in auth:
                         base64Cred = auth.split(' ')[1]
@@ -83,14 +83,13 @@ def run(server):
                         response, rc = validate_user_pw(username, password)
                         if not rc == 200:
                             error = f"auth failed from {check_auth.__name__} for {f} - username {username}"
-                            log.error(error)
-                            return {"error": error}, 401
+                            return {"error": debug(log.error(error))}, 401
                         request.auth = response['userid']
                         # check if userid is a parent for other users
 
                     if location == 'local':
                         if not request.auth in server.clusters.authlocal:
-                            return {"error": "un-authorized access"}, 401
+                            return {"error": debug(log.error("un-authorized access"))}, 403
                     else:
                         childUsers = server.clusters.auth.select('id', where={'parent': request.auth})
                         request.authChildren = [user['id'] for user in childUsers]
@@ -98,7 +97,7 @@ def run(server):
                         pyql, rc = server.get_clusterid_by_name_authorized('pyql')
                         if not rc == 200:
                             log.warning(pyql)
-                            return {"error": "un-authorized access"}, rc
+                            return {"error": debug(log.error("un-authorized access"))}, 403
                 return f(*args, **kwargs)
             check_auth.__name__ = '_'.join(str(uuid.uuid4()).split('-'))
             return check_auth
@@ -115,17 +114,17 @@ def run(server):
         if location == 'cluster':
             serviceToken = request.get_json()
             if not 'PYQL_CLUSTER_SERVICE_TOKEN' in serviceToken:
-                return {"error": f"missing PYQL_CLUSTER_SERVICE_TOKEN"}, 400
+                return {"error": log.error(f"missing PYQL_CLUSTER_SERVICE_TOKEN")}, 400
             server.env['PYQL_CLUSTER_SERVICE_TOKEN'] = serviceToken['PYQL_CLUSTER_SERVICE_TOKEN']
             r, rc = server.probe(
                 f"http://{os.environ['PYQL_CLUSTER_SVC']}/auth/key/cluster",
                 auth='remote',
-                token=server.env['PYQL_CLUSTER_SERVICE_TOKEN']
+                token=server.env['PYQL_CLUSTER_SERVICE_TOKEN'],
+                session=server.env['PYQL_ENDPOINT']
             )
             if not 'PYQL_CLUSTER_TOKEN_KEY' in r:
                 warning = f"error pulling key {r} {rc}"
-                log.warning(warning)
-                return {"warning": warning}, rc
+                return {"error": log.error(warning)}, rc
             setKey, rc = set_token_key('cluster', r)
             if not rc == 200:
                 log.warning(setKey)
@@ -147,11 +146,9 @@ def run(server):
             keydata = request.get_json() if value == None else value
             if key in keydata:
                 value = keydata[key]
-                #os.environ[key] = value
                 server.env[key] = value
-                log.warning(f"{key} updated successfully with {value}")
-                return {"message": f"{key} updated successfully"}, 200
-        return {"error": "invalid location or key - specified"}, 400
+                return {"message": log.warning(f"{key} updated successfully with {value}")}, 200
+        return {"error": log.error("invalid location or key - specified")}, 400
 
 
     #if not 'PYQL_LOCAL_TOKEN_KEY' in os.environ:
@@ -180,9 +177,6 @@ def run(server):
     def auth_user_register(authtype):
         return user_register(authtype)
     def user_register(authtype, userInfo=None):
-        #pyql, rc = server.get_clusterid_by_name_authorized('pyql')
-        #if not rc == 200:
-        #    return pyql, rc
         pyql = server.env['PYQL_UUID']
         userInfo = request.get_json() if userInfo == None else userInfo
         userInfo['type'] = authtype
@@ -239,7 +233,7 @@ def run(server):
         token = create_auth_token(request.auth, time.time()+3600.0, 'cluster')
         if not token == None:
             return {'token': token}, 200
-        return {"error": "server error creating user token"}, 500
+        return {"error": log.error("server error creating user token")}, 500
 
     if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
         if not 'PYQL_CLUSTER_SERVICE_TOKEN' in server.env:
@@ -265,7 +259,7 @@ def run(server):
             })
             clusterServiceToken = create_auth_token(clusterServiceId, 'never', 'CLUSTER')
             server.env['PYQL_CLUSTER_SERVICE_TOKEN'] = str(clusterServiceToken)
-            print(f"PYQL_CLUSTER_SERVICE_TOKEN set to {server.env['PYQL_CLUSTER_SERVICE_TOKEN']}")
+            log.warning(f"PYQL_CLUSTER_SERVICE_TOKEN set to {server.env['PYQL_CLUSTER_SERVICE_TOKEN']}")
             #os.environ['PYQL_CLUSTER_SERVICE_TOKEN'] = str(clusterServiceToken)
             #NOTE PYQL_CLUSTER_SERVICE_KEY should be input as an env var for non-init endpoints
 
@@ -326,7 +320,7 @@ def run(server):
         log.warning(f"join token creating for - {serviceId}")
         if len(serviceId['data']) > 0:
             return {"join": create_auth_token(serviceId['data'][0]['id'], 'join', 'CLUSTER')}
-        return {"error": f"unable to find a service account for user"}, 400
+        return {"error": log.error(f"unable to find a service account for user")}, 400
 
     # Retrieve current local / cluster token keys - requires auth 
     @server.route('/auth/key/<keytype>')
@@ -336,4 +330,4 @@ def run(server):
             return {"PYQL_CLUSTER_TOKEN_KEY": server.env['PYQL_CLUSTER_TOKEN_KEY']}, 200
         if keytype == 'local':
             return {"PYQL_LOCAL_TOKEN_KEY": server.env['PYQL_LOCAL_TOKEN_KEY']}, 200
-        return {"error": f"invalid token type specified {tokentype} - use cluster/local"}, 400
+        return {"error": log.error(f"invalid token type specified {tokentype} - use cluster/local")}, 400
