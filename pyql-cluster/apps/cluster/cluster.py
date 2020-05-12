@@ -12,9 +12,11 @@ def run(server):
     import time, uuid, random
     from random import randrange
     import json, os
-    from apps.cluster import asyncrequest
+    from apps.cluster import asyncrequest,request_async
 
     log = server.log
+
+    server.sessions = {}
 
     class tracer:
         def __init__(self, name, root=None):
@@ -219,18 +221,30 @@ def run(server):
         trace(f"cache reset called for {reason}")
         server.reset_cache()
     server.node_reset_cache = node_reset_cache
+    def get_endpoint_sessions(endpoint):
+        """
+        pulls endpoint session if exists else creates & returns
+        """
+        if not endpoint in server.sessions:
+            server.sessions[endpoint] = requests.Session()
+        return server.sessions[endpoint]
 
     @server.trace
     def probe(path, method='GET', data=None, timeout=3.0, auth=None, **kw):
         trace = kw['trace']
         auth = 'PYQL_CLUSTER_SERVICE_TOKEN' if not auth == 'local' else 'PYQL_LOCAL_SERVICE_TOKEN'
         headers = get_auth_http_headers(auth, **kw)
+        action = requests
+        if 'session' in kw:
+            action = kw['session']
+            action.headers.update(headers)
+            headers = action.headers
         url = f'{path}'
         try:
             if method == 'GET':
-                r = requests.get(url, headers=headers, timeout=2.0)
+                r = action.get(url, headers=headers, timeout=2.0)
             else:
-                r = requests.post(url, headers=headers, data=json.dumps(data), timeout=timeout)
+                r = action.post(url, headers=headers, data=json.dumps(data), timeout=timeout)
         except Exception as e:
             error = f"Encountered exception when probing {path} - {repr(e)}"
             return {"error": trace.error(error)}, 500
@@ -323,6 +337,8 @@ def run(server):
                 'lastModTime': time.time()
             }
         def execute_request(endpoint, db, table, action, data):
+            server.data[db].tables[table].insert(**data)
+            """
             r = requests.post(
                         f'{endpoint}/db/{db}/table/{table}/{action}',
                         headers={
@@ -334,6 +350,7 @@ def run(server):
                         timeout=0.5)
             is_requests_success(r,'bootstrap_pyql_cluster')
             return r
+            """
         localhost = f'http://localhost:{os.environ["PYQL_PORT"]}'
         # cluster table
         clusterData = get_clusters_data()
@@ -427,9 +444,10 @@ def run(server):
             epRequests[endpoint['uuid']] = {
                 'path': f"http://{endpoint['path']}/pyql/node",
                 'timeout':timeout,
+                'session': get_endpoint_sessions(endpoint['uuid'])
             }
         try:
-            epResults = asyncrequest.async_request(epRequests)
+            epResults = request_async.requests_async(epRequests)
         except Exception as e:
             return {"error": trace.exception(f"Excepton found during get_alive_endpoints")}, 500
         trace.warning(f"get_alive_endpoints - {epResults}")
@@ -479,7 +497,8 @@ def run(server):
                 endPointPath = f'http://{endPointPath}/pyql/quorum'
                 epRequests[endpoint['uuid']] = {
                     'path': endPointPath, 'data': None, 'timeout': 5.0,
-                    'headers': get_auth_http_headers('remote', token=endpoint['token'])
+                    'headers': get_auth_http_headers('remote', token=endpoint['token']),
+                    'session': get_endpoint_sessions(endpoint['uuid'])
                     }
 
         """ TODO - Delete after testing
@@ -493,7 +512,7 @@ def run(server):
         if len(epList) == 0:
             return {"message": f"pyql node {nodeId} is still syncing"}, 200
         try:
-            epResults = asyncrequest.async_request(epRequests, 'POST')
+            epResults = request_async.requests_async(epRequests, 'POST')
         except Exception as e:
             trace.exception("Excepton found during cluster_quorum() check")
         trace.warning(f"cluster_quorum_check - results {epResults}")
@@ -912,15 +931,17 @@ def run(server):
             for endpoint in tableEndpoints['inSync']:
                 db = tableEndpoints['inSync'][endpoint]['dbname']
                 path = tableEndpoints['inSync'][endpoint]['path']
+                epuuid = tableEndpoints['inSync'][endpoint]['uuid']
                 #db = get_db_name(cluster, endpoint)
                 token = tableEndpoints['inSync'][endpoint]['token']
                 epRequests[endpoint] = {
                     'path': get_endpoint_url(path, action, cache=requestUuid, trace=trace),
                     'data': {'txn': requestData, 'time': transTime},
                     'timeout': 1.0,
-                    'headers': get_auth_http_headers('remote', token=token)
+                    'headers': get_auth_http_headers('remote', token=token),
+                    'session': get_endpoint_sessions(epuuid)
                 }
-            asyncResults = asyncrequest.async_request(epRequests, 'POST')
+            asyncResults = request_async.requests_async(epRequests, 'POST')
 
             for endpoint in tableEndpoints['inSync']:
                 if not asyncResults[endpoint]['status'] == 200:
@@ -949,14 +970,16 @@ def run(server):
                             db = tableEndpoints['inSync'][endpoint]['dbname']
                             path = tableEndpoints['inSync'][endpoint]['path']
                             token = tableEndpoints['inSync'][endpoint]['token']
+                            epuuid = tableEndpoints['inSync'][endpoint]['uuid']
                             epStateRequests[endpoint] = {
                                 'path': get_endpoint_url(path, action, trace=trace),
                                 'data': stateSet,
                                 'timeout': 2.0,
-                                'headers': get_auth_http_headers('remote', token=token)
+                                'headers': get_auth_http_headers('remote', token=token),
+                                'session': get_endpoint_sessions(epuuid)
                             }
                         trace(f"marking {failedEndpoint} as inSync=False on alive pyql state endpoints")
-                        epStateResults = asyncrequest.async_request(epStateRequests, 'POST')
+                        epStateResults = request_async.requests_async(epStateRequests, 'POST')
                         trace(f"marking {failedEndpoint} as inSync=False on alive pyql state endpoints - results: {epStateResults}")
                     else:
                         stateSet = {
@@ -1013,14 +1036,16 @@ def run(server):
                 db = tableEndpoints['inSync'][endpoint]['dbname']
                 path = tableEndpoints['inSync'][endpoint]['path']
                 token = tableEndpoints['inSync'][endpoint]['token']
+                epuuid = tableEndpoints['inSync'][endpoint]['uuid']
                 epCommitRequests[endpoint] = {
                     'path': get_endpoint_url(path, action, commit=True, trace=trace),
                     'data': endpointResponse[endpoint],
                     'timeout': 2.0,
-                    'headers': get_auth_http_headers('remote', token=token, trace=trace)
+                    'headers': get_auth_http_headers('remote', token=token, trace=trace),
+                    'session': get_endpoint_sessions(epuuid)
                 }
             
-            asyncResults = asyncrequest.async_request(epCommitRequests, 'POST')
+            asyncResults = request_async.requests_async(epCommitRequests, 'POST')
             trace.info(asyncResults)
             # if a commit fails - due to a timeout or other internal - need to mark endpoint OutOfSync
             success, fail = set(), set()
@@ -1238,7 +1263,8 @@ def run(server):
                     method=request.method if not 'method' in kw else kw['method'],
                     data=data if not 'data' in kw else kw['data'],
                     token=endpoint['token'],
-                    timeout=timeout
+                    timeout=timeout,
+                    session=get_endpoint_sessions(endpoint['uuid'])
                 )
                 if not rc == 200:
                     errors.append({endpoint['name']: trace.exception(f"non 200 rc encountered with {endpoint} {rc}")})
@@ -1676,7 +1702,8 @@ def run(server):
                     f"http://{config['path']}/pyql/setup",
                     'POST',
                     {'PYQL_UUID': clusterId},
-                    token=config['token']
+                    token=config['token'],
+                    session=get_endpoint_sessions(config['database']['uuid'])
                 )
                 # auth setup - applys cluster service token in joining pyql node, and pulls key
                 result, rc = probe(
@@ -1685,7 +1712,8 @@ def run(server):
                     {
                         'PYQL_CLUSTER_SERVICE_TOKEN': server.env['PYQL_CLUSTER_SERVICE_TOKEN']
                     },
-                    token=config['token']
+                    token=config['token'],
+                    session=get_endpoint_sessions(config['database']['uuid'])
                 )
                 trace.warning(f"completed auth setup for new pyql endpoint: result {result} {rc}")
             return {"message": trace.warning(f"join cluster {clusterName} for endpoint {config['name']} completed successfully")}, 200
@@ -1916,6 +1944,7 @@ def run(server):
                 method='POST',
                 token=endpoint['token'],
                 data=findLatest,
+                session=get_endpoint_sessions(endpoint['uuid']),
                 timeout=2.0,
                 trace=kw['trace']
             )
@@ -1940,6 +1969,8 @@ def run(server):
                     f"http://{endpoint['path']}/db/cluster/table/state/update",
                     'POST',
                     updateSetInSync,
+                    token=endpoint['token'],
+                    session=get_endpoint_sessions(endpoint['uuid']),
                     timeout=2.0,
                     trace=kw['trace']
                 )
@@ -2030,23 +2061,37 @@ def run(server):
             trace.info(f"cluster_tablesync_mgr created {jobs} for outofSync endpoints")
             return {"jobs": jobs}, 200
     @server.trace
-    def table_copy(cluster, table, inSyncPath, inSyncToken, outOfSyncPath, outOfSyncToken, **kw):
+    def table_copy(cluster, table, inSyncPath, inSyncToken, inSyncUuid,  outOfSyncPath, outOfSyncToken, outOfSyncUuid, **kw):
         trace=kw['trace']
-        tableCopy, rc = probe(f'{inSyncPath}/select', token=inSyncToken, trace=kw['trace'])
+        tableCopy, rc = probe(
+            f'{inSyncPath}/select', token=inSyncToken, 
+            session=get_endpoint_sessions(inSyncUuid), 
+            trace=kw['trace'])
         if rc == 500:
             error = f"#CRITICAL - tablesyncer was not able to find an inSync endpoints"
             return trace.error(error), rc
-        response, rc = probe(f'{outOfSyncPath}/sync', 'POST', tableCopy, token=outOfSyncToken, trace=kw['trace'])
+        response, rc = probe(
+            f'{outOfSyncPath}/sync', 'POST', 
+            tableCopy, token=outOfSyncToken, 
+            session=get_endpoint_sessions(outOfSyncUuid), trace=kw['trace'])
         if rc == 400:
             if 'not found in database' in response['message']:
                 # create table & retry resync
-                tableConfig, rc = probe(f'{inSyncPath}', token=inSyncToken, trace=kw['trace'])
-                response, rc = probe(f'{outOfSyncPath}/create', 'POST', tableConfig, token=outOfSyncToken, trace=kw['trace'])
+                tableConfig, rc = probe(
+                    f'{inSyncPath}', token=inSyncToken, 
+                    session=get_endpoint_sessions(inSyncUuid), trace=kw['trace'])
+                response, rc = probe(
+                    f'{outOfSyncPath}/create', 'POST', tableConfig, 
+                    token=outOfSyncToken, session=get_endpoint_sessions(outOfSyncUuid),  
+                    trace=kw['trace'])
                 if not rc == 200:
                     failure = f"failed to create table using {tableConfig}"
                     return trace.error(failure), 500
                 #Retry sync since new table creation
-                response, rc = probe(f'{outOfSyncPath}/sync', 'POST', tableCopy, token=outOfSyncToken, trace=kw['trace'])
+                response, rc = probe(
+                    f'{outOfSyncPath}/sync', 'POST', tableCopy, 
+                    token=outOfSyncToken, session=get_endpoint_sessions(outOfSyncUuid),
+                    trace=kw['trace'])
 
         trace.warning(f"#SYNC table_copy results {response} {rc}")
         trace.warning(f"#SYNC initial table copy of {table} in cluster {cluster} completed, need to sync changes now")
@@ -2097,10 +2142,11 @@ def run(server):
             inSync = list(tableEndpoints['inSync'].keys())[random.randrange(len([k for k in tableEndpoints['inSync']]))]
             inSyncEndoint = tableEndpoints['inSync'][inSync] 
             inSyncPath =  f"http://{inSyncEndoint['path']}/db/{db}/table/{table}"
+            inSyncUuid = inSyncEndoint['uuid']
             inSyncToken = inSyncEndoint['token']
 
             # check if endpoint is alive
-            r, rc = probe(f'http://{path}/pyql/node', trace=kw['trace'])
+            r, rc = probe(f'http://{path}/pyql/node', trace=kw['trace'], session=get_endpoint_sessions(uuid))
             if not rc == 200 and not rc==404:
                 warning = f"endpoint {uuid} is not alive or reachable with path {path} - cannot issue sync right now"
                 syncResults[endpoint] = track(warning)
@@ -2115,7 +2161,7 @@ def run(server):
                     track(f"PYQL - cutover start result: {r} rc {rc}")
                     #message, rc = table_cutover(clusterId, table, 'start')
                     track(f"PYQL - starting table_copy")
-                    r, rc = table_copy(clusterId, table, inSyncPath, inSyncToken, endpointPath, token, trace=kw['trace'])
+                    r, rc = table_copy(clusterId, table, inSyncPath, inSyncToken, inSyncUuid,  endpointPath, token, uuid, trace=kw['trace'])
                     track(f"PYQL - table_copy result: {r} rc: {rc}")
                     if rc == 500:
                         if 'not able to find an inSync endpoints' in r:
@@ -2139,12 +2185,13 @@ def run(server):
                                     'where': {'uuid': endpoint, 'tableName': 'state'}
                                 },
                                 token=token,
+                                session=get_endpoint_sessions(uuid),
                                 trace=kw['trace']
                             )
                     r, rc = table_pause(clusterId, table, 'stop', trace=kw['trace'])
                     track(f'PYQL - end of cutover, resuming table result: {r} rc: {rc}')
                 else: 
-                    r, rc = table_copy(clusterId, table, inSyncPath, inSyncToken, endpointPath, token, trace=kw['trace'])
+                    r, rc = table_copy(clusterId, table, inSyncPath, inSyncToken, inSyncUuid, endpointPath, token,uuid, trace=kw['trace'])
                     track(f"table_copy results: {r} {rc}")
                     if rc == 500:
                         if 'not able to find an inSync endpoints' in r:
@@ -2176,7 +2223,10 @@ def run(server):
                 for txn in txns:
                     transaction = txn['txn']
                     for action in transaction:
-                        message, rc = probe(f'{endpointPath}/{action}', 'POST', transaction[action], token=token, trace=kw['trace'])
+                        message, rc = probe(
+                            f'{endpointPath}/{action}', 'POST', 
+                            transaction[action], token=token, 
+                            session=get_endpoint_sessions(uuid), trace=kw['trace'])
                         if rc == 200:
                             commitedLogs.append(txn['uuid'])
                         else:
