@@ -252,7 +252,7 @@ def run(server):
         try:
             return r.json(),r.status_code
         except Exception as e:
-            trace.error(f'encountered exception - {repr(e)}')
+            trace.error(f'encountered exception converting response to JSON for {path}- {repr(e)} response {r.text} {r.status_code}')
             return r.text, r.status_code
     server.probe = probe
     def wait_on_jobs(pyql, curInd, jobList, waitingOn=None):
