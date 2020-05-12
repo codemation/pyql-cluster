@@ -17,6 +17,7 @@ def run(server):
     log = server.log
 
     server.sessions = {}
+    server.session = requests.Session()
 
     class tracer:
         def __init__(self, name, root=None):
@@ -226,7 +227,7 @@ def run(server):
         pulls endpoint session if exists else creates & returns
         """
         if not endpoint in server.sessions:
-            server.sessions[endpoint] = requests.Session()
+            server.sessions[endpoint] = server.session
         return server.sessions[endpoint]
 
     @server.trace
