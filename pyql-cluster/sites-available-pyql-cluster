@@ -9,5 +9,10 @@ server {
     location / {
         include uwsgi_params;
         uwsgi_pass unix:/pyql-cluster/pyql-cluster/pyql.sock;
+        proxy_connect_timeout 180s;
+        proxy_send_timeout 180s;
+        proxy_read_timeout 180s;
+        fastcgi_send_timeout 180s;
+        fastcgi_read_timeout 180s;
     }
 }
