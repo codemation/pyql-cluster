@@ -1008,7 +1008,8 @@ def run(server):
             # Update any previous out of sync table change-logs, if any
             for outOfSyncEndpoint in tableEndpoints['outOfSync']:
                 tbEndpoint = f'{outOfSyncEndpoint}{table}'
-                if not tbEndpoint in tb['endpoints'] or not 'state' in tb['endpoints'][tbEndpoint]:
+                #if not tbEndpoint in tb['endpoints'] or not 'state' in tb['endpoints'][tbEndpoint]: TODO - Delete
+                if not tbEndpoint in tb['endpoints']:
                     trace(f"outOfSyncEndpoint {tbEndpoint} may be new, not triggering resync yet {tb['endpoints']}")
                     continue
                 if not tb['endpoints'][tbEndpoint]['state'] == 'new':
@@ -1042,7 +1043,7 @@ def run(server):
                 epCommitRequests[endpoint] = {
                     'path': get_endpoint_url(path, action, commit=True, trace=trace),
                     'data': endpointResponse[endpoint],
-                    'timeout': 2.0,
+                    'timeout': 5.0,
                     'headers': get_auth_http_headers('remote', token=token, trace=trace),
                     'session': get_endpoint_sessions(epuuid)
                 }
@@ -1061,13 +1062,16 @@ def run(server):
                     "message": trace.error(f"failed to commit {requestData} to all inSync {table} endpoints"), 
                     "details": asyncResults}, 400
             if len(fail) > 0:
+                trace.warning(f"commit failure for endpoints {fail}")
                 for endpoint in fail:
                     stateSet = {
-                        "set": {"inSync": False},
+                        "set": {"inSync": False, "state": 'new'},
                         "where": {"name": f"{endpoint}{table}"}
                     }
-                    post_request_tables(pyql, 'state', 'update', stateSet, trace=trace)
-                trace.warning(f"commit failure for endpoints {fail}")
+                    alert = f"failed to commit {requestUuid} in endpoint {endpoint}{table}, marking outOfSync & state 'new'"
+                    trace(f"{alert} as chain is broken")
+                    fr, frc = post_request_tables(pyql, 'state', 'update', stateSet, trace=trace)
+                    trace(f"{alert} - result: {fr} {frc}")
                 if cluster == pyql and table in pyqlTxnExceptions:
                     pass
                 else:
@@ -1931,7 +1935,7 @@ def run(server):
         if cluster == pyql:
             quorumCheck, rc = cluster_quorum(trace=kw['trace'])
             if not quorumCheck['quorum']['inQuorum'] == True:
-                error = f"unable to perform table_sync_recovery while outOfQuorum - quorum {quorumCheck}"
+                error = f"unable to perform while outOfQuorum - quorum {quorumCheck}"
                 return {"error": trace.error(error)}, 500
 
         # Need to check all endpoints for the most up-to-date loaded table
@@ -1941,11 +1945,11 @@ def run(server):
             where={'cluster': cluster}
         )
         latest = {'endpoint': None, 'lastModTime': 0.0}
-        trace.warning(f"table_sync_recovery - cluster {cluster} endpoints {clusterEndpoints}")
+        trace.warning(f"cluster {cluster} endpoints {clusterEndpoints}")
         findLatest = {'select': ['lastModTime'], 'where': {'tableName': table}}
         for endpoint in clusterEndpoints:
             if cluster == pyql and not endpoint['uuid'] in quorumCheck['quorum']['nodes']['nodes']:
-                trace.warning(f"table_sync_recovery - endpoint {endpoint} is not in quorum, so assumed as dead")
+                trace.warning(f"endpoint {endpoint} is not in quorum, so assumed as dead")
                 continue
             dbname = endpoint['dbname'] if cluster == pyql else 'pyql'
             pyqlTbCheck, rc = probe(
