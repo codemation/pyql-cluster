@@ -1801,7 +1801,7 @@ def run(server):
             # trigger tablesync check - no inSync job endpoints available for
             cluster_tablesync_mgr('check')
         """
-        while True:
+        for _ in range(2):
             jobSelect = {
                 'select': ['id', 'name', 'type', 'next_run_time', 'node'], 
                 'where':{
