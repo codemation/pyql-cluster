@@ -16,6 +16,7 @@ def log(log):
 
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
+session = reqeusts.Session()
 
 def set_db_env(path):
     sys.path.append(path)
@@ -29,7 +30,7 @@ def set_db_env(path):
     pyqlId = env['PYQL_UUID']
 
 
-def probe(path, method='GET', data=None, timeout=60.0, auth=None, **kw):
+def probe(path, method='GET', data=None, timeout=300.0, auth=None, **kw):
     path = f'{path}'
     if not 'token' in kw:
         auth = 'PYQL_CLUSTER_SERVICE_TOKEN' if not auth == 'local' else 'PYQL_LOCAL_SERVICE_TOKEN'
@@ -40,10 +41,10 @@ def probe(path, method='GET', data=None, timeout=60.0, auth=None, **kw):
         'Accept': 'application/json', "Content-Type": "application/json",
         "Authentication": f"Token {token}"}
     if method == 'GET':
-        r = requests.get(path, headers=headers,
+        r = session.get(path, headers=headers,
                 timeout=timeout)
     else:
-        r = requests.post(path, headers=headers,
+        r = session.post(path, headers=headers,
                 data=json.dumps(data), timeout=timeout)
     try:
         return r.json(),r.status_code
@@ -320,7 +321,7 @@ def sync_table_job(cluster, table, job=None):
     """
     
 def get_and_run_job(path):
-    job, rc = probe(path,'POST', {'node': nodeId}, timeout=30.0, auth='cluster') # TODO - Parameterize timeout
+    job, rc = probe(path,'POST', {'node': nodeId}, auth='cluster') # TODO - Parameterize timeout
     if not 'config' in job or not job['config']['jobType'] == 'tablesync':
         log(f'did not find config or type when pulling job - {job}')
         return job, rc

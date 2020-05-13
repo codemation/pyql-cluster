@@ -7,6 +7,7 @@ import sys, datetime, time, requests, json, os, logging
 logging.basicConfig()
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
+session = requests.Session()
 
 def set_db_env(path):
     sys.path.append(path)
@@ -18,17 +19,17 @@ def set_db_env(path):
     global nodeId
     nodeId = env['PYQL_ENDPOINT']
 
-def probe(path, method='GET', data=None, auth=None, timeout=30.0, **kw):
+def probe(path, method='GET', data=None, auth=None, timeout=300.0, **kw):
     path = f'{path}'   
     auth = 'PYQL_CLUSTER_SERVICE_TOKEN' if not auth == 'local' else 'PYQL_LOCAL_SERVICE_TOKEN'
     headers = {
         'Accept': 'application/json', "Content-Type": "application/json",
         "Authentication": f"Token {env[auth] if not 'token' in kw else kw['token']}"}
     if method == 'GET':
-        r = requests.get(path, headers=headers,
+        r = session.get(path, headers=headers,
                 timeout=timeout)
     else:
-        r = requests.post(path, headers=headers,
+        r = session.post(path, headers=headers,
                 data=json.dumps(data), timeout=timeout)
     try:
         return r.json(),r.status_code
@@ -49,7 +50,7 @@ def log(log):
     return log
 
 def get_and_process_job(path):
-    job, rc = probe(path,'POST', {'node': nodeId}, timeout=60.0)
+    job, rc = probe(path,'POST', {'node': nodeId})
     def process_job(job, rc):
         if not rc == 200 or 'message' in job:
             return job,rc
@@ -101,7 +102,7 @@ if __name__=='__main__':
             time.sleep(1)
             if delay < time.time() - start:
                 try:
-                    result, rc = get_and_process_job(f'{clusterSvcName}{jobpath}')
+                    result, rc = get_and_process_job(f'{clusterSvcName}{jobpath}', delay)
                 except Exception as e:
                     print(f"Exception when running / processing")
                 start = time.time()

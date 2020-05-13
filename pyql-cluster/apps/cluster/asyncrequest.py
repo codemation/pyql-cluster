@@ -8,12 +8,19 @@ async def async_get_request(session, url):
     for urlId, config in url.items():
         #print(f"{url} started")
         try:
+            """
             async with session.get(
                 config['path'] if 'http' in config['path'] else f"http://{config['path']}",
                 headers=headersDefault if not 'headers' in config else config['headers'],
                 timeout=2.0 if not 'timeout' in config else config['timeout']
                 ) as r:
-                jsonBody = await r.json()
+            """
+            r = await session.get(
+                config['path'] if 'http' in config['path'] else f"http://{config['path']}",
+                headers=headersDefault if not 'headers' in config else config['headers'],
+                timeout=2.0 if not 'timeout' in config else config['timeout']
+            )
+            jsonBody = await r.json()
             #print(f"{url} completed")
             return urlId, {'content': jsonBody, 'status': r.status}
         except Exception as e:
@@ -33,15 +40,34 @@ async def async_post_request(session, url):
         except Exception as e:
             return urlId, {'content': str(repr(e)), 'status': 400}
 
-async def async_request_pool(urls, method):
+async def async_request_pool(urls, method, session=None, result=None):
+    #if session ==None:
+    #    session = ClientSession()
     async with ClientSession() as session:
-        if method == 'GET':
-            return await asyncio.gather(*[async_get_request(session, {url: urls[url]}, ) for url in urls])
-        elif method == 'POST':
-            return await asyncio.gather(*[async_post_request(session, {url: urls[url]}) for url in urls])
+        try:
+            if method == 'GET':
+                results = []
+                for url in urls:
+                    results.append(asyncio.create_task(async_get_request(session, {url: urls[url]},)))
+                
+                result.result =  await asyncio.gather(*results)
+                """
+                getTask = asyncio.create_task([async_get_request(session, {url: urls[url]}, ) for url in urls][0])
+                getTask.result()
 
 
-def async_request(urls, method='GET'):
+                result.result = await asyncio.gather(*[async_get_request(session, {url: urls[url]}, ) for url in urls])
+                """
+            elif method == 'POST':
+                result.result = await asyncio.gather(*[async_post_request(session, {url: urls[url]}) for url in urls])
+        except Exception as e:
+            await asyncio.sleep(1)
+
+class async_result:
+    pass
+
+
+def async_request(urls, method='GET', loop=None, session=None):
     """
         usage: 
         urls = [
@@ -52,5 +78,10 @@ def async_request(urls, method='GET'):
         }
     },
     """
-    result = asyncio.run(async_request_pool(urls,method))
-    return {r[0]: r[1] for r in result}
+    if loop == None:
+        loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    r = async_result()
+    asyncio.run(async_request_pool(urls,method, session, result=r))
+    #result = asyncio.run()
+    return {r[0]: r[1] for r in r.result}

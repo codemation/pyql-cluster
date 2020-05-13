@@ -1815,7 +1815,6 @@ def run(server):
             jobList, rc = table_select(pyql, 'jobs', data=jobSelect, method='POST', quorum=quorumCheck, trace=kw['trace'])
             trace(f"finished pulling list of jobs - jobList {jobList} ")
             jobList = jobList['data']
-
             for i, job in enumerate(jobList):
                 if not job['next_run_time'] == None:
                     #Removes queued job from list if next_run_time is still in future 
@@ -1848,7 +1847,7 @@ def run(server):
             result, rc = post_request_tables(pyql, 'jobs', 'update', jobUpdate, trace=kw['trace'])
             if not rc == 200:
                 trace.error(f"failed to reserve job {job} for node {node}")
-                continue
+                return {"message": trace("no jobs to process at this time")}, 200
 
             # verify if job was reserved by node and pull config
             jobSelect['where']['node'] = node
