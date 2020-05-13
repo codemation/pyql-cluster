@@ -1857,6 +1857,9 @@ def run(server):
                 continue
             trace.warning(f"cluster_jobqueue - pulled job {jobCheck['data'][0]} for node {node}")
             return jobCheck['data'][0], 200
+        trace.warning(f"failed to reserve job {job} after 2 attempts for node {node}")
+        return {"message": trace("no jobs to process at this time")}, 200
+        
 
     @server.route('/cluster/job/<jobtype>/<uuid>/<status>', methods=['POST'])
     @server.is_authenticated('pyql')
