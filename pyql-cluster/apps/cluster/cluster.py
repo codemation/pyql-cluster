@@ -1257,7 +1257,7 @@ def run(server):
                 return {"error": trace.error("expected json input for request")}, 400
         for endpoint in get_random_table_endpoint(cluster, table, quorum):
             if endpoint == None:
-                return {"message": trace(f"no inSync endpoints in cluster {cluster} table {table} or all failed - errors {errors}")}, 400
+                return {"message": trace(f"no inSync endpoints in cluster {cluster} table {table} or all failed - errors {errors}")}, 500
             try:
                 url = f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/{table}{path}"
                 r, rc = probe(
@@ -1816,6 +1816,8 @@ def run(server):
                 jobSelect['where']['node'] = None
             trace("starting to pull list of jobs")
             jobList, rc = table_select(pyql, 'jobs', data=jobSelect, method='POST', quorum=quorumCheck, trace=kw['trace'])
+            if not rc == 200:
+                return {"message": trace("unable to pull jobs at this time")}, rc
             trace(f"finished pulling list of jobs - jobList {jobList} ")
             jobList = jobList['data']
             for i, job in enumerate(jobList):
