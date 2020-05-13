@@ -104,6 +104,6 @@ if __name__=='__main__':
                 try:
                     result, rc = get_and_process_job(f'{clusterSvcName}{jobpath}', delay)
                 except Exception as e:
-                    print(f"Exception when running / processing")
+                    logging.exception(f"Exception when running / processing")
                 start = time.time()
                 
