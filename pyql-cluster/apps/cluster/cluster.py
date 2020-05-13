@@ -229,6 +229,7 @@ def run(server):
         if not endpoint in server.sessions:
             server.sessions[endpoint] = server.session
         return server.sessions[endpoint]
+    server.get_endpoint_sessions = get_endpoint_sessions
 
     @server.trace
     def probe(path, method='GET', data=None, timeout=3.0, auth=None, **kw):
