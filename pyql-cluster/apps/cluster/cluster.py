@@ -948,8 +948,8 @@ def run(server):
                 if not asyncResults[endpoint]['status'] == 200:
                     failTrack.append(f'{endpoint}{table}')
                     # start job to Retry for endpoint, or mark endpoint bad after testing
-                    trace.warning(f"unable to {action} from endpoint {endpoint} using {requestData}")
                     error, rc = asyncResults[endpoint]['content'], asyncResults[endpoint]['status']
+                    trace.warning(f"unable to {action} from endpoint {endpoint} using {requestData} - error: {error} rc: {rc}")
                 else:
                     endpointResponse[endpoint] = asyncResults[endpoint]['content']
                     response, rc = asyncResults[endpoint]['status'], asyncResults[endpoint]['status']
@@ -1057,7 +1057,7 @@ def run(server):
                     success.add(endpoint)
             if len(success) == 0:
                 return {
-                    "message": trace.error(f"failed to commit {requestData} to inSync {table} endpoints"), 
+                    "message": trace.error(f"failed to commit {requestData} to all inSync {table} endpoints"), 
                     "details": asyncResults}, 400
             if len(fail) > 0:
                 for endpoint in fail:
@@ -2155,49 +2155,52 @@ def run(server):
 
             def load_table():
                 track("load_table starting")
-                if clusterId == pyql and table in pyqlSyncExclusions:
+                if cluster == pyql and table in pyqlSyncExclusions:
                     #need to blackout changes to these tables during copy as txn logs not generated
                     track(f"PYQL - issuing cutover")
                     r, rc = table_pause(cluster, table, 'start')
-                    track(f"PYQL - cutover start result: {r} rc {rc}")
-                    #message, rc = table_cutover(clusterId, table, 'start')
-                    track(f"PYQL - starting table_copy")
-                    r, rc = table_copy(clusterId, table, inSyncPath, inSyncToken, inSyncUuid,  endpointPath, token, uuid, trace=kw['trace'])
-                    track(f"PYQL - table_copy result: {r} rc: {rc}")
-                    if rc == 500:
-                        if 'not able to find an inSync endpoints' in r:
-                            track("PYQL table_copy could not able to find an inSync endpoints, triggering table_sync_recovery")
-                            r, rc = table_sync_recovery(clusterId, table, trace=kw['trace'])
-                            track(f"PYQL table_sync_recovery result {r} rc {rc}")
+                    try:
+                        track(f"PYQL - cutover start result: {r} rc {rc}")
+                        #message, rc = table_cutover(clusterId, table, 'start')
+                        track(f"PYQL - starting table_copy")
+                        r, rc = table_copy(cluster, table, inSyncPath, inSyncToken, inSyncUuid,  endpointPath, token, uuid, trace=kw['trace'])
+                        track(f"PYQL - table_copy result: {r} rc: {rc}")
+                        if rc == 500:
+                            if 'not able to find an inSync endpoints' in r:
+                                track("PYQL table_copy could not able to find an inSync endpoints, triggering table_sync_recovery")
+                                r, rc = table_sync_recovery(cluster, table, trace=kw['trace'])
+                                track(f"PYQL table_sync_recovery result {r} rc {rc}")
+                            else:
+                                # Table create failed
+                                track("PYQL - table create failed")
                         else:
-                            # Table create failed
-                            track("PYQL - table create failed")
-                    else:
-                        track(f"PYQL - Marking table endpoint as inSync & loaded")
-                        r, rc = table_endpoint(clusterId, table, uuid, {'inSync': True, 'state': 'loaded'}, trace=kw['trace'])
-                        track(f'PYQL - marking table endpoint {uuid} - result: {r} rc: {rc}')
-                        if table == 'state':
-                            # as sync endpoint is pyql - state, need to manually set inSync True on itself
-                            status, rc = probe(
-                                f'{endpointPath}/update',
-                                method='POST', 
-                                data={'set': {
-                                    'state': 'loaded', 'inSync': True},
-                                    'where': {'uuid': endpoint, 'tableName': 'state'}
-                                },
-                                token=token,
-                                session=get_endpoint_sessions(uuid),
-                                trace=kw['trace']
-                            )
-                    r, rc = table_pause(clusterId, table, 'stop', trace=kw['trace'])
+                            track(f"PYQL - Marking table endpoint as inSync & loaded")
+                            r, rc = table_endpoint(cluster, table, uuid, {'inSync': True, 'state': 'loaded'}, trace=kw['trace'])
+                            track(f'PYQL - marking table endpoint {uuid} - result: {r} rc: {rc}')
+                            if table == 'state':
+                                # as sync endpoint is pyql - state, need to manually set inSync True on itself
+                                status, rc = probe(
+                                    f'{endpointPath}/update',
+                                    method='POST', 
+                                    data={'set': {
+                                        'state': 'loaded', 'inSync': True},
+                                        'where': {'uuid': endpoint, 'tableName': 'state'}
+                                    },
+                                    token=token,
+                                    session=get_endpoint_sessions(uuid),
+                                    trace=kw['trace']
+                                )
+                    except Exception as e:
+                        trace.exception(track(f"PYQL - exception during load table - {repr(e)}"))
+                    r, rc = table_pause(cluster, table, 'stop', trace=kw['trace'])
                     track(f'PYQL - end of cutover, resuming table result: {r} rc: {rc}')
                 else: 
-                    r, rc = table_copy(clusterId, table, inSyncPath, inSyncToken, inSyncUuid, endpointPath, token,uuid, trace=kw['trace'])
+                    r, rc = table_copy(cluster, table, inSyncPath, inSyncToken, inSyncUuid, endpointPath, token,uuid, trace=kw['trace'])
                     track(f"table_copy results: {r} {rc}")
                     if rc == 500:
                         if 'not able to find an inSync endpoints' in r:
                             track("table_copy could not able to find an inSync endpoints, triggering table_sync_recovery")
-                            r, rc = table_sync_recovery(clusterId, table, trace=kw['trace'])
+                            r, rc = table_sync_recovery(cluster, table, trace=kw['trace'])
                             track(f"PYQL table_sync_recovery result {r} rc {rc}")
                         else:
                             # Table create failed
@@ -2209,7 +2212,7 @@ def run(server):
                 track('starting sync_cluster_table_logs')
                 while True:
                     try:
-                        logsToSync, rc = get_table_endpoint_logs(clusterId, table, uuid, 'getAll', trace=kw['trace'])
+                        logsToSync, rc = get_table_endpoint_logs(cluster, table, uuid, 'getAll', trace=kw['trace'])
                         break
                     except Exception as e:
                         tryCount+=1
@@ -2219,7 +2222,7 @@ def run(server):
                         error = track(f"error when pulling logs - {repr(e)}")
                         return {"error": trace.exception(error)}, 500
                 commitedLogs = []
-                track(f"logs to process - count {len(logsToSync)}")
+                track(f"logs to process - count {len(logsToSync['data'])}")
                 txns = sorted(logsToSync['data'], key=lambda txn: txn['timestamp'])
                 for txn in txns:
                     transaction = txn['txn']
@@ -2247,7 +2250,7 @@ def run(server):
             else:
                 # Check for un-commited logs - otherwise full resync needs to occur.
                 track("table already loaded, checking for change logs")
-                count, rc = get_table_endpoint_logs(clusterId, table, uuid, 'count', trace=kw['trace'])
+                count, rc = get_table_endpoint_logs(cluster, table, uuid, 'count', trace=kw['trace'])
                 if rc == 200:
                     if count['availableTxns'] == 0:
                         track("no change logs found for table, need to reload table - drop / load")
@@ -2256,11 +2259,11 @@ def run(server):
             track("starting to sync from change logs")
             sync_cluster_table_logs()
 
-            if clusterId == pyql and table in pyqlSyncExclusions:
+            if cluster == pyql and table in pyqlSyncExclusions:
                 pass
             else:
                 track("completed initial pull of change logs & starting a cutover by pausing table")
-                r, rc = table_pause(clusterId, table, 'start', trace=kw['trace'])
+                r, rc = table_pause(cluster, table, 'start', trace=kw['trace'])
                 #message, rc = table_cutover(clusterId, table, 'start')
                 track(f"cutover result: {r} rc: {rc}")
                 tableEndpoint = f'{endpoint}{table}'
@@ -2271,17 +2274,18 @@ def run(server):
                 except Exception as e:
                     trace.exception("sync_cluster_table_logs encountered an exception")
                     track("exception encountered during pull of change logs, aborting cutover")
-                    r, rc = table_pause(clusterId, table, 'stop', trace=kw['trace'])
+                    r, rc = table_pause(cluster, table, 'stop', trace=kw['trace'])
                     return {"error": track(f"exception encountered during pull of change logs")}
                 track("setting TB endpoint as inSync=True, 'state': 'loaded'")
-                r, rc = table_endpoint(clusterId, table, uuid, {'inSync': True, 'state': 'loaded'}, trace=kw['trace'])
+                r, rc = table_endpoint(cluster, table, uuid, {'inSync': True, 'state': 'loaded'}, trace=kw['trace'])
                 track(f"setting TB endpoint as inSync=True, 'state': 'loaded' result: {r} rc: {rc}")
                 # Un-Pause
                 track("completing cutover by un-pausing table")
-                r, rc = table_pause(clusterId, table, 'stop', trace=kw['trace'])
+                r, rc = table_pause(cluster, table, 'stop', trace=kw['trace'])
                 track(f"completing cutover result: {r} rc: {rc}")
-
-            syncResults[endpoint] = track(f"finished syncing {uuid} for table {table} in cluster {clusterId}")
+            if cluster == pyql:
+                r, rc = table_pause(cluster, table, 'stop', trace=kw['trace'])
+            syncResults[endpoint] = track(f"finished syncing {uuid} for table {table} in cluster {cluster}")
         message = track(f"finished syncing cluster {cluster} table {table}")
         return {"message": message, "results": syncResults[endpoint]}, 200
 
