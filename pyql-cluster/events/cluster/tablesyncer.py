@@ -16,7 +16,7 @@ def log(log):
 
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
-session = reqeusts.Session()
+session = requests.Session()
 
 def set_db_env(path):
     sys.path.append(path)
