@@ -35,10 +35,10 @@ def run(server):
             
     from apps.internal import internal
     internal.run(server)
-
-    from apps.cache import cache
-    cache.run(server)
       
     from apps.cluster import cluster
     cluster.run(server)     
+
+    from apps.cache import cache
+    cache.run(server)
             
