@@ -938,7 +938,7 @@ def run(server):
                 epRequests[endpoint] = {
                     'path': get_endpoint_url(path, action, cache=requestUuid, trace=trace),
                     'data': {'txn': requestData, 'time': transTime},
-                    'timeout': 1.0,
+                    'timeout': 2.0,
                     'headers': get_auth_http_headers('remote', token=token),
                     'session': get_endpoint_sessions(epuuid)
                 }
