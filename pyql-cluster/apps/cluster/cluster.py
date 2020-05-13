@@ -1786,6 +1786,9 @@ def run(server):
         queue = f'{jobtype}s' if not jobtype == 'cron' else jobtype
 
         pyql = server.env['PYQL_UUID']
+        if pyql == None:
+            return {"message": "cluster is still bootstrapping, try again later"}, 500 
+
         node = request.get_json()['node']
         quorumCheck, rc = cluster_quorum(trace=kw['trace'])
          # check this node is inQuorum and if worker requesting job is from an inQuorum node
@@ -2313,6 +2316,8 @@ def run(server):
         """
         trace=kw['trace']
         pyql = server.env['PYQL_UUID']
+        if pyql == None:
+            return {"message": "cluster is still bootstrapping, try again later"}, 500 
         job = request.get_json() if job == None else job
         trace.warning(f"cluster {jobtype} add for job {job} started")
         jobId = f'{uuid.uuid1()}'
