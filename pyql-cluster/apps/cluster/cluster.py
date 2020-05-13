@@ -2293,7 +2293,7 @@ def run(server):
                 r, rc = table_pause(cluster, table, 'stop', trace=kw['trace'])
             syncResults[endpoint] = track(f"finished syncing {uuid} for table {table} in cluster {cluster}")
         message = track(f"finished syncing cluster {cluster} table {table} - results: {syncResults}")
-        return {"message": message, "results": syncResults[endpoint]}, 200
+        return {"message": message, "results": syncResults}, 200
 
                     
     @server.route('/cluster/<jobtype>/add', methods=['POST'])
