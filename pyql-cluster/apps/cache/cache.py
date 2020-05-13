@@ -27,11 +27,11 @@ def run(server):
                         where={'tableName': table}
                     )
                     if not txnId in {tx['id'] for tx in txns}:
-                        return {"message": trace.error(f"{txnId} does not exist in cache"}), 400
+                        return {"message": trace.error(f"{txnId} does not exist in cache")}, 500
                     if len(txns) == 1:
                         if not txns[0]['id'] == txnId:
                             warning = f"txn with id {txnId} does not exist for {database} {table}"
-                            return {'warning': trace.warning(warning)}, 400
+                            return {'warning': trace.warning(warning)}, 500
                         # txnId is only value inside
                         tx = txns[0]
                         break
