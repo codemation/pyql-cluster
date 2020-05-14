@@ -7,7 +7,9 @@ if 'PYQL_TYPE' in os.environ:
     if os.environ['PYQL_TYPE'] == 'K8S' or os.environ['PYQL_TYPE'] == 'DOCKER':
         import socket
         nodeIP = socket.gethostbyname(socket.getfqdn())
+
 nodePort = os.environ['PYQL_PORT']
+session = requests.Session()
 
 def set_db_env(path):
     sys.path.append(path)
@@ -23,10 +25,10 @@ def probe(path, method='GET', data=None, auth=None):
         'Accept': 'application/json', "Content-Type": "application/json",
         "Authentication": f"Token {env[auth]}"}
     if method == 'GET':
-        r = requests.get(path, headers=headers,
+        r = session.get(path, headers=headers,
                 timeout=1.0)
     else:
-        r = requests.post(path, headers=headers,
+        r = session.post(path, headers=headers,
                 data=json.dumps(data), timeout=1.0)
     try:
         return r.json(),r.status_code

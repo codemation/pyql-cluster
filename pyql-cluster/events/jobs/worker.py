@@ -21,6 +21,8 @@ if 'PYQL_TYPE' in os.environ:
         import socket
         nodeIP = socket.gethostbyname(socket.getfqdn())
 
+session = requests.Session()
+
 def set_db_env(path):
     sys.path.append(path)
     import pydb
@@ -38,10 +40,10 @@ def probe(path, method='GET', data=None, auth=None, **kw):
         'Accept': 'application/json', "Content-Type": "application/json",
         "Authentication": f"Token {env[auth] if not 'token' in kw else kw['token']}"}
     if method == 'GET':
-        r = requests.get(path, headers=headers,
+        r = session.get(path, headers=headers,
                 timeout=3.0)
     else:
-        r = requests.post(path, headers=headers,
+        r = session.post(path, headers=headers,
                 data=json.dumps(data), timeout=3.0)
     try:
         return r.json(),r.status_code
