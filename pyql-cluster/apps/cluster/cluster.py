@@ -1771,7 +1771,7 @@ def run(server):
                 waitingOn = None
                 for jb in jobs:
                     if 'nextJob' in jb['config']:
-                        if jb['config']['nextJob'] == job['name']:
+                        if jb['config']['nextJob'] == job['id']:
                             waitingOn = jb['id']
                             break
                 if waitingOn == None:
