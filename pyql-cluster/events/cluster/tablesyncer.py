@@ -16,7 +16,6 @@ def log(log):
 
 
 clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
-session = requests.Session()
 
 def set_db_env(path):
     sys.path.append(path)
@@ -41,10 +40,10 @@ def probe(path, method='GET', data=None, timeout=300.0, auth=None, **kw):
         'Accept': 'application/json', "Content-Type": "application/json",
         "Authentication": f"Token {token}"}
     if method == 'GET':
-        r = session.get(path, headers=headers,
+        r = requests.get(path, headers=headers,
                 timeout=timeout)
     else:
-        r = session.post(path, headers=headers,
+        r = requests.post(path, headers=headers,
                 data=json.dumps(data), timeout=timeout)
     try:
         return r.json(),r.status_code

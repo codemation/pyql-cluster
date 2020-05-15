@@ -8,8 +8,8 @@ if 'PYQL_TYPE' in os.environ:
         import socket
         nodeIP = socket.gethostbyname(socket.getfqdn())
 
-nodePort = os.environ['PYQL_PORT']
 session = requests.Session()
+nodePort = os.environ['PYQL_PORT']
 
 def set_db_env(path):
     sys.path.append(path)
@@ -25,11 +25,9 @@ def probe(path, method='GET', data=None, auth=None):
         'Accept': 'application/json', "Content-Type": "application/json",
         "Authentication": f"Token {env[auth]}"}
     if method == 'GET':
-        r = session.get(path, headers=headers,
-                timeout=1.0)
+        r = session.get(path, headers=headers)
     else:
-        r = session.post(path, headers=headers,
-                data=json.dumps(data), timeout=1.0)
+        r = session.post(path, headers=headers, data=json.dumps(data))
     try:
         return r.json(),r.status_code
     except Exception as e:
