@@ -95,6 +95,8 @@ def run(server):
             'lastModTime': time.time()
         })
     nodeId = dbuuid
+    server.sessions[nodeId] = server.session
+
     os.environ['PYQL_ENDPOINT'] = dbuuid
     server.env['PYQL_ENDPOINT'] = dbuuid
 
@@ -227,7 +229,7 @@ def run(server):
         pulls endpoint session if exists else creates & returns
         """
         if not endpoint in server.sessions:
-            server.sessions[endpoint] = server.session
+            server.sessions[endpoint] = requests.Session()
         return server.sessions[endpoint]
     server.get_endpoint_sessions = get_endpoint_sessions
 
