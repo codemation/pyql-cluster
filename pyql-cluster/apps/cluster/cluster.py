@@ -221,7 +221,8 @@ def run(server):
                 return {
                     "message": log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {quorum}"),
                     "quorum": nodeQuorumState}, 500
-            if nodeQuorumState[0]['state.inSync'] == True:
+            nodeQuorumState = nodeQuorumState[0]
+            if nodeQuorumState['state.inSync'] == True:
                 return func(*args, **kwargs)
             else:
                 pyql = server.env['PYQL_UUID']
