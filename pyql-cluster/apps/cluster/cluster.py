@@ -197,6 +197,65 @@ def run(server):
             # TODO decide if i need to input clusterName into kwargs
             return func(*args, **kwargs)
         return check_user_access
+    def state_and_quorum_check(func):
+        """
+        verifies that a pyql node is able to service requests otherwise tries to find a node which can
+        Checks Requirements:
+        - inQuorum - Continues only if inQuorum - no state checks if inQuorum = False
+        - local state table is inSync = True - servicing requests only if state table is inSync True
+        """
+        def state_quorum_safe_func(*args, **kwargs):
+            if not 'quorum' in kwargs:
+                quorum, rc = cluster_quorum(trace=trace)
+            if not 'quorum' in quorum or quorum['quorum']['inQuorum'] == False:
+                return {
+                    "message": log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {quorum}"),
+                    "quorum": quorum}, 500
+            # Quorum passed - check that state is inSync
+            nodeQuorumState = server.clusters.quorum.select(
+                'quorum.nodes', 'quorum.inQuorum', 'state.inSync', 
+                join={'state': {'quorum.node': 'state.uuid'}}, 
+                where={'state.tableName': 'state', 'quorum.node': f'{nodeId}'}
+                )
+            if len(nodeQuorumState) == 0 or nodeQuorumState[0]['quorum.inQuorum'] == False:
+                return {
+                    "message": log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {quorum}"),
+                    "quorum": nodeQuorumState}, 500
+            if nodeQuorumState[0]['state.inSync'] == True:
+                return func(*args, **kwargs)
+            else:
+                pyql = server.env['PYQL_UUID']
+                log.warning("state.inSync is False for node but this node is inQuorum = True")
+                pyqlNodes = server.clusters.endpoints.select('id', 'path', where={'cluster': pyql})
+                headers = dict(request.headers)
+                # using unsafe in headers to track endpoints which we have tried and should not again 
+                headers['unsafe'] = '' if not 'unsafe' in headers else headers['unsafe']
+                headers['unsafe'] = ','.join(headers['unsafe'].split(',').append(nodeId))
+                for node in pyqlNodes:
+                    if node['uuid'] in headers['unsafe']:
+                        continue
+                    if not node['uuid'] in nodeQuorumState['quorum.nodes']:
+                        log.warning(f"node {node} was not yet 'unsafe' but is not inQuorum, marking unsafe and will try other, if any")
+                        headers['unsafe'] = ','.join(headers['unsafe'].split(',').append(node['uuid']))
+                        continue
+                    url = f"{node['path']}{request.path}"
+                    r, rc =  probe(
+                        url,
+                        method=request.method,
+                        data=request.get_json(),
+                        headers=headers,
+                        session=get_endpoint_sessions(node['uuid'])
+                    )
+                    if rc == 200: 
+                        return r, rc
+                    log.error(f"non - 200 rc found when probing {url} {node} - marking unsafe and will try other, if any") 
+                    headers['unsafe'] = ','.join(headers['unsafe'].split(',').append(node['uuid']))
+                # Out of available - inQuorum nodes to try
+                return {"CRITICAL": log.error("No pyql nodes were available to service request")}, 500
+        state_quorum_safe_func.__name__ = '_'.join(str(uuid.uuid4()).split('-'))
+        return state_quorum_safe_func
+    server.state_and_quorum_check = state_and_quorum_check
+
 
     @server.route('/pyql/setup', methods=['POST'])
     @server.is_authenticated('local')
@@ -234,19 +293,17 @@ def run(server):
     server.get_endpoint_sessions = get_endpoint_sessions
 
     @server.trace
-    def probe(path, method='GET', data=None, timeout=3.0, auth=None, **kw):
+    def probe(path, method='GET', data=None, timeout=3.0, auth=None, headers=None, **kw):
         trace = kw['trace']
         auth = 'PYQL_CLUSTER_SERVICE_TOKEN' if not auth == 'local' else 'PYQL_LOCAL_SERVICE_TOKEN'
-        headers = get_auth_http_headers(auth, **kw)
+        headers = get_auth_http_headers(auth, **kw) if headers == None else headers
         action = requests
         if 'session' in kw:
             action = kw['session']
-            action.headers.update(headers)
-            headers = action.headers
         url = f'{path}'
         try:
             if method == 'GET':
-                r = action.get(url, headers=headers, timeout=2.0)
+                r = action.get(url, headers=headers, timeout=timeout)
             else:
                 r = action.post(url, headers=headers, data=json.dumps(data), timeout=timeout)
         except Exception as e:
@@ -731,6 +788,7 @@ def run(server):
     """
    
     @server.route('/cluster/<cluster>/table/<table>/path')
+    @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
     def get_db_table_path(cluster, table, **kw):
@@ -745,6 +803,7 @@ def run(server):
         return paths, 200
 
     @server.route('/cluster/<cluster>/table/<table>/endpoints')
+    @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
     def cluster_get_table_endpoints(cluster, table, **kw):
@@ -1154,6 +1213,9 @@ def run(server):
         post_request_tables(pyql, 'state', 'update', updateWhere, trace=trace)
         trace.warning(f"pyql_reset_jobs_table finished")
 
+
+
+
     @server.trace
     def table_select(cluster, table, data=None, method='GET', quorum=None, **kw):
         trace = kw['trace']
@@ -1285,6 +1347,7 @@ def run(server):
                 continue
     
     @server.route('/cluster/<cluster>/table/<table>', methods=['GET', 'PUT', 'POST'])
+    @state_and_quorum_check
     @server.is_authenticated('cluster')
     @cluster_name_to_uuid
     @server.trace
@@ -1295,6 +1358,7 @@ def run(server):
         return cluster_table_insert(cluster, table, trace=trace)
 
     @server.route('/cluster/<cluster>/table/<table>/<key>', methods=['GET', 'POST', 'DELETE'])
+    @state_and_quorum_check
     @server.is_authenticated('cluster')
     @cluster_name_to_uuid
     @server.trace
@@ -1317,6 +1381,7 @@ def run(server):
             return table_delete(cluster, table, {'where': {primary: key}}, trace=trace)
 
     @server.route('/cluster/<cluster>/table/<table>/config', methods=['GET'])
+    @state_and_quorum_check
     @server.is_authenticated('cluster')
     @cluster_name_to_uuid
     @server.trace
@@ -1325,6 +1390,7 @@ def run(server):
         return endpoint_probe(cluster, table, path=f'/config', trace=trace)
 
     @server.route('/cluster/<cluster>/table/<table>/select', methods=['GET','POST'])
+    @state_and_quorum_check
     @server.is_authenticated('cluster')
     @cluster_name_to_uuid
     @server.trace
@@ -1340,6 +1406,7 @@ def run(server):
     
 
     @server.route('/cluster/<cluster>/table/<table>/update', methods=['POST'])
+    @state_and_quorum_check
     @server.is_authenticated('cluster')
     @cluster_name_to_uuid
     @server.trace
@@ -1355,6 +1422,7 @@ def run(server):
     server.cluster_table_update = table_update
             
     @server.route('/cluster/<cluster>/table/<table>/insert', methods=['POST'])
+    @state_and_quorum_check
     @server.is_authenticated('cluster')
     @cluster_name_to_uuid
     @server.trace
@@ -1368,6 +1436,7 @@ def run(server):
     server.cluster_table_insert = table_insert
 
     @server.route('/cluster/<cluster>/table/<table>/delete', methods=['POST'])
+    @state_and_quorum_check
     @server.is_authenticated('cluster')
     @cluster_name_to_uuid
     @server.trace
@@ -1375,6 +1444,7 @@ def run(server):
         return post_request_tables(cluster, table, 'delete', request.get_json(), trace=trace)
 
     @server.route('/cluster/<cluster>/table/<table>/pause/<pause>', methods=['POST'])
+    @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
     def cluster_table_pause(cluster, table, pause, **kw):
@@ -1393,6 +1463,7 @@ def run(server):
         return result, rc
 
     @server.route('/cluster/<cluster>/table/<table>/state/<endpoint>', methods=['POST'])
+    @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
     def cluster_table_endpoint(cluster, table, endpoint, **kw):
@@ -1465,6 +1536,7 @@ def run(server):
     """
 
     @server.route(f'/cluster/<cluster>/tablelogs/<table>/<endpoint>/<action>', methods=['GET','POST'])
+    @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
     def cluster_get_table_endpoint_logs(cluster, table, endpoint, action, **kw):
@@ -1730,6 +1802,7 @@ def run(server):
         job_update(job['type'], job['id'],'queued', {"message": "job was requeued"}, trace=kw['trace'])
 
     @server.route('/cluster/pyql/jobmgr/cleanup', methods=['POST'])
+    @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
     def cluster_jobmgr_cleanup(**kw):
@@ -1781,6 +1854,7 @@ def run(server):
         return {"message": trace.warning(f"job manager cleanup completed")}, 200
 
     @server.route('/cluster/jobqueue/<jobtype>', methods=['POST'])
+    @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
     def cluster_jobqueue(jobtype, **kw):
@@ -1873,6 +1947,7 @@ def run(server):
         
 
     @server.route('/cluster/job/<jobtype>/<uuid>/<status>', methods=['POST'])
+    @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
     def cluster_job_update(jobtype, uuid, status, **kw):
@@ -1919,6 +1994,7 @@ def run(server):
             return post_request_tables(pyql, 'jobs', 'update', updateWhere, trace=kw['trace'])
 
     @server.route('/cluster/<cluster>/table/<table>/recovery', methods=['POST'])
+    @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
     def cluster_table_sync_recovery(cluster, table, **kw):
@@ -1996,6 +2072,7 @@ def run(server):
         return {"message": trace("table_sync_recovery completed")}, 200
 
     @server.route('/cluster/pyql/tablesync/<action>', methods=['POST'])
+    @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
     def cluster_tablesync_mgr(action, **kw):
@@ -2113,6 +2190,7 @@ def run(server):
         return response, rc
 
     @server.route('/cluster/<cluster>/table/<table>/sync', methods=['POST'])
+    @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
     def cluster_table_sync_run(cluster, table, **kw):
@@ -2305,6 +2383,7 @@ def run(server):
 
                     
     @server.route('/cluster/<jobtype>/add', methods=['POST'])
+    @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
     def cluster_jobs_add(jobtype, **kw):
