@@ -120,7 +120,7 @@ def run(server):
                 f"http://{os.environ['PYQL_CLUSTER_SVC']}/auth/key/cluster",
                 auth='remote',
                 token=server.env['PYQL_CLUSTER_SERVICE_TOKEN'],
-                session=server.get_endpoint_sessions(server.env['PYQL_ENDPOINT'])
+                session=server.session
             )
             if not 'PYQL_CLUSTER_TOKEN_KEY' in r:
                 warning = f"error pulling key {r} {rc}"
