@@ -226,7 +226,7 @@ def run(server):
             else:
                 pyql = server.env['PYQL_UUID']
                 log.warning("state.inSync is False for node but this node is inQuorum = True")
-                pyqlNodes = server.clusters.endpoints.select('id', 'path', where={'cluster': pyql})
+                pyqlNodes = server.clusters.endpoints.select('uuid', 'path', where={'cluster': pyql})
                 headers = dict(request.headers)
                 # using unsafe in headers to track endpoints which we have tried and should not again 
                 headers['unsafe'] = '' if not 'unsafe' in headers else headers['unsafe']
