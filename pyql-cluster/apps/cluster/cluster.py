@@ -251,7 +251,7 @@ def run(server):
                     )
                     if rc == 200: 
                         return r, rc
-                    log.error(f"non - 200 rc found when probing {url} {node} - marking unsafe and will try other, if any") 
+                    log.error(f"{r} - {rc} - found when probing {url} {node} - marking unsafe and will try other, if any") 
                     headers['unsafe'] = ','.join(headers['unsafe'].split(',') + [nodeId])
                 # Out of available - inQuorum nodes to try
                 return {"CRITICAL": log.error("No pyql nodes were available to service request")}, 500
