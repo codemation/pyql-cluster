@@ -241,7 +241,7 @@ def run(server):
                         log.warning(f"node {node} was not yet 'unsafe' but is not inQuorum - {nodeQuorumState} -, marking unsafe and will try other, if any")
                         headers['unsafe'] = ','.join(headers['unsafe'].split(',') + [nodeId])
                         continue
-                    url = f"{node['path']}{request.path}"
+                    url = f"http://{node['path']}{request.path}"
                     r, rc =  probe(
                         url,
                         method=request.method,
@@ -252,7 +252,7 @@ def run(server):
                     if rc == 200: 
                         return r, rc
                     log.error(f"non - 200 rc found when probing {url} {node} - marking unsafe and will try other, if any") 
-                    headers['unsafe'] = ','.join(headers['unsafe'].split(',').append(node['uuid']))
+                    headers['unsafe'] = ','.join(headers['unsafe'].split(',') + [nodeId])
                 # Out of available - inQuorum nodes to try
                 return {"CRITICAL": log.error("No pyql nodes were available to service request")}, 500
         state_quorum_safe_func.__name__ = '_'.join(str(uuid.uuid4()).split('-'))
