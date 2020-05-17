@@ -237,7 +237,7 @@ def run(server):
                 for node in pyqlNodes:
                     if node['uuid'] in headers['unsafe']:
                         continue
-                    if not node['uuid'] in nodeQuorumState['quorum.nodes']:
+                    if not node['uuid'] in nodeQuorumState['quorum.nodes']['nodes']:
                         log.warning(f"node {node} was not yet 'unsafe' but is not inQuorum - {nodeQuorumState} -, marking unsafe and will try other, if any")
                         headers['unsafe'] = ','.join(headers['unsafe'].split(',') + [nodeId])
                         continue
