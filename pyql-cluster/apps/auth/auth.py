@@ -322,7 +322,7 @@ def run(server):
         @server.route('/auth/token/join')
         @server.state_and_quorum_check
         @server.is_authenticated('cluster')
-        def cluster_service_join_token():
+        def cluster_service_join_token(**kw):
             serviceId, rc = server.cluster_table_select(
                 server.env['PYQL_UUID'],
                 'auth', 
@@ -330,7 +330,8 @@ def run(server):
                     'select': '*', 
                     'where': {'parent': request.auth, 'type': 'service'}
                     },
-                method='POST'
+                method='POST',
+                quorum=kw['quorum']
             )
             log.warning(f"join token creating for - {serviceId}")
             if len(serviceId['data']) > 0:
