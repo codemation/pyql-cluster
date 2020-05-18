@@ -206,7 +206,8 @@ def run(server):
         """
         def state_quorum_safe_func(*args, **kwargs):
             if not 'quorum' in kwargs:
-                quorum, rc = cluster_quorum(trace=trace)
+                quorum, rc = cluster_quorum()
+            kwargs['quorum'] = quorum
             if not 'quorum' in quorum or quorum['quorum']['inQuorum'] == False:
                 return {
                     "message": log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {quorum}"),
