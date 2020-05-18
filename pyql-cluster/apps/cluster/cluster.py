@@ -1880,8 +1880,9 @@ def run(server):
         if pyql == None:
             return {"message": "cluster is still bootstrapping, try again later"}, 500 
 
-        """TODO - Delete later
-        node = request.get_json()['node']
+       
+        node = request.get_json()['node'] # TODO - refactor later into URL ?
+         """TODO - Delete later
         quorumCheck, rc = cluster_quorum(trace=kw['trace'])
          # check this node is inQuorum and if worker requesting job is from an inQuorum node
         trace.warning(f"cluster_jobqueue - quorumCheck {quorumCheck}, {rc}")
