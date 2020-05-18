@@ -248,7 +248,6 @@ def run(server):
                         method=request.method,
                         data=request.get_json(),
                         headers=headers,
-                        timeout=30,
                         session=get_endpoint_sessions(node['uuid'])
                     )
                     if rc == 200: 
