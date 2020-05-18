@@ -99,42 +99,16 @@ def run(server):
                             log.warning(pyql)
                             return {"error": debug(log.error("un-authorized access"))}, 403
                 return f(*args, **kwargs)
+            # modifies check_auth func name to be unique 
             check_auth.__name__ = '_'.join(str(uuid.uuid4()).split('-'))
             return check_auth
         return is_auth
     server.is_authenticated = is_authenticated
 
-    @server.route('/auth/setup/<location>', methods=['POST'])
-    @server.is_authenticated('local')
-    def cluster_set_service_token(location):
-        """
-        used primary to update joining nodes with a PYQL_CLUSTER_SERVICE_TOKEN 
-        so joining node can pull and set its PYQL_CLUSTER_TOKEN_KEY
-        """
-        if location == 'cluster':
-            serviceToken = request.get_json()
-            if not 'PYQL_CLUSTER_SERVICE_TOKEN' in serviceToken:
-                return {"error": log.error(f"missing PYQL_CLUSTER_SERVICE_TOKEN")}, 400
-            server.env['PYQL_CLUSTER_SERVICE_TOKEN'] = serviceToken['PYQL_CLUSTER_SERVICE_TOKEN']
-            r, rc = server.probe(
-                f"http://{os.environ['PYQL_CLUSTER_SVC']}/auth/key/cluster",
-                auth='remote',
-                token=server.env['PYQL_CLUSTER_SERVICE_TOKEN'],
-                session=server.session
-            )
-            if not 'PYQL_CLUSTER_TOKEN_KEY' in r:
-                warning = f"error pulling key {r} {rc}"
-                return {"error": log.error(warning)}, rc
-            setKey, rc = set_token_key('cluster', r)
-            if not rc == 200:
-                log.warning(setKey)
-            return setKey, rc
 
 
-    @server.route('/auth/key/<location>', methods=['POST'])
-    @server.is_authenticated('local')
-    def cluster_set_token_key(location):
-        return set_token_key(location)
+
+
     def set_token_key(location, value=None):
         """
         expects:
@@ -172,10 +146,7 @@ def run(server):
                 {'PYQL_CLUSTER_TOKEN_KEY': ''.join(random.choice(charNums) for i in range(24))}
                 )
 
-    @server.route('/auth/<authtype>/register', methods=['POST'])
-    @server.is_authenticated('pyql')
-    def auth_user_register(authtype):
-        return user_register(authtype)
+
     def user_register(authtype, userInfo=None):
         pyql = server.env['PYQL_UUID']
         userInfo = request.get_json() if userInfo == None else userInfo
@@ -227,13 +198,7 @@ def run(server):
         return token
     server.create_auth_token = create_auth_token
     
-    @server.route('/auth/user/token', methods=['POST'])
-    @server.is_authenticated('cluster')
-    def auth_token():
-        token = create_auth_token(request.auth, time.time()+3600.0, 'cluster')
-        if not token == None:
-            return {'token': token}, 200
-        return {"error": log.error("server error creating user token")}, 500
+
 
     if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
         if not 'PYQL_CLUSTER_SERVICE_TOKEN' in server.env:
@@ -285,6 +250,10 @@ def run(server):
     # Local Token
     server.env['PYQL_LOCAL_SERVICE_TOKEN'] = serviceToken
 
+    @server.route('/auth/key/<location>', methods=['POST'])
+    @server.is_authenticated('local')
+    def cluster_set_token_key(location):
+        return set_token_key(location)
 
     @server.route('/auth/tokenkey/update', methods=['POST'])
     @server.is_authenticated('local')
@@ -294,7 +263,32 @@ def run(server):
             return {"error": f"""missing key in input {key} expected  {"{key': 'keyvalue....'}"}"""}, 400
         if keytype == 'cluster':
             server.env['PYQL_CLUSTER_TOKEN_KEY'] = key['key']
-        
+
+    @server.route('/auth/setup/<location>', methods=['POST'])
+    @server.is_authenticated('local')
+    def cluster_set_service_token(location):
+        """
+        used primary to update joining nodes with a PYQL_CLUSTER_SERVICE_TOKEN 
+        so joining node can pull and set its PYQL_CLUSTER_TOKEN_KEY
+        """
+        if location == 'cluster':
+            serviceToken = request.get_json()
+            if not 'PYQL_CLUSTER_SERVICE_TOKEN' in serviceToken:
+                return {"error": log.error(f"missing PYQL_CLUSTER_SERVICE_TOKEN")}, 400
+            server.env['PYQL_CLUSTER_SERVICE_TOKEN'] = serviceToken['PYQL_CLUSTER_SERVICE_TOKEN']
+            r, rc = server.probe(
+                f"http://{os.environ['PYQL_CLUSTER_SVC']}/auth/key/cluster",
+                auth='remote',
+                token=server.env['PYQL_CLUSTER_SERVICE_TOKEN'],
+                session=server.session
+            )
+            if not 'PYQL_CLUSTER_TOKEN_KEY' in r:
+                warning = f"error pulling key {r} {rc}"
+                return {"error": log.error(warning)}, rc
+            setKey, rc = set_token_key('cluster', r)
+            if not rc == 200:
+                log.warning(setKey)
+            return setKey, rc
     # Retrieve current local / cluster token - requires auth 
     @server.route('/auth/token/<tokentype>')
     @server.is_authenticated('pyql')
@@ -303,24 +297,6 @@ def run(server):
             return {"PYQL_CLUSTER_SERVICE_TOKEN": server.env['PYQL_CLUSTER_SERVICE_TOKEN']}, 200
         if tokentype == 'local':
             return {"PYQL_LOCAL_SERVICE_TOKEN": server.env['PYQL_LOCAL_SERVICE_TOKEN']}, 200
-
-    # Retrieve current local / cluster token - requires auth 
-    @server.route('/auth/token/join')
-    @server.is_authenticated('cluster')
-    def cluster_service_join_token():
-        serviceId, rc = server.cluster_table_select(
-            server.env['PYQL_UUID'],
-            'auth', 
-            data={
-                'select': '*', 
-                'where': {'parent': request.auth, 'type': 'service'}
-                },
-            method='POST'
-        )
-        log.warning(f"join token creating for - {serviceId}")
-        if len(serviceId['data']) > 0:
-            return {"join": create_auth_token(serviceId['data'][0]['id'], 'join', 'CLUSTER')}
-        return {"error": log.error(f"unable to find a service account for user")}, 400
 
     # Retrieve current local / cluster token keys - requires auth 
     @server.route('/auth/key/<keytype>')
@@ -331,3 +307,35 @@ def run(server):
         if keytype == 'local':
             return {"PYQL_LOCAL_TOKEN_KEY": server.env['PYQL_LOCAL_TOKEN_KEY']}, 200
         return {"error": log.error(f"invalid token type specified {tokentype} - use cluster/local")}, 400
+
+    def auth_post_cluster_setup(server):
+        """
+        run following cluster app initializing so that state_and_quorum_check can be run
+        """
+        @server.route('/auth/<authtype>/register', methods=['POST'])
+        @server.state_and_quorum_check
+        @server.is_authenticated('pyql')
+        def auth_user_register(authtype):
+            return user_register(authtype)
+
+        # Retrieve current local / cluster token - requires auth 
+        @server.route('/auth/token/join')
+        @server.state_and_quorum_check
+        @server.is_authenticated('cluster')
+        def cluster_service_join_token():
+            serviceId, rc = server.cluster_table_select(
+                server.env['PYQL_UUID'],
+                'auth', 
+                data={
+                    'select': '*', 
+                    'where': {'parent': request.auth, 'type': 'service'}
+                    },
+                method='POST'
+            )
+            log.warning(f"join token creating for - {serviceId}")
+            if len(serviceId['data']) > 0:
+                return {"join": create_auth_token(serviceId['data'][0]['id'], 'join', 'CLUSTER')}
+            return {"error": log.error(f"unable to find a service account for user")}, 400
+
+
+    server.auth_post_cluster_setup = auth_post_cluster_setup
