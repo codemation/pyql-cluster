@@ -242,17 +242,14 @@ def run(server):
                         log.warning(f"node {node} was not yet 'unsafe' but is not inQuorum - {nodeQuorumState} -, marking unsafe and will try other, if any")
                         headers['unsafe'] = ','.join(headers['unsafe'].split(',') + [nodeId])
                         continue
+                    
                     url = f"http://{node['path']}{request.path}"
-                    r, rc =  probe(
-                        url,
-                        method=request.method,
-                        data=request.get_json(),
-                        headers=headers,
-                        session=get_endpoint_sessions(node['uuid'])
-                    )
+                    requestOptions = {"method": request.method, "headers": headers, "session": get_endpoint_sessions(node['uuid'])}
+                    r, rc =  probe(url, **requestOptions)
                     if rc == 200: 
                         return r, rc
-                    log.error(f"{r} - {rc} - found when probing {url} {node} - marking unsafe and will try other, if any") 
+                    
+                    log.error(f"{r} - {rc} - found when probing {url} {node} - options: {requestOptions} - marking unsafe and will try other, if any") 
                     headers['unsafe'] = ','.join(headers['unsafe'].split(',') + [nodeId])
                 # Out of available - inQuorum nodes to try
                 return {"CRITICAL": log.error("No pyql nodes were available to service request")}, 500
