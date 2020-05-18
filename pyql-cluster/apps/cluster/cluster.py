@@ -230,6 +230,9 @@ def run(server):
                 log.warning("state.inSync is False for node but this node is inQuorum = True")
                 pyqlNodes = server.clusters.endpoints.select('uuid', 'path', where={'cluster': pyql})
                 headers = dict(request.headers)
+                # pop header fields which should not be passed
+                for h in ['Content-Length']:
+                    headers.pop(h)
                 #for node in pyqlNodes:
                 #    if node['uuid'] == nodeId:
                 #        headers['Host'] = node['path']
@@ -247,7 +250,7 @@ def run(server):
                         continue
                     headers['Host'] = node['path']
                     url = f"http://{node['path']}{request.path}"
-                    requestOptions = {"method": request.method, "headers": headers, "session": get_endpoint_sessions(node['uuid'])}
+                    requestOptions = {"method": request.method, "headers": headers, "data": request.get_json(), "session": get_endpoint_sessions(node['uuid'])}
                     r, rc =  probe(url, **requestOptions)
                     if rc == 200: 
                         return r, rc
@@ -2531,3 +2534,21 @@ def run(server):
         'lastUpdateTime': float(time.time()),
         'ready': readyAndQuorum,
     })
+"""
+{
+    'Content-Type': 'application/json', 
+    'Content-Length': '20', 
+    'Authentication': 'Basic YWRtaW46YWJjZDEyMzQ=', 
+    'User-Agent': 'PostmanRuntime/7.24.1', 
+    'Accept': '*/*', 'Cache-Control': 'no-cache', 'Postman-Token': '0750689e-bd65-4aa8-bfec-e6e013b3eb51', 'Host': '172.17.0.4:80', 
+    'Accept-Encoding': 'gzip, deflate, br', 'Connection': 'keep-alive', 
+    
+}
+{
+    'Content-Type': 'application/json', 
+    'Content-Length': '20', 
+    'Authentication': 'Basic YWRtaW46YWJjZDEyMzQ=', 
+    'Accept': '*/*', 
+    'unsafe': '7475ee38-9914-11ea-b332-0242ac110002,7475ee38-9914-11ea-b332-0242ac110002'
+}
+"""
