@@ -1882,7 +1882,7 @@ def run(server):
 
        
         node = request.get_json()['node'] # TODO - refactor later into URL ?
-         """TODO - Delete later
+        """TODO - Delete later
         quorumCheck, rc = cluster_quorum(trace=kw['trace'])
          # check this node is inQuorum and if worker requesting job is from an inQuorum node
         trace.warning(f"cluster_jobqueue - quorumCheck {quorumCheck}, {rc}")
