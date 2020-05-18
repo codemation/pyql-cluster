@@ -1408,11 +1408,11 @@ def run(server):
         trace = kw['trace']
         if request.method == 'GET':
             try:
-                return table_select(cluster, table, trace=kw['trace'])
+                return table_select(cluster, table, **kw)
             except Exception as e:
                 return {"error": trace.exception("error in cluster table select")}, 500
         else:
-            return table_select(cluster, table, request.get_json(), 'POST', trace=kw['trace'])
+            return table_select(cluster, table, request.get_json(), 'POST', **kw)
     
 
     @server.route('/cluster/<cluster>/table/<table>/update', methods=['POST'])
@@ -1578,7 +1578,8 @@ def run(server):
             pyql, 
             'transactions',
             clusterTableEndpointTxns,
-            'POST'
+            'POST',
+            **kw
             )
         if not rc == 200:
             trace.error(f"get_cluster_table_endpoint_logs GET - non 200 rc encountered {response} {rc}")
@@ -1821,7 +1822,7 @@ def run(server):
         """ 
         trace=kw['trace']
         pyql = server.env['PYQL_UUID']
-        jobs = table_select(pyql, 'jobs')[0]['data']
+        jobs = table_select(pyql, 'jobs', **kw)[0]['data']
         for job in jobs:
             if not job['next_run_time'] == None:
                 # Cron Jobs 
@@ -1879,6 +1880,7 @@ def run(server):
         if pyql == None:
             return {"message": "cluster is still bootstrapping, try again later"}, 500 
 
+        """TODO - Delete later
         node = request.get_json()['node']
         quorumCheck, rc = cluster_quorum(trace=kw['trace'])
          # check this node is inQuorum and if worker requesting job is from an inQuorum node
@@ -1886,7 +1888,7 @@ def run(server):
         if not 'quorum' in quorumCheck or not quorumCheck['quorum']['inQuorum'] == True or not node in quorumCheck['quorum']['nodes']['nodes']:
             warning = f"{node} is not inQuorum with pyql cluster {quorumCheck}, cannot pull job"
             return {"message": trace.warning(warning)}, 200
-
+        """
         
         """
         jobEndpoints = get_table_endpoints(pyql, 'jobs', caller='cluster_jobqueue')
@@ -1905,7 +1907,7 @@ def run(server):
             if not jobtype == 'cron':
                 jobSelect['where']['node'] = None
             trace("starting to pull list of jobs")
-            jobList, rc = table_select(pyql, 'jobs', data=jobSelect, method='POST', quorum=quorumCheck, trace=kw['trace'])
+            jobList, rc = table_select(pyql, 'jobs', data=jobSelect, method='POST', **kw)
             if not rc == 200:
                 return {"message": trace("unable to pull jobs at this time")}, rc
             trace(f"finished pulling list of jobs - jobList {jobList} ")
@@ -1947,7 +1949,7 @@ def run(server):
             # verify if job was reserved by node and pull config
             jobSelect['where']['node'] = node
             jobSelect['select'] = ['*']
-            jobCheck, rc = table_select(pyql, 'jobs', data=jobSelect, method='POST', trace=kw['trace'])
+            jobCheck, rc = table_select(pyql, 'jobs', data=jobSelect, method='POST', **kw)
             if len(jobCheck['data']) == 0:
                 continue
             trace.warning(f"cluster_jobqueue - pulled job {jobCheck['data'][0]} for node {node}")
@@ -1976,7 +1978,7 @@ def run(server):
             updateFrom = {'where': {'id': uuid}}
             if jobtype == 'cron':
                 cronSelect = {'select': ['id', 'config'], 'where': {'id': uuid}}
-                job, rc = table_select(pyql, 'jobs', cronSelect, 'POST', trace=kw['trace'])[0]['data'][0]
+                job, rc = table_select(pyql, 'jobs', cronSelect, 'POST', **kw)[0]['data'][0]
                 updateFrom['set'] = {
                     'node': None, 
                     'status': 'queued',
@@ -2011,7 +2013,7 @@ def run(server):
         """
         expects cluster uuid input for cluster, table string
         """
-        return table_sync_recovery(cluster, table, trace=kw['trace'])
+        return table_sync_recovery(cluster, table, **kw)
     @server.trace
     def table_sync_recovery(cluster, table, **kw):
         """
@@ -2020,11 +2022,14 @@ def run(server):
         trace=kw['trace']
         #need to check quorum as all endpoints are currently inSync = False for table
         pyql = server.env['PYQL_UUID']
+        """
         if cluster == pyql:
             quorumCheck, rc = cluster_quorum(trace=kw['trace'])
             if not quorumCheck['quorum']['inQuorum'] == True:
                 error = f"unable to perform while outOfQuorum - quorum {quorumCheck}"
                 return {"error": trace.error(error)}, 500
+        """
+        quorumCheck = kw['quorum']
 
         # Need to check all endpoints for the most up-to-date loaded table
         select = {'select': ['path', 'dbname', 'uuid'], 'where': {'cluster': cluster}}
@@ -2105,7 +2110,7 @@ def run(server):
                 endpoints = get_table_endpoints(cluster,tableName, caller='tablesync_mgr',trace=kw['trace'])
                 if not len(endpoints['inSync'].keys()) > 0:
                     trace.warning(f"cluster_tablesync_mgr - detected all endpoints for {cluster} {tableName} are outOfSync")
-                    table_sync_recovery(cluster, tableName, trace=kw['trace'])
+                    table_sync_recovery(cluster, tableName, **kw)
                     endpoints = get_table_endpoints(cluster,tableName, caller='tablesync_mgr', trace=kw['trace'])
                 endpoints = endpoints['outOfSync']
                 for endpoint in endpoints:
@@ -2232,7 +2237,7 @@ def run(server):
         track(f"table endpoints {tableEndpoints}")
         if len(tableEndpoints['inSync']) == 0:
             track(f"no inSync endpoints - running table_sync_recovery")
-            table_sync_recovery(cluster, table, trace=kw['trace'])
+            table_sync_recovery(cluster, table, **kw)
         for endpoint in tableEndpoints['outOfSync']:
             # outOfSync endpoint to sync
             ep = tableEndpoints['outOfSync'][endpoint]
@@ -2270,7 +2275,7 @@ def run(server):
                         if rc == 500:
                             if 'not able to find an inSync endpoints' in r:
                                 track("PYQL table_copy could not able to find an inSync endpoints, triggering table_sync_recovery")
-                                r, rc = table_sync_recovery(cluster, table, trace=kw['trace'])
+                                r, rc = table_sync_recovery(cluster, table, **kw)
                                 track(f"PYQL table_sync_recovery result {r} rc {rc}")
                             else:
                                 # Table create failed
@@ -2302,7 +2307,7 @@ def run(server):
                     if rc == 500:
                         if 'not able to find an inSync endpoints' in r:
                             track("table_copy could not able to find an inSync endpoints, triggering table_sync_recovery")
-                            r, rc = table_sync_recovery(cluster, table, trace=kw['trace'])
+                            r, rc = table_sync_recovery(cluster, table, **kw)
                             track(f"PYQL table_sync_recovery result {r} rc {rc}")
                         else:
                             # Table create failed
@@ -2432,7 +2437,7 @@ def run(server):
                 pyql, 'jobs', 
                 {'select': ['id'], 'where': {'name': job['job']}},
                 'POST',
-                trace=kw['trace']
+                **kw
                 )
             if rc == 200:
                 jobCheck= jobCheck['data']
