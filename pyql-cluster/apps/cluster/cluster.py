@@ -263,6 +263,9 @@ def run(server):
         return state_quorum_safe_func
     server.state_and_quorum_check = state_and_quorum_check
 
+    # setup auth apps which require server.state_and_quorum_check
+    server.auth_post_cluster_setup(server)
+
 
     @server.route('/pyql/setup', methods=['POST'])
     @server.is_authenticated('local')
