@@ -2177,7 +2177,7 @@ def run(server):
     #@server.trace
     #def table_copy(cluster, table, inSyncPath, inSyncToken, inSyncUuid,  outOfSyncPath, outOfSyncToken, outOfSyncUuid, **kw):
     @server.trace
-    def table_copy(cluster, table, **kw):
+    def table_copy(cluster, table, outOfSyncPath, outOfSyncToken, outOfSyncUuid, **kw):
         trace=kw['trace']
         """
         if inSyncUuid == nodeId:
@@ -2286,7 +2286,7 @@ def run(server):
                         #message, rc = table_cutover(clusterId, table, 'start')
                         track(f"PYQL - starting table_copy")
                         #r, rc = table_copy(cluster, table, inSyncPath, inSyncToken, inSyncUuid,  endpointPath, token, uuid, trace=kw['trace'])
-                        r, rc = table_copy(cluster, table, **kw)
+                        r, rc = table_copy(cluster, table, outOfSyncPath, outOfSyncToken, outOfSyncUuid, **kw)
                         track(f"PYQL - table_copy result: {r} rc: {rc}")
                         if rc == 500:
                             if 'not able to find an inSync endpoints' in r:
@@ -2319,7 +2319,7 @@ def run(server):
                     track(f'PYQL - end of cutover, resuming table result: {r} rc: {rc}')
                 else: 
                     #r, rc = table_copy(cluster, table, inSyncPath, inSyncToken, inSyncUuid, endpointPath, token,uuid, trace=kw['trace'])
-                    r, rc = table_copy(cluster, table, **kw)
+                    r, rc = table_copy(cluster, table, outOfSyncPath, outOfSyncToken, outOfSyncUuid, **kw)
                     track(f"table_copy results: {r} {rc}")
                     if rc == 500:
                         if 'not able to find an inSync endpoints' in r:
