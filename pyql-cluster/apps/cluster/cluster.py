@@ -1320,9 +1320,10 @@ def run(server):
         trace = kw['trace']
         data = None
         errors = []
-        if request.method in ['POST', 'PUT']:
+        method = request.method if not 'method' in kw else kw['method']
+        if method in ['POST', 'PUT']:
             try:
-                data = request.get_json()
+                data = request.get_json() if not 'data' in kw else kw['data']
             except Exception as e:
                 return {"error": trace.error("expected json input for request")}, 400
         for endpoint in get_random_table_endpoint(cluster, table, quorum):
@@ -1331,15 +1332,14 @@ def run(server):
             try:
                 if endpoint['uuid'] == nodeId:
                     # local node, just use local select
-                    data = data if not 'data' in kw else kw['data']
                     if path == '' or path == '/select': # table select
                         return server.actions['select'](endpoint['dbname'], table, params=data, method=request.method)
                     return server.actions['select_key'](endpoint['dbname'], table, path[1:])
                 url = f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/{table}{path}"
                 r, rc = probe(
                     url,
-                    method=request.method if not 'method' in kw else kw['method'],
-                    data=data if not 'data' in kw else kw['data'],
+                    method=method,
+                    data=data,
                     token=endpoint['token'],
                     timeout=timeout,
                     session=get_endpoint_sessions(endpoint['uuid'])
