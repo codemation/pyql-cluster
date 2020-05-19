@@ -2497,7 +2497,7 @@ def run(server):
                 "interval": 15,
                 "data": None
             })
-        for i in [30,60]:
+        for i in [30,90]:
             cronJobs.append({
                 'job': f'tablesync_check_{i}',
                 'jobType': 'cron',
