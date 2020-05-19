@@ -1333,7 +1333,7 @@ def run(server):
                 if endpoint['uuid'] == nodeId:
                     # local node, just use local select
                     if path == '' or path == '/select': # table select
-                        return server.actions['select'](endpoint['dbname'], table, params=data, method=request.method)
+                        return server.actions['select'](endpoint['dbname'], table, params=data, method=method)
                     return server.actions['select_key'](endpoint['dbname'], table, path[1:])
                 url = f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/{table}{path}"
                 r, rc = probe(
