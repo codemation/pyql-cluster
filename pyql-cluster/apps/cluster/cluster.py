@@ -1333,7 +1333,7 @@ def run(server):
                     # local node, just use local select
                     data = data if not 'data' in kw else kw['data']
                     if path == '' or path == '/select': # table select
-                        return server.actions['select'](endpoint['dbname'], table, data)
+                        return server.actions['select'](endpoint['dbname'], table, params=data, method=request.method)
                     return server.actions['select_key'](endpoint['dbname'], table, path[1:])
                 url = f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/{table}{path}"
                 r, rc = probe(
