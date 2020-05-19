@@ -5,7 +5,7 @@ def run(server):
     @server.route('/db/<database>/table/<table>/select', methods=['GET', 'POST'])
     @server.is_authenticated('local')
     def cluster_select_func(database, table):
-        return select_func(database, table, params=request.get_json(), method=request.method)
+        return select_func(database, table, method=request.method)
     def select_func(database,table, params=None, method='GET'):
         message, rc = server.check_db_table_exist(database,table)
         if not rc == 200:
