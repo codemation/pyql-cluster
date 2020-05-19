@@ -1364,7 +1364,7 @@ def run(server):
         if request.method == 'GET':
             return endpoint_probe(cluster, table, **kw)
         return cluster_table_insert(cluster, table, **kw)
-        
+
     @server.route('/cluster/<cluster>/table/<table>/select', methods=['GET','POST'])
     @state_and_quorum_check
     @server.is_authenticated('cluster')
@@ -1373,9 +1373,12 @@ def run(server):
     def cluster_table_select(cluster, table, **kw):
         trace = kw['trace']
         try:
-            return table_select(cluster, table, data=request.get_json(), method=request.method, **kw)
+            return table_select(
+                cluster, table, 
+                data=request.get_json() if request.method == 'POST' else None, 
+                method=request.method, **kw)
         except Exception as e:
-                return {"error": trace.exception("error in cluster table select")}, 500
+            return {"error": trace.exception("error in cluster table select")}, 500
 
     @server.route('/cluster/<cluster>/table/<table>/<key>', methods=['GET', 'POST', 'DELETE'])
     @state_and_quorum_check
