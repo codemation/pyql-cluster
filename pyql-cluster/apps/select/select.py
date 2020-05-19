@@ -5,15 +5,14 @@ def run(server):
     @server.route('/db/<database>/table/<table>/select', methods=['GET', 'POST'])
     @server.is_authenticated('local')
     def cluster_select_func(database, table):
-        return select_func(database, table)
-    def select_func(database,table, params=None):
+        return select_func(database, table, params=request.get_json(), method=request.method)
+    def select_func(database,table, params=None, method='GET'):
         message, rc = server.check_db_table_exist(database,table)
         if not rc == 200:
             return {"error": f"received non 200 rec with message {message}, rc {rc} during check_db_table_exist"}, 500
-        if request.method == 'GET' and params == None:
+        if method == 'GET' and params == None:
             response = server.data[database].tables[table].select('*')
         else:
-            params = request.get_json() if params == None else params
             if not 'select' in params:
                 warning = f"table {table} select - missing selection"
                 log.warning(warning)

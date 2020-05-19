@@ -1337,6 +1337,12 @@ def run(server):
             if endpoint == None:
                 return {"message": trace(f"no inSync endpoints in cluster {cluster} table {table} or all failed - errors {errors}")}, 500
             try:
+                if endpoint['uuid'] == nodeId:
+                    # local node, just use local select
+                    data = data if not 'data' in kw else kw['data']
+                    if path == '' or path == '/select': # table select
+                        return server.actions['select'](endpoint['dbname'], table, data)
+                    return server.actions['select_key'](endpoint['dbname'], table, path[1:])
                 url = f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/{table}{path}"
                 r, rc = probe(
                     url,
@@ -2479,9 +2485,7 @@ def run(server):
         }
         # Create Cron Jobs inside init node
         cronJobs = []
-        if 'PYQL_TYPE' in os.environ and os.environ['PYQL_TYPE'] == 'K8S':
-            pass
-        else:
+        if not os.environ.get('PYQL_TYPE') == 'K8S':
             server.internal_job_add(initQuorum)
             server.internal_job_add(initMarkReadyJob)
             cronJobs.append({

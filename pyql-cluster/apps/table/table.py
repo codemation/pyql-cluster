@@ -40,16 +40,20 @@ def run(server):
     @server.route('/db/<database>/table/<table>/<key>', methods=['GET', 'POST', 'DELETE'])
     @server.is_authenticated('local')
     def db_table_key(database, table, key):
+        return table_key(database, table, key, method=request.method)
+    def table_key(database, table, key, method='GET'):
         primaryKey = server.data[database].tables[table].prim_key
-        if request.method == 'GET':
+        if method == 'GET':
             return db_table_key_get(database, table, primaryKey, key)
-        if request.method == 'POST':
+        if method == 'POST':
             return db_table_key_post(database, table, primaryKey, key)
-        if request.method == 'DELETE':
+        if method == 'DELETE':
             return db_table_key_delete(database, table, primaryKey, key)
+    server.actions['select_key'] = table_key
 
     def db_table_key_get(database, table, key, val):
         return server.actions['select'](database, table, {'select': ['*'], 'where': {key: val}})
+    
     def db_table_key_post(database, table, key, val):
         try:
             setVals = request.get_json()
