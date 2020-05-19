@@ -1227,28 +1227,20 @@ def run(server):
 
 
     @server.trace
-    def table_select(cluster, table, data=None, method='GET', quorum=None, **kw):
-        trace = kw['trace']
-        pyql = server.env['PYQL_UUID']
+    def table_select(cluster, table, **kw):
+        return endpoint_probe(cluster, table, '/select', **kw)
+        #trace = kw['trace']
+        #pyql = server.env['PYQL_UUID']
+        return endpoint_probe(cluster, table, '/select', **kw)
         """
-        if not 'clusterName' in request.__dict__:
-            if cluster == server.env['PYQL_UUID']:
-                request.clusterName = 'pyql'
-        """
-        if quorum == None:
-            quorum, rc = cluster_quorum(trace=trace)
-        if not 'quorum' in quorum or quorum['quorum']['inQuorum'] == False:
-            return {
-                "message": trace.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {quorum}"),
-                "quorum": quorum}, 500
-
         #tableEndpoints = get_table_endpoints(cluster, table, caller='table_select')
         if cluster == pyql:
-            return endpoint_probe(cluster, table, '/select', data=data, quorum=quorum, method=method, trace=trace)
+            return endpoint_probe(cluster, table, '/select', **kw)
             #endPointList = pyql_table_select_endpoints(cluster, table, quorum, tableEndpoints)
         else:
-            return endpoint_probe(cluster, table, '/select', data=data,  method=method, trace=trace)
+            return endpoint_probe(cluster, table, '/select', **kw)
             #endPointList = [endpoint for endpoint in tableEndpoints['inSync']]
+        """
 
         """TODO - delete after testing
         log.warning(f"table select endPointList {endPointList}")
@@ -1370,8 +1362,8 @@ def run(server):
     def cluster_table(cluster, table, **kw):
         trace = kw['trace']
         if request.method == 'GET':
-            return endpoint_probe(cluster, table, trace=trace)
-        return cluster_table_insert(cluster, table, trace=trace)
+            return endpoint_probe(cluster, table, **kw)
+        return cluster_table_insert(cluster, table, **kw)
 
     @server.route('/cluster/<cluster>/table/<table>/<key>', methods=['GET', 'POST', 'DELETE'])
     @state_and_quorum_check
@@ -1381,7 +1373,7 @@ def run(server):
     def cluster_table_key(cluster, table, key, **kw):
         trace = kw['trace']
         if request.method == 'GET':
-            return endpoint_probe(cluster, table, path=f'/{key}', trace=trace)
+            return endpoint_probe(cluster, table, path=f'/{key}', **kw)
         data = None
         try:
             data = request.get_json()
@@ -1403,7 +1395,7 @@ def run(server):
     @server.trace
     def cluster_table_config(cluster, table, **kw):
         trace = kw['trace']
-        return endpoint_probe(cluster, table, path=f'/config', trace=trace)
+        return endpoint_probe(cluster, table, path=f'/config', **kw)
 
     @server.route('/cluster/<cluster>/table/<table>/select', methods=['GET','POST'])
     @state_and_quorum_check
@@ -1412,15 +1404,11 @@ def run(server):
     @server.trace
     def cluster_table_select(cluster, table, **kw):
         trace = kw['trace']
-        if request.method == 'GET':
-            try:
-                return table_select(cluster, table, **kw)
-            except Exception as e:
+        try:
+            return table_select(cluster, table, data=request.get_json(), method=request.method, **kw)
+        except Exception as e:
                 return {"error": trace.exception("error in cluster table select")}, 500
-        else:
-            return table_select(cluster, table, request.get_json(), 'POST', **kw)
     
-
     @server.route('/cluster/<cluster>/table/<table>/update', methods=['POST'])
     @state_and_quorum_check
     @server.is_authenticated('cluster')
@@ -1583,8 +1571,8 @@ def run(server):
         response, rc = table_select(
             pyql, 
             'transactions',
-            clusterTableEndpointTxns,
-            'POST',
+            data=clusterTableEndpointTxns,
+            method='POST',
             **kw
             )
         if not rc == 200:
@@ -1828,7 +1816,7 @@ def run(server):
         """ 
         trace=kw['trace']
         pyql = server.env['PYQL_UUID']
-        jobs = table_select(pyql, 'jobs', **kw)[0]['data']
+        jobs = table_select(pyql, 'jobs', method='GET', **kw)[0]['data']
         for job in jobs:
             if not job['next_run_time'] == None:
                 # Cron Jobs 
@@ -1985,7 +1973,7 @@ def run(server):
             updateFrom = {'where': {'id': uuid}}
             if jobtype == 'cron':
                 cronSelect = {'select': ['id', 'config'], 'where': {'id': uuid}}
-                job, rc = table_select(pyql, 'jobs', cronSelect, 'POST', **kw)[0]['data'][0]
+                job, rc = table_select(pyql, 'jobs', data=cronSelect, method='POST', **kw)[0]['data'][0]
                 updateFrom['set'] = {
                     'node': None, 
                     'status': 'queued',
@@ -2188,7 +2176,7 @@ def run(server):
                 session=get_endpoint_sessions(inSyncUuid), 
                 trace=kw['trace'])
         """
-        tableCopy, rc = table_select(cluster, table, **kw)
+        tableCopy, rc = table_select(cluster, table, method='GET', **kw)
         if rc == 500:
             error = f"#CRITICAL - tablesyncer was not able to find an inSync endpoints"
             return trace.error(error), rc
@@ -2452,8 +2440,8 @@ def run(server):
         else:
             jobCheck, rc = table_select(
                 pyql, 'jobs', 
-                {'select': ['id'], 'where': {'name': job['job']}},
-                'POST',
+                data={'select': ['id'], 'where': {'name': job['job']}},
+                method='POST',
                 **kw
                 )
             if rc == 200:
