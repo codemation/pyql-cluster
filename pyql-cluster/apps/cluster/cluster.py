@@ -2479,14 +2479,6 @@ def run(server):
         }
         # Create Cron Jobs inside init node
         cronJobs = []
-        cronJobs.append({
-            'job': 'tablesync_check',
-            'jobType': 'cron',
-            "method": "POST",
-            "path": "/cluster/pyql/tablesync/check",
-            "interval": 30,
-            "data": None
-        })
         if 'PYQL_TYPE' in os.environ and os.environ['PYQL_TYPE'] == 'K8S':
             pass
         else:
@@ -2500,14 +2492,23 @@ def run(server):
                 "interval": 15,
                 "data": None
             })
-        cronJobs.append({
-            'job': 'clusterJob_cleanup',
-            'jobType': 'cron',
-            'method': 'POST',
-            'path': '/cluster/pyql/jobmgr/cleanup',
-            'interval': 30,
-            'data': None
-        })
+        for i in [30,60]:
+            cronJobs.append({
+                'job': f'tablesync_check_{i}',
+                'jobType': 'cron',
+                "method": "POST",
+                "path": "/cluster/pyql/tablesync/check",
+                "interval": i,
+                "data": None
+            })
+            cronJobs.append({
+                'job': f'clusterJob_cleanup_{i}',
+                'jobType': 'cron',
+                'method': 'POST',
+                'path': '/cluster/pyql/jobmgr/cleanup',
+                'interval': i,
+                'data': None
+            })
         for job in cronJobs:
             newCronJob = {
                 "job": f"addCronJob{job['job']}",
