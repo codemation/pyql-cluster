@@ -13,6 +13,7 @@ def run(server):
         if method == 'GET' and params == None:
             response = server.data[database].tables[table].select('*')
         else:
+            params = request.get_json() if params == None else params
             if not 'select' in params:
                 warning = f"table {table} select - missing selection"
                 log.warning(warning)
