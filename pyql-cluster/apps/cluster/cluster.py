@@ -2140,6 +2140,8 @@ def run(server):
                     'job': f'sync_table_{cluster}_{table}',
                     'jobtype': 'tablesync',
                     'action': 'table_sync_run',
+                    'table': table, 
+                    'cluster': cluster,
                     'config': {
                         'cluster': cluster, 
                         'table': table, 
