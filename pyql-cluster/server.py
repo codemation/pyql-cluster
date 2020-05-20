@@ -1,10 +1,10 @@
 from flask import Flask
 import os, socket
 app = Flask(__name__)
-def main(port):
+def main(port, debug):
     import setup
     setup.run(app)
-    app.run('0.0.0.0', port, debug=True)
+    app.run('0.0.0.0', port, debug=debug)
 if __name__ == '__main__':
     try:
         import sys
@@ -15,8 +15,12 @@ if __name__ == '__main__':
         clusterAction = sys.argv[4] if len(sys.argv) > 4 else 'join'
         if clusterAction == 'join':
             clusterToken = sys.argv[5] if len(sys.argv) > 5 else ''
+        if '--debug' in sys.argv:
+            os.environ['PYQL_DEBUG'] = 'True'
+            print(f"pyql-cluster is running in debugger mode")
     except Exception as e:
-        print("expected input: ")
+
+        print(f"{repr(e)} - expected input: ")
         print("python server.py <node-ip> <node-port> <clusterIp:port> init|join")
     if not port == None:
         os.environ['PYQL_NODE'] = nodeName
@@ -25,7 +29,7 @@ if __name__ == '__main__':
         os.environ['PYQL_CLUSTER_ACTION'] = clusterAction
         if clusterAction == 'join':
             os.environ['']
-        main(port)
+        main(port, debug=True if os.environ.get('PYQL_DEBUG') == 'True'else False)
 else:
     # For loading when triggered by uWSGI
     if os.environ['PYQL_TYPE'] == 'K8S' or os.environ['PYQL_TYPE'] == 'DOCKER':
