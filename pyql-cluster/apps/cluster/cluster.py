@@ -2140,9 +2140,10 @@ def run(server):
                     'job': f'sync_table_{cluster}_{table}',
                     'jobtype': 'tablesync',
                     'action': 'table_sync_run',
-                    'cluster': cluster,
-                    'table': table,
-                    'config': {}
+                    'config': {
+                        'cluster': cluster, 
+                        'table': table, 
+                        'job': f'sync_table_{cluster}_{table}'}
                     })
         for cluster in jobs:
             if cluster == pyql:
@@ -2178,7 +2179,8 @@ def run(server):
                 wait_on_jobs(pyql, 0, jobsToRunOrdered)
             else:
                 for job in jobs[cluster]:
-                    jobs_add('syncjobs', job, trace=kw['trace'])
+                    jobs_add(job, trace=kw['trace'])
+                    jobs_add()
         trace.info(f"cluster_tablesync_mgr created {jobs} for outofSync endpoints")
         return {"jobs": jobs}, 200
     server.clusterjobs['tablesync_mgr'] = tablesync_mgr
