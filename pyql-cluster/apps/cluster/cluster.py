@@ -337,10 +337,8 @@ def run(server):
         if len(jobList) > curInd + 1:
             jobList[curInd]['nextJob'] = wait_on_jobs(pyql, curInd+1, jobList)
         if curInd == 0:
-            return jobs_add('syncjobs' if jobList[curInd]['jobtype'] == 'tablesync' else 'jobs', 
-                jobList[curInd])[0]['jobId']
-        return jobs_add('syncjobs' if jobList[curInd]['jobtype'] == 'tablesync' else 'jobs', 
-            jobList[curInd], status='waiting')[0]['jobId']
+            return jobs_add(jobList[curInd])[0]['jobId']
+        return jobs_add(jobList[curInd], status='waiting')[0]['jobId']
     # TODO - Delete is_requests_success
     def is_requests_success(r, module):
         """
