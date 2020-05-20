@@ -2136,7 +2136,7 @@ def run(server):
                 # Add sync_table job for each table in cluster
                 jobs[cluster].append({
                     'job': f'sync_table_{cluster}_{table}',
-                    'jobtype': 'tablesync',
+                    'jobtype': 'syncjobs',
                     'action': 'table_sync_run',
                     'table': table, 
                     'cluster': cluster,
