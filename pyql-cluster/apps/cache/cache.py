@@ -3,7 +3,7 @@ def run(server):
     import os, uuid, time, json
     log = server.log
     txnDefaultWaitInSec = 0.005 # default 5 ms
-    txnMaxWaitTimeInSec = 0.125
+    txnMaxWaitTimeInSec = 0.525
 
     @server.route('/db/<database>/cache/<table>/txn/<action>', methods=['POST'])
     @server.is_authenticated('local')
