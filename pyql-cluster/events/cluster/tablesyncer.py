@@ -15,7 +15,17 @@ def log(log):
     return log
 
 
-clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
+#clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
+
+nodeIP = os.environ.get('PYQL_NODE')
+
+if os.environ.get('PYQL_TYPE') in ['K8S', 'DOCKER']:
+    import socket
+    nodeIP = socket.gethostbyname(socket.getfqdn())
+
+clusterSvcName = f'http://{nodeIP}:{os.environ["PYQL_PORT"]}'
+session = requests.Session()
+
 
 def set_db_env(path):
     sys.path.append(path)
@@ -44,7 +54,8 @@ def probe(path, method='GET', data=None, timeout=300.0, auth=None, **kw):
                 timeout=timeout)
     else:
         r = requests.post(path, headers=headers,
-                data=json.dumps(data), timeout=timeout)
+                data=json.dumps(data) if not data == None else data, 
+                timeout=timeout)
     try:
         return r.json(),r.status_code
     except Exception as e:
@@ -357,7 +368,8 @@ if __name__=='__main__':
             time.sleep(1)
             if delay < time.time() - start:
                 try:
-                    result, rc = get_and_run_job(f'{clusterSvcName}{jobpath}')
+                    result, rc = probe(f'{clusterSvcName}{jobpath}')
+                    #result, rc = get_and_run_job(f'{clusterSvcName}{jobpath}')
                 except Exception as e:
                     logging.exception(log(f"exception when pulling / running job"))
                 start = time.time()

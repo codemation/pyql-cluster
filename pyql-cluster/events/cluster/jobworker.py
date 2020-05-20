@@ -6,7 +6,18 @@ import sys, datetime, time, requests, json, os, logging
 
 logging.basicConfig()
 
-clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
+#clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
+#clusterSvcName = 'http://localhost'
+
+nodeIP = os.environ.get('PYQL_NODE')
+
+if os.environ.get('PYQL_TYPE') in ['K8S', 'DOCKER']:
+    import socket
+    nodeIP = socket.gethostbyname(socket.getfqdn())
+
+clusterSvcName = f'http://{nodeIP}:{os.environ["PYQL_PORT"]}'
+session = requests.Session()
+
 
 def set_db_env(path):
     sys.path.append(path)
@@ -25,11 +36,12 @@ def probe(path, method='GET', data=None, auth=None, timeout=300.0, **kw):
         'Accept': 'application/json', "Content-Type": "application/json",
         "Authentication": f"Token {env[auth] if not 'token' in kw else kw['token']}"}
     if method == 'GET':
-        r = requests.get(path, headers=headers,
+        r = session.get(path, headers=headers,
                 timeout=timeout)
     else:
-        r = requests.post(path, headers=headers,
-                data=json.dumps(data), timeout=timeout)
+        r = session.post(path, headers=headers,
+                data=json.dumps(data) if not data == None else data, 
+                timeout=timeout)
     try:
         return r.json(),r.status_code
     except Exception as e:
@@ -101,7 +113,8 @@ if __name__=='__main__':
             time.sleep(1)
             if delay < time.time() - start:
                 try:
-                    result, rc = get_and_process_job(f'{clusterSvcName}{jobpath}')
+                    result, rc = probe(f'{clusterSvcName}{jobpath}', method='POST')
+                    #result, rc = get_and_process_job(f'{clusterSvcName}{jobpath}')
                 except Exception as e:
                     logging.exception(f"Exception when running / processing")
                 start = time.time()

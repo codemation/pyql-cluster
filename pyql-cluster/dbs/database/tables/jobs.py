@@ -8,7 +8,8 @@ def db_attach(server):
            ('type', str, 'NOT NULL'), #tablesync - cluster
            ('status', str), # QUEUED, RUNNING, WAITING
            ('node', str),
-           ('config', str),
+           ('action', str), # What action is called by job
+           ('config', str), # What config is used by action
            ('start_time', str),
            ('next_run_time', str),
            ('lastError', str)

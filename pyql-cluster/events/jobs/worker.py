@@ -13,13 +13,13 @@ if 'PYQL_TYPE' in os.environ:
         import socket
         os.environ['PYQL_NODE'] = socket.getfqdn()
 """
-if 'PYQL_NODE' in os.environ:
-    nodeIP = os.environ['PYQL_NODE']
+#if 'PYQL_NODE' in os.environ:
+#    nodeIP = os.environ['PYQL_NODE']
+nodeIP = os.environ.get('PYQL_NODE')
 
-if 'PYQL_TYPE' in os.environ:
-    if os.environ['PYQL_TYPE'] == 'K8S' or os.environ['PYQL_TYPE'] == 'DOCKER':
-        import socket
-        nodeIP = socket.gethostbyname(socket.getfqdn())
+if os.environ.get('PYQL_TYPE') in ['K8S', 'DOCKER']:
+    import socket
+    nodeIP = socket.gethostbyname(socket.getfqdn())
 
 session = requests.Session()
 
@@ -75,7 +75,7 @@ def get_and_process_job(path):
         jobId = job['id']
         job = job['config']
         try:
-            if job['jobType'] == 'cluster':
+            if job['jobtype'] == 'cluster':
                 #Distribute to cluster job queue
                 
                 if 'joinCluster' in job['job']: # need to use joinToken
@@ -85,14 +85,14 @@ def get_and_process_job(path):
                     log(f"adding job {job} to cluster jobs queue")
                     message, rc = probe(f"{clusterSvcName}/cluster/jobs/add", 'POST', job, timeout=30)
                 log(f"finished adding job {job} to cluster jobs queue {message} {rc}")
-            elif job['jobType'] == 'node':
+            elif job['jobtype'] == 'node':
                 auth = 'local' if not 'initCluster' in job['job'] else 'cluster'
                 message, rc = probe(f"{nodePath}{job['path']}", job['method'], job['data'], auth=auth, session=session)
-            elif job['jobType'] == 'tablesync':
+            elif job['jobtype'] == 'tablesync':
                 log(f"adding job {job} to tablesync queue")
                 message, rc = add_job_to_queue(f'/cluster/syncjobs/add', job)
             else:
-                message, rc =  f"{job['job']} is missing jobType field", 200
+                message, rc =  f"{job['job']} is missing jobtype field", 200
             if not rc == 200:
                 probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST', auth='local', session=session)
             else:
