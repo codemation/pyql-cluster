@@ -335,7 +335,7 @@ def run(server):
              dependent on the first job completing
         """
         if len(jobList) > curInd + 1:
-            jobList[curInd]['nextJob'] = wait_on_jobs(pyql, curInd+1, jobList)
+            jobList[curInd]['config']['nextJob'] = wait_on_jobs(pyql, curInd+1, jobList)
         if curInd == 0:
             return jobs_add(jobList[curInd])[0]['jobId']
         return jobs_add(jobList[curInd], status='waiting')[0]['jobId']
@@ -2180,7 +2180,6 @@ def run(server):
             else:
                 for job in jobs[cluster]:
                     jobs_add(job, trace=kw['trace'])
-                    jobs_add()
         trace.info(f"cluster_tablesync_mgr created {jobs} for outofSync endpoints")
         return {"jobs": jobs}, 200
     server.clusterjobs['tablesync_mgr'] = tablesync_mgr
