@@ -2267,21 +2267,21 @@ def run(server):
             cluster, table, job = config['cluster'], config['table'], config['job']
         if cluster == None or table == None or job==None:
             return {"error": trace.error(f"missing or invalid configuration provided: cluster {cluster} table {config} job: {job} config: {config}")}, 400
-        step = tracker()
-        def track(message):
-            trace.warning(f"tablesyncer {job} cluster {cluster} table {table} seq={step.step} {message}")
-            step.incr()
-            return message
-            
+                    
         pyqlSyncExclusions = {'transactions', 'jobs', 'state', 'tables'}
         pyql = server.env['PYQL_UUID']
         # get table endpoints
         tableEndpoints = get_table_endpoints(cluster, table, caller='cluster_table_sync_run', trace=kw['trace'])
-        track(f"table endpoints {tableEndpoints}")
+        trace(f"table endpoints {tableEndpoints}")
         if len(tableEndpoints['inSync']) == 0:
-            track(f"no inSync endpoints - running table_sync_recovery")
+            trace(f"no inSync endpoints - running table_sync_recovery")
             table_sync_recovery(cluster, table, **kw)
         for endpoint in tableEndpoints['outOfSync']:
+            step = tracker()
+            def track(message):
+                trace.warning(f"tablesyncer {job} cluster {cluster} table {table} endpoint {endpoint} seq={step.step} {message}")
+                step.incr()
+                return message
             # outOfSync endpoint to sync
             ep = tableEndpoints['outOfSync'][endpoint]
 
