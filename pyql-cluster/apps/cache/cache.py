@@ -2,8 +2,11 @@ def run(server):
     from flask import request
     import os, uuid, time, json
     log = server.log
-    txnDefaultWaitInSec = 0.005 # default 5 ms
-    txnMaxWaitTimeInSec = 0.525
+    txnDefaultWaitInSec = 0.005     # default 5 ms
+    txnMaxWaitIntervalInSec = 0.050 # 50 ms
+    txnMaxWaitTimeInSec = 0.550     # 550 ms 
+    # pull stats from docker instance
+    # docker logs -f pyql-cluster-8090 2>&1 | grep '##cache commit' | grep 'WARNING' | awk '{print  $8" "$9" "$10" "$12}'
 
     @server.route('/db/<database>/cache/<table>/txn/<action>', methods=['POST'])
     @server.is_authenticated('local')
@@ -19,7 +22,8 @@ def run(server):
             txnId = transaction['txn']
             txnOrder = None
             tx=None
-            waitTime = txnDefaultWaitInSec
+            waitTime = 0.0                      # total time waiting to commit txn 
+            waitInterval = txnDefaultWaitInSec  # amount of time to wait between checks - if multiple txns exist 
             # Get transaction from cache db
             if action == 'commit':
                 while True:
@@ -51,11 +55,15 @@ def run(server):
                             break
                     if tx == None:
                         trace.warning(f"txnId {txnId} is behind txns {txns[:ind]} - waiting {waitTime} to retry")
-                        time.sleep(waitTime)
-                        waitTime+=waitTime # wait time scales up
+                        time.sleep(waitInterval)
+                        waitTime+=waitInterval 
+                        # waitInterval scales up to txnMaxWaitIntervalInSec
+                        waitInterval+=waitInterval 
+                        if waitInterval >= txnMaxWaitIntervalInSec:
+                            waitInterval = txnMaxWaitIntervalInSec
                         continue
                     break
-
+                # Should not have broken out of loop here without a tx
                 if tx == None:
                     trace.error("tx is None, this should not hppen")
                     return {"error": "tx was none"}, 500
