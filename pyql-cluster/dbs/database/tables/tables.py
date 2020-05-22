@@ -21,6 +21,7 @@ def db_attach(server):
             ('database', str),
             ('cluster', str),
             ('config', str),
+            ('consistency', bool),
             ('isPaused', bool)
        ],
         'name'

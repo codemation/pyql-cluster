@@ -130,7 +130,8 @@ def run(server):
                 'name': "cluster",
                 'uuid': dbuuid
             },
-            "tables": tables
+            "tables": tables,
+            "consistency": ['clusters', 'endpoints', 'auth', 'jobs'] # defines whether table modifications are cached before submission & txn time is reviewed
         }
     }
     if 'PYQL_CLUSTER_JOIN_TOKEN' in os.environ and os.environ['PYQL_CLUSTER_ACTION'] == 'join':
@@ -392,11 +393,12 @@ def run(server):
                 'dbname': config['database']['name'],
                 'endpoint': config['name']
             }
-        def get_tables_data(table,clusterId, cfg):
+        def get_tables_data(table,clusterId, cfg, consistency):
             return {
                 'name': table,
                 'cluster': clusterId,
                 'config': cfg,
+                'consistency': consistency,
                 'isPaused': False
             }
         def get_state_data(table, clusterId):
@@ -440,7 +442,12 @@ def run(server):
                     'cluster',
                     'tables',
                     'insert',
-                    get_tables_data(tableName,clusterData['id'], cfg)
+                    get_tables_data(
+                        tableName,
+                        clusterData['id'], 
+                        cfg,
+                        tableName in config['consistency']
+                        )
                 )
         for table in config['tables']:
             for name, cfg in table.items():
@@ -1011,9 +1018,16 @@ def run(server):
                 epuuid = tableEndpoints['inSync'][endpoint]['uuid']
                 #db = get_db_name(cluster, endpoint)
                 token = tableEndpoints['inSync'][endpoint]['token']
+                if tb['consistency'] == False:
+                    # not caching - sending to DB ASAP
+                    requestPath = get_endpoint_url(path, action, trace=trace)
+                    data = requestData
+                else:
+                    requestPath = get_endpoint_url(path, action, cache=requestUuid, trace=trace)
+                    data = {'txn': requestData, 'time': transTime}
                 epRequests[endpoint] = {
-                    'path': get_endpoint_url(path, action, cache=requestUuid, trace=trace),
-                    'data': {'txn': requestData, 'time': transTime},
+                    'path': requestPath,
+                    'data': data,
                     'timeout': 2.0,
                     'headers': get_auth_http_headers('remote', token=token),
                     'session': get_endpoint_sessions(epuuid)
@@ -1109,50 +1123,51 @@ def run(server):
                 write_change_logs(changeLogs)
             # Commit cached commands  
             epCommitRequests = {}
-            for endpoint in endpointResponse:
-                #db = get_db_name(cluster, endpoint)
-                db = tableEndpoints['inSync'][endpoint]['dbname']
-                path = tableEndpoints['inSync'][endpoint]['path']
-                token = tableEndpoints['inSync'][endpoint]['token']
-                epuuid = tableEndpoints['inSync'][endpoint]['uuid']
-                epCommitRequests[endpoint] = {
-                    'path': get_endpoint_url(path, action, commit=True, trace=trace),
-                    'data': endpointResponse[endpoint],
-                    'timeout': 5.0,
-                    'headers': get_auth_http_headers('remote', token=token, trace=trace),
-                    'session': get_endpoint_sessions(epuuid)
-                }
-            
-            asyncResults = request_async.requests_async(epCommitRequests, 'POST')
-            trace.info(asyncResults)
-            # if a commit fails - due to a timeout or other internal - need to mark endpoint OutOfSync
-            success, fail = set(), set()
-            for endpoint in asyncResults:
-                if not asyncResults[endpoint]["status"] == 200:
-                    fail.add(endpoint)
-                else:
-                    success.add(endpoint)
-            if len(success) == 0:
-                return {
-                    "message": trace.error(f"failed to commit {requestData} to all inSync {table} endpoints"), 
-                    "details": asyncResults}, 400
-            if len(fail) > 0:
-                trace.warning(f"commit failure for endpoints {fail}")
-                for endpoint in fail:
-                    stateSet = {
-                        "set": {"inSync": False, "state": 'new'},
-                        "where": {"name": f"{endpoint}{table}"}
+            if tb['consistency'] == True:
+                for endpoint in endpointResponse:
+                    #db = get_db_name(cluster, endpoint)
+                    db = tableEndpoints['inSync'][endpoint]['dbname']
+                    path = tableEndpoints['inSync'][endpoint]['path']
+                    token = tableEndpoints['inSync'][endpoint]['token']
+                    epuuid = tableEndpoints['inSync'][endpoint]['uuid']
+                    epCommitRequests[endpoint] = {
+                        'path': get_endpoint_url(path, action, commit=True, trace=trace),
+                        'data': endpointResponse[endpoint],
+                        'timeout': 5.0,
+                        'headers': get_auth_http_headers('remote', token=token, trace=trace),
+                        'session': get_endpoint_sessions(epuuid)
                     }
-                    alert = f"failed to commit {requestUuid} in endpoint {endpoint}{table}, marking outOfSync & state 'new'"
-                    trace(f"{alert} as chain is broken")
-                    fr, frc = post_request_tables(pyql, 'state', 'update', stateSet, trace=trace)
-                    trace(f"{alert} - result: {fr} {frc}")
-                if cluster == pyql and table in pyqlTxnExceptions:
-                    pass
-                else:
-                    write_change_logs(
-                        {'txns': [get_txn(endpoint) for endpoint in fail]}
-                    )
+                
+                asyncResults = request_async.requests_async(epCommitRequests, 'POST')
+                trace.info(asyncResults)
+                # if a commit fails - due to a timeout or other internal - need to mark endpoint OutOfSync
+                success, fail = set(), set()
+                for endpoint in asyncResults:
+                    if not asyncResults[endpoint]["status"] == 200:
+                        fail.add(endpoint)
+                    else:
+                        success.add(endpoint)
+                if len(success) == 0:
+                    return {
+                        "message": trace.error(f"failed to commit {requestData} to all inSync {table} endpoints"), 
+                        "details": asyncResults}, 400
+                if len(fail) > 0:
+                    trace.warning(f"commit failure for endpoints {fail}")
+                    for endpoint in fail:
+                        stateSet = {
+                            "set": {"inSync": False, "state": 'new'},
+                            "where": {"name": f"{endpoint}{table}"}
+                        }
+                        alert = f"failed to commit {requestUuid} in endpoint {endpoint}{table}, marking outOfSync & state 'new'"
+                        trace(f"{alert} as chain is broken")
+                        fr, frc = post_request_tables(pyql, 'state', 'update', stateSet, trace=trace)
+                        trace(f"{alert} - result: {fr} {frc}")
+                    if cluster == pyql and table in pyqlTxnExceptions:
+                        pass
+                    else:
+                        write_change_logs(
+                            {'txns': [get_txn(endpoint) for endpoint in fail]}
+                        )
             #pyql state table changes must be commited before logs to prevent loop
             """TODO - Delete after testing - state txn logs not used. 
             if cluster == pyql and table == 'state':
@@ -1161,7 +1176,7 @@ def run(server):
                     post_request_tables(pyql, 'state', 'update', {'set': {'inSync': False}, 'where': {'name': failedEndpoint}})
             """
 
-            return {"message": asyncResults}, 200
+            return {"message": asyncResults, "consistency": tb['consistency']}, 200
         if tb['isPaused'] == False:
             return process_request()
         else:
@@ -1634,13 +1649,16 @@ def run(server):
                 {"tb1": 'json.dumps(conf)'},
                 {"tb2": 'json.dumps(conf)'},
                 {"tb3": 'json.dumps(conf)'}
-            ]
+            ],
+            "consistency": ['tb1', 'tb2'] # defines if table modifications are cached & txn time is reviewed before submission
         }
         if request.method=='GET':
             return required, 200
         else:
             trace.info(f"join cluster for {clusterName}")
             config = request.get_json()
+            if not 'consistency' in config:
+                config['consistency'] = []
             db = server.data['cluster']
             newEndpointOrDatabase = False
             jobsToRun = []
@@ -1743,6 +1761,7 @@ def run(server):
                             'name': tableName,
                             'cluster': clusterId,
                             'config': tableConfig,
+                            'consistency': tableName in config['consistency'],
                             'isPaused': False
                         }
                         post_request_tables(pyql, 'tables', 'insert', data, trace=kw['trace'])
