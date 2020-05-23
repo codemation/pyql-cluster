@@ -1319,11 +1319,14 @@ def run(server):
             pyql_reset_jobs_table()
             endpoints = get_table_endpoints(cluster, table, caller='get_random_table_endpoint', trace=trace)['inSync']
             inSyncEndpoints = [ep for ep in endpoints]
-        while len(inSyncEndpoints) > 0:  
-            if len(inSyncEndpoints) > 1:
-                endpointChoice = inSyncEndpoints.pop(randrange(len(inSyncEndpoints)))
+        while len(inSyncEndpoints) > 0: 
+            if nodeId in inSyncEndpoints:
+                endpointChoice = inSyncEndpoints.pop(inSyncEndpoints.index(nodeId))
             else:
-                endpointChoice = inSyncEndpoints.pop(0)
+                if len(inSyncEndpoints) > 1:
+                    endpointChoice = inSyncEndpoints.pop(randrange(len(inSyncEndpoints)))
+                else:
+                    endpointChoice = inSyncEndpoints.pop(0)
             if not quorum == None:
                 if not endpointChoice in quorum['quorum']['nodes']['nodes']:
                     trace.warning(f"get_random_table_endpoint skipped pyql endpoint {endpointChoice} as not in quorum")
