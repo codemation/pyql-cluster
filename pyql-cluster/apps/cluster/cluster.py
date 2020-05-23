@@ -131,7 +131,7 @@ def run(server):
                 'uuid': dbuuid
             },
             "tables": tables,
-            "consistency": ['clusters', 'endpoints', 'auth', 'jobs'] # defines whether table modifications are cached before submission & txn time is reviewed
+            "consistency": ['clusters', 'endpoints', 'auth'] # defines whether table modifications are cached before submission & txn time is reviewed
         }
     }
     if 'PYQL_CLUSTER_JOIN_TOKEN' in os.environ and os.environ['PYQL_CLUSTER_ACTION'] == 'join':
