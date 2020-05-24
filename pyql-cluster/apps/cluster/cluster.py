@@ -2441,7 +2441,7 @@ def run(server):
             if cluster == pyql:
                 r, rc = table_pause(cluster, table, 'stop', trace=kw['trace'])
             syncResults[endpoint] = track(f"finished syncing {uuid} for table {table} in cluster {cluster}")
-        message = track(f"finished syncing cluster {cluster} table {table} - results: {syncResults}")
+        message = trace(f"finished syncing cluster {cluster} table {table} - results: {syncResults}")
         return {"message": message, "results": syncResults}, 200
     server.clusterjobs['table_sync_run'] = table_sync_run
 
