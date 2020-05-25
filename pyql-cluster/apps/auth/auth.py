@@ -145,50 +145,6 @@ def run(server):
                 'cluster', 
                 {'PYQL_CLUSTER_TOKEN_KEY': ''.join(random.choice(charNums) for i in range(24))}
                 )
-
-
-    def user_register(authtype, userInfo=None, **kw):
-        trace = kw['trace']
-        pyql = server.env['PYQL_UUID']
-        userInfo = request.get_json() if userInfo == None else userInfo
-        userInfo['type'] = authtype
-        requiredFields = set()
-         # 3 types 'user', 'admin', 'service'
-        if authtype == 'user' or authtype == 'admin':
-            requiredFields = {'username', 'password', 'email'}
-        for field in requiredFields:
-            if not field in userInfo:
-                return {"error": f"missing {field}"}, 400
-        if 'email' in userInfo:
-            if not '@' in userInfo['email']:
-                return {"error": f"enter a valid email"}, 400
-            atIndex = userInfo['email'].index('@')
-            if not '.' in userInfo['email'][atIndex:]:
-                return {"error": f"enter a valid email"}, 400 
-            emailCheck, rc = server.cluster_table_select(
-                pyql, 'auth', 
-                method='POST', 
-                data={
-                    'select': ['id', 'password'], 
-                    'where': {'email': userInfo['email']}
-                },
-                trace=trace
-            )
-            if len(emailCheck['data']) > 0:
-                return {"error": trace(f"an account with provided email already exists {emailCheck}")}, 400
-            if not len(userInfo['password']) >= 8:
-                return {"error", trace.error(f"password must be a atleast 8 chars")}, 400
-            userInfo['password'] = encode_password(userInfo['password'])
-        # User is unique - adding user
-        userInfo['id'] = str(uuid.uuid1())
-        trace(f"creating new user with id {userInfo['id']}")
-        response, rc = server.cluster_table_insert(pyql, 'auth', userInfo, trace=trace)
-        if rc == 200: # TODO - should this be 201?
-            if authtype == 'user' or authtype == 'admin':
-                svc, status = user_register('service', {'parent': userInfo['id']})
-                trace(f"creating service account for new user {svc} {status}")
-            return {"message": trace(f"user created successfully")}, 200
-        return response, rc
         
     def create_auth_token(userid, expiration, location):
         secret = server.env[f'PYQL_{location.upper()}_TOKEN_KEY']
@@ -314,6 +270,53 @@ def run(server):
         """
         run following cluster app initializing so that state_and_quorum_check can be run
         """
+        @server.trace
+        def user_register(authtype, userInfo=None, **kw):
+            trace = kw['trace']
+            pyql = server.env['PYQL_UUID']
+            userInfo = request.get_json() if userInfo == None else userInfo
+            userInfo['type'] = authtype
+            requiredFields = set()
+            # 3 types 'user', 'admin', 'service'
+            if authtype == 'user' or authtype == 'admin':
+                requiredFields = {'username', 'password', 'email'}
+            for field in requiredFields:
+                if not field in userInfo:
+                    return {"error": f"missing {field}"}, 400
+            if 'email' in userInfo:
+                if not '@' in userInfo['email']:
+                    return {"error": f"enter a valid email"}, 400
+                atIndex = userInfo['email'].index('@')
+                if not '.' in userInfo['email'][atIndex:]:
+                    return {"error": f"enter a valid email"}, 400 
+                emailCheck, rc = server.cluster_table_select(
+                    pyql, 'auth', 
+                    method='POST', 
+                    data={
+                        'select': ['id', 'password'], 
+                        'where': {'email': userInfo['email']}
+                    },
+                    trace=trace
+                )
+                if len(emailCheck['data']) > 0:
+                    return {"error": trace(f"an account with provided email already exists {emailCheck}")}, 400
+                if not len(userInfo['password']) >= 8:
+                    return {"error", trace.error(f"password must be a atleast 8 chars")}, 400
+                userInfo['password'] = encode_password(userInfo['password'])
+            # User is unique - adding user
+            userInfo['id'] = str(uuid.uuid1())
+            trace(f"creating new user with id {userInfo['id']}")
+            response, rc = server.cluster_table_insert(pyql, 'auth', userInfo, trace=trace)
+            if rc == 200: # TODO - should this be 201?
+                if authtype == 'user' or authtype == 'admin':
+                    svc, status = user_register('service', {'parent': userInfo['id']})
+                    trace(f"creating service account for new user {svc} {status}")
+                return {"message": trace(f"user created successfully")}, 200
+            return response, rc
+
+
+
+
         @server.route('/auth/<authtype>/register', methods=['POST'])
         @server.state_and_quorum_check
         @server.is_authenticated('pyql')
