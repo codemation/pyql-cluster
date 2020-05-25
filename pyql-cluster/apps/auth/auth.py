@@ -315,7 +315,7 @@ def run(server):
         @server.route('/auth/<authtype>/register', methods=['POST'])
         @server.state_and_quorum_check
         @server.is_authenticated('pyql')
-        def auth_user_register(authtype):
+        def auth_user_register(authtype, **kw):
             return user_register(authtype)
 
         # Retrieve current local / cluster token - requires auth 
