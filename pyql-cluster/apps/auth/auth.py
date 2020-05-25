@@ -147,7 +147,8 @@ def run(server):
                 )
 
 
-    def user_register(authtype, userInfo=None):
+    def user_register(authtype, userInfo=None, **kw):
+        trace = kw['trace']
         pyql = server.env['PYQL_UUID']
         userInfo = request.get_json() if userInfo == None else userInfo
         userInfo['type'] = authtype
@@ -170,22 +171,23 @@ def run(server):
                 data={
                     'select': ['id', 'password'], 
                     'where': {'email': userInfo['email']}
-                }
+                },
+                trace=trace
             )
             if len(emailCheck['data']) > 0:
-                return {"error": f"an account with provided email already exists {emailCheck}"}, 400
+                return {"error": trace(f"an account with provided email already exists {emailCheck}")}, 400
             if not len(userInfo['password']) >= 8:
-                return {"error", f"password must be a atleast 8 chars"}, 400
+                return {"error", trace.error(f"password must be a atleast 8 chars")}, 400
             userInfo['password'] = encode_password(userInfo['password'])
         # User is unique - adding user
         userInfo['id'] = str(uuid.uuid1())
-        log.warning(f"creating new user with id {userInfo['id']}")
-        response, rc = server.cluster_table_insert(pyql, 'auth', userInfo)
+        trace(f"creating new user with id {userInfo['id']}")
+        response, rc = server.cluster_table_insert(pyql, 'auth', userInfo, trace=trace)
         if rc == 200: # TODO - should this be 201?
             if authtype == 'user' or authtype == 'admin':
                 svc, status = user_register('service', {'parent': userInfo['id']})
-                log.warning(f"creating service account for new user {svc} {status}")
-            return {"message": f"user created successfully"}, 200
+                trace(f"creating service account for new user {svc} {status}")
+            return {"message": trace(f"user created successfully")}, 200
         return response, rc
         
     def create_auth_token(userid, expiration, location):
@@ -315,14 +317,17 @@ def run(server):
         @server.route('/auth/<authtype>/register', methods=['POST'])
         @server.state_and_quorum_check
         @server.is_authenticated('pyql')
+        @server.trace
         def auth_user_register(authtype, **kw):
-            return user_register(authtype)
+            return user_register(authtype, **kw)
 
         # Retrieve current local / cluster token - requires auth 
         @server.route('/auth/token/join')
         @server.state_and_quorum_check
         @server.is_authenticated('cluster')
+        @server.trace
         def cluster_service_join_token(**kw):
+            trace = kw['trace']
             serviceId, rc = server.cluster_table_select(
                 server.env['PYQL_UUID'],
                 'auth', 
@@ -331,12 +336,13 @@ def run(server):
                     'where': {'parent': request.auth, 'type': 'service'}
                     },
                 method='POST',
-                quorum=kw['quorum']
+                quorum=kw['quorum'],
+                trace=trace
             )
-            log.warning(f"join token creating for - {serviceId}")
+            trace(f"join token creating for - {serviceId}")
             if len(serviceId['data']) > 0:
                 return {"join": create_auth_token(serviceId['data'][0]['id'], 'join', 'CLUSTER')}
-            return {"error": log.error(f"unable to find a service account for user")}, 400
+            return {"error": trace.error(f"unable to find a service account for user")}, 400
 
 
     server.auth_post_cluster_setup = auth_post_cluster_setup
