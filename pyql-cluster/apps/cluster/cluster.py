@@ -1461,10 +1461,10 @@ def run(server):
     def cluster_table_insert(cluster, table, **kw):
         trace = kw['trace']
         data = request.get_json()
-        table_insert(cluster, table, data, trace=trace)
+        table_insert(cluster, table, data, **kw)
     @server.trace
     def table_insert(cluster, table, data=None, **kw):
-        return post_request_tables(cluster, table, 'insert',  data, trace=trace)
+        return post_request_tables(cluster, table, 'insert',  data, **kw)
     server.cluster_table_insert = table_insert
 
     @server.route('/cluster/<cluster>/table/<table>/delete', methods=['POST'])
