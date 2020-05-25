@@ -324,6 +324,16 @@ def run(server):
         def auth_user_register(authtype, **kw):
             return user_register(authtype, **kw)
 
+        @server.route('/auth/token/user')
+        @server.state_and_quorum_check
+        @server.is_authenticated('cluster')
+        @server.trace
+        def get_user_auth_token(**kw):
+            return {"token": create_auth_token(request.auth, time.time() + 3600, 'cluster')}, 200
+
+
+
+
         # Retrieve current local / cluster token - requires auth 
         @server.route('/auth/token/join')
         @server.state_and_quorum_check
