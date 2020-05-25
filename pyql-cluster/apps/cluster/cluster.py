@@ -1183,15 +1183,18 @@ def run(server):
             if cluster == pyql and table == 'tables' or table == 'state' and action == 'update':
                 # tables val isPaused / state inSync are values and we need to allow tables updates through if updating
                 return process_request()
-            trace.error(f"Table {table} is paused, Waiting 2.5 seconds before retrying")
-            time.sleep(2.5)
-            #TODO - create a counter stat to track how often this occurs
-            if tb['isPaused'] == False:
-                return process_request()
-            else:
+            totalSleep = 0.5
+            for _ in range(4):
+                trace.error(f"Table {table} is paused, Waiting {sleep} seconds before retrying - total wait time {totalSleep}")
+                time.sleep(sleep)
+                tableEndpoints = get_table_endpoints(cluster, table, caller='post_request_tables', trace=kw['trace'])
+                tb = get_table_info(cluster, table, tableEndpoints, trace=kw['trace'])
                 #TODO - create a counter stat to track how often this occurs
-                error = "table is paused preventing changes, maybe an issue occured during sync cutover, try again later"
-                return {"message": trace.error(error)}, 500
+                if tb['isPaused'] == False:
+                    return process_request()
+                totalSleep+=0.5
+            error = "table is paused preventing changes, maybe an issue occured during sync cutover, try again later"
+            return {"message": trace.error(error)}, 500
 
     """ TODO - Delete after testing
     def pyql_get_inquorum_insync_endpoints(quorum, tbEndpoints):
