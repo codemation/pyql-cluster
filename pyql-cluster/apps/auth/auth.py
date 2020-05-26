@@ -62,7 +62,7 @@ def run(server):
                         if decodedToken == None:
                             return {"error": debug(log.error(f"token authentication failed"))}, 401
                         request.auth = decodedToken['id']
-                        if 'join' in decodedToken['expiration']:
+                        if isinstance(decodedToken['expiration'], dict) and 'join' in decodedToken['expiration']:
                             # Join tokens should only be used to join an endpoint to a cluster
                             if not 'join_cluster' in str(f):
                                 error = log.error(f"token authentication failed, join token auth attempted for {f}")
