@@ -395,6 +395,7 @@ def run(server):
             }
         def get_tables_data(table,clusterId, cfg, consistency):
             return {
+                'id': str(uuid.uuid1()),
                 'name': table,
                 'cluster': clusterId,
                 'config': cfg,
@@ -1770,6 +1771,7 @@ def run(server):
                         newTables.append(tableName)
                         #JobIfy - create as job so config
                         data = {
+                            'id': str(uuid.uuid1()),
                             'name': tableName,
                             'cluster': clusterId,
                             'config': tableConfig,
