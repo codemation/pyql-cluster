@@ -1435,7 +1435,10 @@ def run(server):
     @cluster_name_to_uuid
     @server.trace
     def cluster_table_config(cluster, table, **kw):
-        trace = kw['trace']
+        return table_config(cluster, table, **kw)
+    
+    @server.trace
+    def table_config(cluster, table, **kw):
         return endpoint_probe(cluster, table, path=f'/config', **kw)
     
     @server.route('/cluster/<cluster>/table/<table>/update', methods=['POST'])
@@ -2236,9 +2239,7 @@ def run(server):
         if rc == 400:
             if 'not found in database' in response['message']:
                 # create table & retry resync
-                tableConfig, rc = probe(
-                    f'{inSyncPath}', token=inSyncToken, 
-                    session=get_endpoint_sessions(inSyncUuid), trace=kw['trace'])
+                tableConfig, rc = table_config(cluster, table)
                 response, rc = probe(
                     f'{outOfSyncPath}/create', 'POST', tableConfig, 
                     token=outOfSyncToken, session=get_endpoint_sessions(outOfSyncUuid),  
