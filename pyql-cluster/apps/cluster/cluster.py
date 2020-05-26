@@ -2240,7 +2240,7 @@ def run(server):
             f'{outOfSyncPath}/sync', 'POST', 
             tableCopy, token=outOfSyncToken, 
             session=get_endpoint_sessions(outOfSyncUuid), trace=kw['trace'])
-        if rc == 400:
+        if rc == 400 and 'message' in response:
             if 'not found in database' in response['message']:
                 # create table & retry resync
                 tableConfig, rc = table_config(cluster, table)
