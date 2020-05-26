@@ -2407,7 +2407,7 @@ def run(server):
             if tableState == 'new':
                 track("table never loaded, needs to be initialize")
                 result, rc = load_table()
-                if not rc = 200:
+                if not rc == 200:
                     syncResults[endpoint] = result
                     continue
             else:
@@ -2419,7 +2419,7 @@ def run(server):
                         track("no change logs found for table, need to reload table - drop / load")
                         # Need to reload table - drop / load
                         result, rc = load_table()
-                        if not rc = 200:
+                        if not rc == 200:
                             syncResults[endpoint] = result
                             continue
                         
