@@ -1405,6 +1405,18 @@ def run(server):
                 method=request.method, **kw)
         except Exception as e:
             return {"error": trace.exception("error in cluster table select")}, 500
+            
+    @server.route('/cluster/<cluster>/table/<table>/config', methods=['GET'])
+    @state_and_quorum_check
+    @server.is_authenticated('cluster')
+    @cluster_name_to_uuid
+    @server.trace
+    def cluster_table_config(cluster, table, **kw):
+        return table_config(cluster, table, **kw)
+    
+    @server.trace
+    def table_config(cluster, table, **kw):
+        return endpoint_probe(cluster, table, method='GET', path=f'/config', **kw)
 
     @server.route('/cluster/<cluster>/table/<table>/<key>', methods=['GET', 'POST', 'DELETE'])
     @state_and_quorum_check
@@ -1428,18 +1440,6 @@ def run(server):
             return table_update(cluster, table, {'set': data, 'where': {primary: key}}, trace=trace)
         if request.method == 'DELETE':
             return table_delete(cluster, table, {'where': {primary: key}}, trace=trace)
-
-    @server.route('/cluster/<cluster>/table/<table>/config', methods=['GET'])
-    @state_and_quorum_check
-    @server.is_authenticated('cluster')
-    @cluster_name_to_uuid
-    @server.trace
-    def cluster_table_config(cluster, table, **kw):
-        return table_config(cluster, table, **kw)
-    
-    @server.trace
-    def table_config(cluster, table, **kw):
-        return endpoint_probe(cluster, table, method='GET', path=f'/config', **kw)
     
     @server.route('/cluster/<cluster>/table/<table>/update', methods=['POST'])
     @state_and_quorum_check
