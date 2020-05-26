@@ -1358,7 +1358,7 @@ def run(server):
             try:
                 if endpoint['uuid'] == nodeId:
                     # local node, just use local select
-                    if path == '' or path == '/select': # table select
+                    if path == '' or path == '/select' or path == '/config': # table select
                         return server.actions['select'](endpoint['dbname'], table, params=data, method=method)
                     return server.actions['select_key'](endpoint['dbname'], table, path[1:])
                 url = f"http://{endpoint['path']}/db/{endpoint['dbname']}/table/{table}{path}"
@@ -1405,7 +1405,7 @@ def run(server):
                 method=request.method, **kw)
         except Exception as e:
             return {"error": trace.exception("error in cluster table select")}, 500
-            
+
     @server.route('/cluster/<cluster>/table/<table>/config', methods=['GET'])
     @state_and_quorum_check
     @server.is_authenticated('cluster')
