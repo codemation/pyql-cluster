@@ -17,6 +17,7 @@ def db_attach(server):
     #
     db.create_table(
        'tables', [
+            ('id', str, 'NOT NULL'),
             ('name', str, 'NOT NULL'),
             ('database', str),
             ('cluster', str),
@@ -24,7 +25,7 @@ def db_attach(server):
             ('consistency', bool),
             ('isPaused', bool)
        ],
-        'name'
+        'id'
     )
     pass # Enter db.create_table statement here
             
