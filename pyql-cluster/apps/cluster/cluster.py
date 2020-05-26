@@ -1439,7 +1439,7 @@ def run(server):
     
     @server.trace
     def table_config(cluster, table, **kw):
-        return endpoint_probe(cluster, table, path=f'/config', **kw)
+        return endpoint_probe(cluster, table, method='GET', path=f'/config', **kw)
     
     @server.route('/cluster/<cluster>/table/<table>/update', methods=['POST'])
     @state_and_quorum_check
@@ -2324,14 +2324,14 @@ def run(server):
                         #r, rc = table_copy(cluster, table, inSyncPath, inSyncToken, inSyncUuid,  endpointPath, token, uuid, trace=kw['trace'])
                         r, rc = table_copy(cluster, table, endpointPath, token, uuid, **kw)
                         track(f"PYQL - table_copy result: {r} rc: {rc}")
-                        if rc == 500:
+                        if not rc == 200:
                             if 'not able to find an inSync endpoints' in r:
                                 track("PYQL table_copy could not able to find an inSync endpoints, triggering table_sync_recovery")
                                 r, rc = table_sync_recovery(cluster, table, **kw)
                                 track(f"PYQL table_sync_recovery result {r} rc {rc}")
                             else:
                                 # Table create failed
-                                track("PYQL - table create failed")
+                                return track(f"PYQL - table create failed - error {r} - {rc}"), rc
                         else:
                             track(f"PYQL - Marking table endpoint as inSync & loaded")
                             r, rc = table_endpoint(cluster, table, uuid, {'inSync': True, 'state': 'loaded'}, trace=kw['trace'])
@@ -2357,15 +2357,15 @@ def run(server):
                     #r, rc = table_copy(cluster, table, inSyncPath, inSyncToken, inSyncUuid, endpointPath, token,uuid, trace=kw['trace'])
                     r, rc = table_copy(cluster, table, endpointPath, token, uuid, **kw)
                     track(f"table_copy results: {r} {rc}")
-                    if rc == 500:
+                    if not rc == 200:
                         if 'not able to find an inSync endpoints' in r:
-                            track("table_copy could not able to find an inSync endpoints, triggering table_sync_recovery")
+                            track("table_copy was not able to find an inSync endpoints, triggering table_sync_recovery")
                             r, rc = table_sync_recovery(cluster, table, **kw)
-                            track(f"PYQL table_sync_recovery result {r} rc {rc}")
+                            return track(f"PYQL table_sync_recovery result {r} rc {rc}"), rc
                         else:
                             # Table create failed
-                            track("table create failed")
-                track("load_table completed")
+                            return track(f"table create failed - error {r} - {rc}"), rc
+                return track("load_table completed"), 200
             #
             def sync_cluster_table_logs():
                 tryCount = 0
@@ -2406,7 +2406,10 @@ def run(server):
             # 
             if tableState == 'new':
                 track("table never loaded, needs to be initialize")
-                load_table()
+                result, rc = load_table()
+                if not rc = 200:
+                    syncResults[endpoint] = result
+                    continue
             else:
                 # Check for un-commited logs - otherwise full resync needs to occur.
                 track("table already loaded, checking for change logs")
@@ -2415,7 +2418,11 @@ def run(server):
                     if count['availableTxns'] == 0:
                         track("no change logs found for table, need to reload table - drop / load")
                         # Need to reload table - drop / load
-                        load_table()
+                        result, rc = load_table()
+                        if not rc = 200:
+                            syncResults[endpoint] = result
+                            continue
+                        
             track("starting to sync from change logs")
             sync_cluster_table_logs()
 
