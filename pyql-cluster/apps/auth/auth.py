@@ -70,7 +70,7 @@ def run(server):
                         if isinstance(decodedToken['expiration'], float):
                             if not decodedToken['expiration'] > time.time():
                                 warning = f"token valid but expired for user with id {decodedToken['id']}"
-                                return {"error": debug(log.warining(warning))}, 401 #TODO - Check returncode for token expiration
+                                return {"error": debug(log.warning(warning))}, 401 #TODO - Check returncode for token expiration
                         log.warning(f"token auth successful for {request.auth} using type {tokenType} key {key}")
                     if 'Basic' in auth:
                         base64Cred = auth.split(' ')[1]
