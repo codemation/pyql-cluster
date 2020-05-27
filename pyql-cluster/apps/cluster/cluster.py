@@ -1468,7 +1468,7 @@ def run(server):
     def cluster_table_insert(cluster, table, **kw):
         trace = kw['trace']
         data = request.get_json()
-        table_insert(cluster, table, data, **kw)
+        return table_insert(cluster, table, data, **kw)
     @server.trace
     def table_insert(cluster, table, data=None, **kw):
         return post_request_tables(cluster, table, 'insert',  data, **kw)
@@ -2241,7 +2241,7 @@ def run(server):
             method='POST', 
             data=tableCopy, 
             token=outOfSyncToken,
-            timeout=None, 
+            timeout=None, # liveness has already been checked  
             session=get_endpoint_sessions(outOfSyncUuid), trace=kw['trace'])
         if rc == 400 and 'message' in response:
             if 'not found in database' in response['message']:
