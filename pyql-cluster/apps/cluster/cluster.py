@@ -2237,8 +2237,11 @@ def run(server):
             error = f"#CRITICAL - tablesyncer was not able to find an inSync endpoints"
             return trace.error(error), rc
         response, rc = probe(
-            f'{outOfSyncPath}/sync', 'POST', 
-            tableCopy, token=outOfSyncToken, 
+            f'{outOfSyncPath}/sync',
+            method='POST', 
+            data=tableCopy, 
+            token=outOfSyncToken,
+            timeout=None, 
             session=get_endpoint_sessions(outOfSyncUuid), trace=kw['trace'])
         if rc == 400 and 'message' in response:
             if 'not found in database' in response['message']:
