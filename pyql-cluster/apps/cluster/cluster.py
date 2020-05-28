@@ -2262,6 +2262,7 @@ def run(server):
                     token=outOfSyncToken, session=get_endpoint_sessions(outOfSyncUuid),  
                     trace=kw['trace'])
                 if not rc == 200:
+                    r, rc = table_endpoint(cluster, table, outOfSyncUuid, {'state': 'new'}, trace=kw['trace'])
                     failure = f"failed to create table using {tableConfig}"
                     return trace.error(failure), 500
                 #Retry sync since new table creation
@@ -2269,6 +2270,9 @@ def run(server):
                     f'{outOfSyncPath}/sync', 'POST', tableCopy, 
                     token=outOfSyncToken, session=get_endpoint_sessions(outOfSyncUuid),
                     trace=kw['trace'])
+                if not rc == 200:
+                    table_endpoint(cluster, table, outOfSyncUuid, {'state': 'new'}, trace=kw['trace'])
+                return response, rc
 
         trace.warning(f"#SYNC table_copy results {response} {rc}")
         trace.warning(f"#SYNC initial table copy of {table} in cluster {cluster} completed, need to sync changes now")
