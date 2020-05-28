@@ -2279,6 +2279,8 @@ def run(server):
     @server.trace
     def cluster_table_sync_run(cluster, table, **kw):
         return table_sync_run(cluster, table, trace=kw['trace'])
+    
+    @server.trace
     def table_sync_run(cluster=None, table=None, config=None, job=None, **kw):
         trace=kw['trace']
         syncResults = {}
@@ -2296,7 +2298,6 @@ def run(server):
         pyql = server.env['PYQL_UUID']
         # get table endpoints
         tableEndpoints = get_table_endpoints(cluster, table, caller='cluster_table_sync_run', trace=kw['trace'])
-        tableInfo = get_table_info(cluster, table, tableEndpoints, **kw)
         trace(f"table endpoints {tableEndpoints}")
         if len(tableEndpoints['inSync']) == 0:
             trace(f"no inSync endpoints - running table_sync_recovery")
