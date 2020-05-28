@@ -1645,7 +1645,7 @@ def run(server):
             resp, rc = post_request_tables(pyql, 'transactions', 'delete', deleteTxn, trace=kw['trace'])
             if not rc == 200:
                 trace.error(f"something abnormal happened when commiting txnlog {txn}")
-        return {"message": trace(f"successfully commited txns")}, 200
+        return {"message": trace(f"successfully commited txns {txns}")}, 200
 
     @server.route('/cluster/<clusterName>/join', methods=['GET','POST'])
     @server.trace
@@ -2404,8 +2404,8 @@ def run(server):
                         error = track(f"error when pulling logs - {repr(e)}")
                         return {"error": trace.exception(error)}, 500
                 commitedLogs = []
-                track(f"logs to process - count {len(logsToSync['data'])}")
                 txns = sorted(logsToSync['data'], key=lambda txn: txn['timestamp'])
+                track(f"logs to process - count {len(txns)} - {[txn['txn'] for txn in txns]}")
                 for txn in txns:
                     transaction = txn['txn']
                     for action in transaction:
@@ -2459,6 +2459,9 @@ def run(server):
             else:
                 track("completed initial pull of change logs & starting a cutover by pausing table")
                 r, rc = table_pause(cluster, table, 'start', trace=kw['trace'])
+
+                track("##CUTOVER -- waiting 500ms for in-flight txns to complete")
+                time.sleep(0.5)
                 #message, rc = table_cutover(clusterId, table, 'start')
                 track(f"cutover result: {r} rc: {rc}")
                 tableEndpoint = f'{endpoint}{table}'
