@@ -1185,6 +1185,7 @@ def run(server):
                 # tables val isPaused / state inSync are values and we need to allow tables updates through if updating
                 return process_request()
             totalSleep = 0.5
+            sleep = 0.5
             for _ in range(4):
                 trace.error(f"Table {table} is paused, Waiting {sleep} seconds before retrying - total wait time {totalSleep}")
                 time.sleep(sleep)
@@ -2337,9 +2338,9 @@ def run(server):
                     try:
                         track(f"cutover start result: {r} rc {rc}")
                         track(f"starting table_copy")
-                        r, rc = table_copy(cluster, table, endpointPath, token, uuid, **kw)
-                        track(f"table_copy result: {r} rc: {rc}")
-                        if not rc == 200:
+                        tbCopyResult, tbCopyRC = table_copy(cluster, table, endpointPath, token, uuid, **kw)
+                        track(f"table_copy result: {tbCopyResult} rc: {tbCopyRc}")
+                        if not tbCopyRC == 200:
                             if 'not able to find an inSync endpoints' in r:
                                 track("PYQL table_copy could not able to find an inSync endpoints, triggering table_sync_recovery")
                                 r, rc = table_sync_recovery(cluster, table, **kw)
@@ -2347,7 +2348,7 @@ def run(server):
                             else:
                                 # Table create failed
                                 r, rc = table_pause(cluster, table, 'stop')
-                                return track(f"PYQL - table create failed - error {r} - {rc}"), rc
+                                return track(f"PYQL - table create failed - error"), tbCopyRC
                         else:
                             track(f"PYQL - Marking table endpoint as inSync & loaded")
                             r, rc = table_endpoint(cluster, table, uuid, {'inSync': True, 'state': 'loaded'}, trace=kw['trace'])
@@ -2370,8 +2371,8 @@ def run(server):
                     r, rc = table_pause(cluster, table, 'stop', trace=kw['trace'])
                     track(f'PYQL - end of cutover, resuming table result: {r} rc: {rc}')
                 else: 
-                    r, rc = table_copy(cluster, table, endpointPath, token, uuid, unPauseAfterCopy=True, **kw)
-                    track(f"table_copy results: {r} {rc}")
+                    tbCopyResult, tbCopyRc = table_copy(cluster, table, endpointPath, token, uuid, unPauseAfterCopy=True, **kw)
+                    track(f"table_copy results: {tbCopyResult} {tbCopyRc}")
 
                     if not rc == 200:
                         r, rc = table_pause(cluster, table, 'stop')
@@ -2381,7 +2382,7 @@ def run(server):
                             return track(f"PYQL table_sync_recovery result {r} rc {rc}"), rc
                         else:
                             # Table create failed
-                            return track(f"table create failed - error {r} - {rc}"), rc
+                            return track(f"table create failed - error {r} - {rc}"), tbCopyRc
                 return track("load_table completed"), 200
             #
             def sync_cluster_table_logs():
@@ -2429,6 +2430,7 @@ def run(server):
                     'delete', 
                     {'where': {'endpoint': uuid, 'tableName': table}}, **kw)
                 result, rc = load_table()
+                track(f"load table results {result} {rc}")
                 if not rc == 200:
                     syncResults[endpoint] = result
                     continue
