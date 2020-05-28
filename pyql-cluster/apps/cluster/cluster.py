@@ -2374,7 +2374,7 @@ def run(server):
                     tbCopyResult, tbCopyRc = table_copy(cluster, table, endpointPath, token, uuid, unPauseAfterCopy=True, **kw)
                     track(f"table_copy results: {tbCopyResult} {tbCopyRc}")
 
-                    if not rc == 200:
+                    if not tbCopyRc == 200:
                         r, rc = table_pause(cluster, table, 'stop')
                         if 'not able to find an inSync endpoints' in r:
                             track("table_copy was not able to find an inSync endpoints, triggering table_sync_recovery")
