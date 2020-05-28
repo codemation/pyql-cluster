@@ -2412,7 +2412,12 @@ def run(server):
             
             # 
             if tableState == 'new':
-                track("table never loaded, needs to be initialize")
+                track("table never loaded or has become stale, needs to be initialize")
+                # delete any txn logs which exist for endpoint
+                post_request_tables(
+                    pyql, 'transactions', 
+                    'delete', 
+                    {'where': {'endpoint': uuid, 'tableName': table}}, **kw)
                 result, rc = load_table()
                 if not rc == 200:
                     syncResults[endpoint] = result
