@@ -2344,7 +2344,7 @@ def run(server):
                         track(f"starting table_copy")
                         tbCopyResult, tbCopyRc = table_copy(cluster, table, endpointPath, token, uuid, **kw)
                         track(f"table_copy result: {tbCopyResult} rc: {tbCopyRc}")
-                        if not tbCopyRC == 200:
+                        if not tbCopyRc == 200:
                             if 'not able to find an inSync endpoints' in r:
                                 track("PYQL table_copy could not able to find an inSync endpoints, triggering table_sync_recovery")
                                 r, rc = table_sync_recovery(cluster, table, **kw)
@@ -2352,7 +2352,7 @@ def run(server):
                             else:
                                 # Table create failed
                                 r, rc = table_pause(cluster, table, 'stop')
-                                return track(f"PYQL - table create failed - error"), tbCopyRC
+                                return track(f"PYQL - table create failed - error"), tbCopyRc
                         else:
                             track(f"PYQL - Marking table endpoint as inSync & loaded")
                             r, rc = table_endpoint(cluster, table, uuid, {'inSync': True, 'state': 'loaded'}, trace=kw['trace'])
