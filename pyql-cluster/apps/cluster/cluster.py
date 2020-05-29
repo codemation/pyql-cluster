@@ -2342,7 +2342,7 @@ def run(server):
                     try:
                         track(f"cutover start result: {r} rc {rc}")
                         track(f"starting table_copy")
-                        tbCopyResult, tbCopyRC = table_copy(cluster, table, endpointPath, token, uuid, **kw)
+                        tbCopyResult, tbCopyRc = table_copy(cluster, table, endpointPath, token, uuid, **kw)
                         track(f"table_copy result: {tbCopyResult} rc: {tbCopyRc}")
                         if not tbCopyRC == 200:
                             if 'not able to find an inSync endpoints' in r:
