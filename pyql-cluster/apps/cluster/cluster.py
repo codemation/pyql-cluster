@@ -1134,7 +1134,7 @@ def run(server):
                     epCommitRequests[endpoint] = {
                         'path': get_endpoint_url(path, action, commit=True, trace=trace),
                         'data': endpointResponse[endpoint],
-                        'timeout': 5.0,
+                        'timeout': 2.0,
                         'headers': get_auth_http_headers('remote', token=token, trace=trace),
                         'session': get_endpoint_sessions(epuuid)
                     }
@@ -1186,7 +1186,7 @@ def run(server):
                 return process_request()
             totalSleep = 0.5
             sleep = 0.5
-            for _ in range(4):
+            for _ in range(9): # waits up to 9 X sleep value - if paused
                 trace.error(f"Table {table} is paused, Waiting {sleep} seconds before retrying - total wait time {totalSleep}")
                 time.sleep(sleep)
                 tableEndpoints = get_table_endpoints(cluster, table, caller='post_request_tables', trace=kw['trace'])
@@ -2460,7 +2460,7 @@ def run(server):
                 pass
             else:
                 track("completed initial pull of change logs & starting a cutover by pausing table")
-                r, rc = table_pause(cluster, table, 'start', trace=kw['trace'], delayAfterPause=0.5)
+                r, rc = table_pause(cluster, table, 'start', trace=kw['trace'], delayAfterPause=4.0)
                 #message, rc = table_cutover(clusterId, table, 'start')
                 track(f"cutover result: {r} rc: {rc}")
                 tableEndpoint = f'{endpoint}{table}'
