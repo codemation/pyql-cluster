@@ -1499,6 +1499,8 @@ def run(server):
             'where': {'cluster': cluster, 'name': table}
         }
         result, rc = post_request_tables(pyql, 'tables', 'update', pauseSet, trace=kw['trace'])
+        if 'delayAfterPause' in kw:
+            time.sleep(kw['delayAfterPause'])
         trace.warning(f'cluster_table_pause {cluster} {table} pause {pause} result: {result}')
         return result, rc
 
@@ -2336,7 +2338,7 @@ def run(server):
 
             def load_table():
                 track("load_table starting - pausing table to get a consistent table_copy")
-                r, rc = table_pause(cluster, table, 'start')
+                r, rc = table_pause(cluster, table, 'start', delayAfterPause=0.5)
                 if cluster == pyql and table in pyqlSyncExclusions: 
                     #need to blackout changes to these tables during entire copy as txn logs not generated
                     try:
@@ -2458,10 +2460,7 @@ def run(server):
                 pass
             else:
                 track("completed initial pull of change logs & starting a cutover by pausing table")
-                r, rc = table_pause(cluster, table, 'start', trace=kw['trace'])
-
-                track("##CUTOVER -- waiting 500ms for in-flight txns to complete")
-                time.sleep(0.5)
+                r, rc = table_pause(cluster, table, 'start', trace=kw['trace'], delayAfterPause=0.5)
                 #message, rc = table_cutover(clusterId, table, 'start')
                 track(f"cutover result: {r} rc: {rc}")
                 tableEndpoint = f'{endpoint}{table}'
