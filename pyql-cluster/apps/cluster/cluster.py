@@ -2258,6 +2258,7 @@ def run(server):
         if rc == 400 and 'message' in response:
             if 'not found in database' in response['message']:
                 # create table & retry resync
+                trace.warning(f"table {table} was not found, attempting to create")
                 tableConfig, rc = table_config(cluster, table)
                 response, rc = probe(
                     f'{outOfSyncPath}/create', 'POST', tableConfig, 
@@ -2381,14 +2382,14 @@ def run(server):
                     track(f"table_copy results: {tbCopyResult} {tbCopyRc}")
 
                     if not tbCopyRc == 200:
-                        r, rc = table_pause(cluster, table, 'stop')
-                        if 'not able to find an inSync endpoints' in r:
+                        table_pause(cluster, table, 'stop')
+                        if 'not able to find an inSync endpoints' in tbCopyResult:
                             track("table_copy was not able to find an inSync endpoints, triggering table_sync_recovery")
                             r, rc = table_sync_recovery(cluster, table, **kw)
                             return track(f"PYQL table_sync_recovery result {r} rc {rc}"), rc
                         else:
                             # Table create failed
-                            return track(f"table create failed - error {r} - {rc}"), tbCopyRc
+                            return track(f"table create failed - error {tbCopyResult} - {tbCopyRc}"), tbCopyRc
                 return track("load_table completed"), 200
             #
             def sync_cluster_table_logs():
