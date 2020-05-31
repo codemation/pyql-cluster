@@ -2242,6 +2242,8 @@ def run(server):
             error = f"#CRITICAL - tablesyncer was not able to find an inSync endpoints"
             r, rc = table_pause(cluster, table, 'stop')
             return trace.error(error), rc
+        # This allows logs to generate for endpoint - following the copy
+        table_endpoint(cluster, table, outOfSyncUuid, {'state': 'loaded'}, trace=kw['trace'])
         if 'unPauseAfterCopy' in kw:
             # unpause to allow txn logs to generate while syncing
             r, rc = table_pause(cluster, table, 'stop')
@@ -2263,17 +2265,15 @@ def run(server):
                     token=outOfSyncToken, session=get_endpoint_sessions(outOfSyncUuid),  
                     trace=kw['trace'])
                 if not rc == 200:
-                    failure = f"failed to create table using {tableConfig}"
-                    return trace.error(failure), 500
+                    response, rc = trace.error(f"failed to create table using {tableConfig}"), 500
                 #Retry sync since new table creation
                 response, rc = probe(
                     f'{outOfSyncPath}/sync', 'POST', tableCopy, 
                     token=outOfSyncToken, session=get_endpoint_sessions(outOfSyncUuid),
                     trace=kw['trace'])
-                return response, rc
         # mark table endpoint as 'loaded'
-        if rc == 200:
-            table_endpoint(cluster, table, outOfSyncUuid, {'state': 'loaded'}, trace=kw['trace'])
+        if not rc == 200:
+            table_endpoint(cluster, table, outOfSyncUuid, {'state': 'new'}, trace=kw['trace'])
         trace.warning(f"#SYNC table_copy results {response} {rc}")
         trace.warning(f"#SYNC initial table copy of {table} in cluster {cluster} completed, need to sync changes now")
         return response, rc
