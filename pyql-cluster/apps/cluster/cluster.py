@@ -998,7 +998,7 @@ def run(server):
             return {"message": trace.exception(message)}, 400
         failTrack = []
         tb = get_table_info(cluster, table, tableEndpoints, trace=kw['trace'])
-        def process_request(tb, tableEndpoints):
+        def process_request():
             endpointResponse = {}
             epRequests = {}
             changeLogs = {'txns': []}
@@ -1179,7 +1179,7 @@ def run(server):
 
             return {"message": asyncResults, "consistency": tb['consistency']}, 200
         if tb['isPaused'] == False:
-            return process_request(tb, tableEndpoints)
+            return process_request()
         else:
             if cluster == pyql and table == 'tables' or table == 'state' and action == 'update':
                 # tables val isPaused / state inSync are values and we need to allow tables updates through if updating
@@ -1193,7 +1193,7 @@ def run(server):
                 tb = get_table_info(cluster, table, tableEndpoints, trace=kw['trace'])
                 #TODO - create a counter stat to track how often this occurs
                 if tb['isPaused'] == False:
-                    return process_request(tb, tableEndpoints)
+                    return process_request()
                 totalSleep+=0.5
             error = "table is paused preventing changes, maybe an issue occured during sync cutover, try again later"
             return {"message": trace.error(error)}, 500
