@@ -2102,7 +2102,7 @@ def run(server):
                 trace=kw['trace']
             )
             trace(f"table_sync_recovery - checking lastModTime on cluster {cluster} endpoint {endpoint}")
-            if pyqlTbCheck['data'][0]['lastModTime'] > latest['lastModTime']:
+            if len(pyqlTbCheck) > 0 and pyqlTbCheck['data'][0]['lastModTime'] > latest['lastModTime']:
                 latest['endpoint'] = endpoint['uuid']
                 latest['lastModTime'] = pyqlTbCheck['data'][0]['lastModTime']
         trace(f"table_sync_recovery latest endpoint is {latest['endpoint']}")
