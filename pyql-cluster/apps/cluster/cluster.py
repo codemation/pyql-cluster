@@ -2336,7 +2336,7 @@ def run(server):
 
             def load_table():
                 track("load_table starting - pausing table to get a consistent table_copy")
-                r, rc = table_pause(cluster, table, 'start', delayAfterPause=0.5)
+                r, rc = table_pause(cluster, table, 'start', delayAfterPause=4.0)
                 if cluster == pyql and table in pyqlSyncExclusions: 
                     #need to blackout changes to these tables during entire copy as txn logs not generated
                     try:
