@@ -1163,12 +1163,14 @@ def run(server):
                         trace(f"{alert} as chain is broken")
                         fr, frc = post_request_tables(pyql, 'state', 'update', stateSet, trace=trace)
                         trace(f"{alert} - result: {fr} {frc}")
+                    """TODO - Delete after testing
                     if cluster == pyql and table in pyqlTxnExceptions:
                         pass
                     else:
                         write_change_logs(
                             {'txns': [get_txn(endpoint) for endpoint in fail]}
                         )
+                    """
             #pyql state table changes must be commited before logs to prevent loop
             """TODO - Delete after testing - state txn logs not used. 
             if cluster == pyql and table == 'state':
