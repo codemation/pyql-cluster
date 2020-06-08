@@ -1,4 +1,4 @@
-import test_pyql_cluster
+import test_pyql_cluster, time
 
 def main(count):
     c = test_pyql_cluster.cluster(debug=True)
