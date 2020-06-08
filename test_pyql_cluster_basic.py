@@ -6,6 +6,8 @@ def main(count):
     c.auth_setup()
     for _ in range(count):
         c.expand_cluster()
+    time.sleep(10)
+    c.insync_and_state_check()
 if __name__ == '__main__':
     import sys
     assert len(sys.argv) == 2, "expected 1 argument for # number of nodes"
