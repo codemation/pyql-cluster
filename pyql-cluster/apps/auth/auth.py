@@ -70,7 +70,7 @@ def run(server):
                         if isinstance(decodedToken['expiration'], float):
                             if not decodedToken['expiration'] > time.time():
                                 warning = f"token valid but expired for user with id {decodedToken['id']}"
-                                return {"error": debug(log.warning(warning))}, 401 #TODO - Check returncode for token expiration
+                                return {"error": debug(log.warning(warning))}, 401
                         log.warning(f"token auth successful for {request.auth} using type {tokenType} key {key}")
                     if 'Basic' in auth:
                         base64Cred = auth.split(' ')[1]
@@ -307,15 +307,12 @@ def run(server):
             userInfo['id'] = str(uuid.uuid1())
             trace(f"creating new user with id {userInfo['id']}")
             response, rc = server.cluster_table_insert(pyql, 'auth', userInfo, trace=trace)
-            if rc == 200: # TODO - should this be 201?
+            if rc == 200:
                 if authtype == 'user' or authtype == 'admin':
                     svc, status = user_register('service', {'parent': userInfo['id']})
                     trace(f"creating service account for new user {svc} {status}")
-                return {"message": trace(f"user created successfully")}, 200
+                return {"message": trace(f"user created successfully")}, 201
             return response, rc
-
-
-
 
         @server.route('/auth/<authtype>/register', methods=['POST'])
         @server.state_and_quorum_check
@@ -330,8 +327,6 @@ def run(server):
         @server.trace
         def get_user_auth_token(**kw):
             return {"token": create_auth_token(request.auth, time.time() + 3600, 'cluster')}, 200
-
-
 
 
         # Retrieve current local / cluster token - requires auth 
