@@ -1020,6 +1020,21 @@ def run(server):
         except Exception as e:
             return {"error": trace.exception("error in cluster table select")}, 500
 
+    @server.route('/cluster/<cluster>/tables', methods=['GET'])
+    @state_and_quorum_check
+    @server.is_authenticated('cluster')
+    @cluster_name_to_uuid
+    @server.trace
+    def cluster_tables_config(cluster, **kw)
+        return tables_config(cluster, **kw)
+    def tables_config(cluster, **kw):
+        tables = server.clusters.tables.select('name', where={'cluster': cluster})
+        tablesConfig = {}
+        for table in tables:
+            config, rc = table_config(cluster, table['name'])
+            tablesConfig.update(config)
+        return tablesConfig, 200 
+
     @server.route('/cluster/<cluster>/table/<table>/config', methods=['GET'])
     @state_and_quorum_check
     @server.is_authenticated('cluster')
