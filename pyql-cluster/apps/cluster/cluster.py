@@ -1025,13 +1025,14 @@ def run(server):
     @server.is_authenticated('cluster')
     @cluster_name_to_uuid
     @server.trace
-    def cluster_tables_config(cluster, **kw)
+    def cluster_tables_config(cluster, **kw):
         return tables_config(cluster, **kw)
+    @server.trace
     def tables_config(cluster, **kw):
         tables = server.clusters.tables.select('name', where={'cluster': cluster})
         tablesConfig = {}
         for table in tables:
-            config, rc = table_config(cluster, table['name'])
+            config, rc = table_config(cluster, table['name'], **kw)
             tablesConfig.update(config)
         return tablesConfig, 200 
 
