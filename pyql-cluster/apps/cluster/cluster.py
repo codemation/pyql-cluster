@@ -439,13 +439,11 @@ def run(server):
     
     #TODO - Determine if I need to make pyql/ready authenticated 
     @server.route('/cluster/pyql/ready', methods=['POST', 'GET'])
-    @server.trace
     def cluster_ready(ready=None, **kw):
-        trace = kw['trace']
         if request.method == 'GET':
             #quorum, rc = cluster_quorum(True)
-            quorum, rc = cluster_quorum_update(trace=kw['trace'])
-            trace.warning(f"readycheck - {quorum}")
+            quorum, rc = cluster_quorum_update()
+            log.warning(f"readycheck - {quorum}")
             if "quorum" in quorum and quorum['quorum']["ready"] == True:
                 return quorum['quorum'], 200
             else:
