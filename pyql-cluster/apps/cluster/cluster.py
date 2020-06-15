@@ -437,8 +437,8 @@ def run(server):
         log.warning(f"get nodeId called {nodeId}")
         return {"uuid": nodeId}, 200
     
+    #TODO - Determine if I need to make pyql/ready authenticated 
     @server.route('/cluster/pyql/ready', methods=['POST', 'GET'])
-    @server.is_authenticated('cluster')
     @server.trace
     def cluster_ready(ready=None, **kw):
         trace = kw['trace']
