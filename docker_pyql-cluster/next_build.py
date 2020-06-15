@@ -8,4 +8,4 @@ if __name__ == '__main__':
         latest = sys.argv[2]
         tagId = float(latest.split(tag)[1])
         tagId+=0.001
-    print(f"{tag}{tagId:.2f}")
+    print(f"{tag}{tagId:.3f}")
