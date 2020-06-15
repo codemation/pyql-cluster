@@ -15,11 +15,11 @@ if [ $? -eq 0 ]
 then
     # join using token
     env0=$env0' -e PYQL_CLUSTER_JOIN_TOKEN='$6
-    docker build . -t joshjamison/pyql-cluster:$1 $7
+    docker build docker_pyql-cluster/ -t joshjamison/pyql-cluster:$1 $7
     echo $8 | grep 'debug' && env0=$env0' -e PYQL_DEBUG=True'
 else 
     # init
-    docker build . -t joshjamison/pyql-cluster:$1 $6
+    docker build docker_pyql-cluster/ -t joshjamison/pyql-cluster:$1 $6
     echo $7 | grep 'debug' && env0=$env0' -e PYQL_DEBUG=True' && echo '## DEBUGGING ENABLED ##'
 fi
 
