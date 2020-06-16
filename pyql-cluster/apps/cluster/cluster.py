@@ -1111,7 +1111,7 @@ def run(server):
             where={'cluster': cluster, 'name': table})
         primary = primary[0]['config'][table]['primaryKey']
         if request.method == 'POST':
-            return table_update(cluster, table, {'set': data, 'where': {primary: key}}, trace=trace)
+            return table_update(cluster=cluster, table=table, data={'set': data, 'where': {primary: key}}, trace=trace)
         if request.method == 'DELETE':
             return table_delete(cluster, table, {'where': {primary: key}}, trace=trace)
     
@@ -1123,10 +1123,10 @@ def run(server):
     def cluster_table_update(cluster, table, data=None, **kw):
         trace = kw['trace']
         data = request.get_json() if data == None else data
-        return table_update(cluster, table, data, trace=trace)
+        return table_update(cluster=cluster, table=table, data=data, trace=trace)
 
     @server.trace
-    def table_update(cluster, table, data=None, config=None, **kw):
+    def table_update(cluster=None, table=None, data=None, config=None, **kw):
         trace = kw['trace']
         if not config == None: # this was invoked by a job
             cluster, table, data = config['cluster'], config['table'], config['data']
