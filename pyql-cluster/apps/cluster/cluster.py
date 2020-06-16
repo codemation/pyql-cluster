@@ -634,7 +634,7 @@ def run(server):
             }
             trace.warning(f"This node was unhealthy, but started healing - adding job {markStateOutOfSyncJob} to internaljobs queue")
             server.internal_job_add(markStateOutOfSyncJob)
-        if preQuorum['health'] in ['healing', 'healhty'] and inQuorum == True: 
+        if preQuorum['health'] in ['healing', 'healthy'] and inQuorum == True: 
             if preQuorum['ready'] == True:
                 health = 'healhty'
             else:
