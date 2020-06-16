@@ -128,7 +128,12 @@ def run(server):
         }
     }
     if 'PYQL_CLUSTER_JOIN_TOKEN' in os.environ and os.environ['PYQL_CLUSTER_ACTION'] == 'join':
-        joinClusterJob['joinToken'] = os.environ['PYQL_CLUSTER_JOIN_TOKEN']
+        if not os.environ.get('PYQL_TYPE') == 'K8S':
+            joinClusterJob['joinToken'] = os.environ['PYQL_CLUSTER_JOIN_TOKEN']
+        else:
+            joinClusterJob['joinToken'] = base64.decodestring(
+                os.environ['PYQL_CLUSTER_JOIN_TOKEN'].encode('utf-8')
+                ).decode()
 
     def get_clusterid_by_name_authorized(clusterName, **kwargs):
         userId = request.auth
