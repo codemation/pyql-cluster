@@ -2,7 +2,7 @@ def run(server):
     from flask import request
     import requests
     from datetime import datetime
-    import time, uuid, random
+    import time, uuid, random, base64
     from random import randrange
     import json, os
     from apps.cluster import asyncrequest,request_async
