@@ -574,6 +574,8 @@ def run(server):
         if len(endpoints) == 0:
             # may be a new node / still syncing
             return {"message": trace(f"cluster_quorum_update node {nodeId} is still syncing")}, 200
+        if len(endpoints) == 1:
+            health = 'healthy'
         preQuorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
         """
         epRequests = {}
