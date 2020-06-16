@@ -639,7 +639,7 @@ def run(server):
                 health = 'healhty'
             else:
                 health = 'healing'
-        quorumToUpdate.update({'inQuorum': inQuorum, 'health': health, 'nodes': inQuorumNodes, 'lastUpdateTime': float(time.time())})
+        quorumToUpdate.update({'inQuorum': inQuorum, 'health': health, 'nodes': {"nodes": inQuorumNodes}, 'lastUpdateTime': float(time.time())})
         server.clusters.quorum.update(
             **quorumToUpdate,
             where={'node': nodeId}
