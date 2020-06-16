@@ -2190,7 +2190,7 @@ def run(server):
             job_update(jobtype, job['id'], 'queued', jobInfo={"error": f"{error} - requeuing"}, **kw)
             return result, rc
         if 'nextJob' in jobConfig:
-            job_update(jobtype, jobConfig['nextJob'], 'queued', jobInfo={"message": f"queued after {jobConfig['job']} completed"}, **kw)
+            job_update(jobtype, jobConfig['nextJob'], 'queued', jobInfo={"message": f"queued after {job['name']} completed"}, **kw)
         trace(f"finished {job['name']} with result: {result} - rc {rc}")
         return result, rc
         
