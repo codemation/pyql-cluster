@@ -636,7 +636,7 @@ def run(server):
             server.internal_job_add(markStateOutOfSyncJob)
         if preQuorum['health'] in ['healing', 'healthy'] and inQuorum == True: 
             if preQuorum['ready'] == True:
-                health = 'healhty'
+                health = 'healthy'
             else:
                 health = 'healing'
         quorumToUpdate.update({'inQuorum': inQuorum, 'health': health, 'nodes': {"nodes": inQuorumNodes}, 'lastUpdateTime': float(time.time())})
