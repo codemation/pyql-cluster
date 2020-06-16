@@ -629,8 +629,13 @@ def run(server):
                 "action": "jobs_add",
                 "config": job,
             }
-            trace.warning(f"This node is outOfQuorum - adding job {markStateOutOfSyncJob} to internaljobs queue")
+            trace.warning(f"This node was unhealthy, but started healing - adding job {markStateOutOfSyncJob} to internaljobs queue")
             server.internal_job_add(markStateOutOfSyncJob)
+        if preQuorum['health'] in ['healing', 'healhty'] and inQuorum == True: 
+            if preQuorum['ready'] == True:
+                health = 'healhty'
+            else:
+                health = 'healing'
         quorumToUpdate.update({'inQuorum': inQuorum, 'health': health, 'nodes': inQuorumNodes, 'lastUpdateTime': float(time.time())})
         server.clusters.quorum.update(
             **quorumToUpdate,
