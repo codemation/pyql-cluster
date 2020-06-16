@@ -1814,7 +1814,7 @@ def run(server):
                                 for endpoint in job['tablePaths']:
                                     jobsToRunOrdered.append({
                                         'job': f"mark_ready_{endpoint['endpoint']}",
-                                        'jobType': 'cluster',
+                                        'jobtype': 'cluster',
                                         'action': 'update_cluster_ready',
                                         'config': {'ready': True, 'path': endpoint['path']}
                                     })
