@@ -2,7 +2,7 @@ def run(server):
     from flask import request
     import requests
     from datetime import datetime
-    import time, uuid, random, base64
+    import time, uuid, random
     from random import randrange
     import json, os
     from apps.cluster import asyncrequest,request_async
@@ -128,12 +128,7 @@ def run(server):
         }
     }
     if 'PYQL_CLUSTER_JOIN_TOKEN' in os.environ and os.environ['PYQL_CLUSTER_ACTION'] == 'join':
-        if not os.environ.get('PYQL_TYPE') == 'K8S':
-            joinClusterJob['joinToken'] = os.environ['PYQL_CLUSTER_JOIN_TOKEN']
-        else:
-            joinClusterJob['joinToken'] = base64.decodestring(
-                os.environ['PYQL_CLUSTER_JOIN_TOKEN'].encode('utf-8')
-                ).decode()
+        joinClusterJob['joinToken'] = os.environ['PYQL_CLUSTER_JOIN_TOKEN']
 
     def get_clusterid_by_name_authorized(clusterName, **kwargs):
         userId = request.auth
