@@ -1798,8 +1798,8 @@ def run(server):
                         if len(order) == 0:
                             break
                         if job['table'] == order[0]:
-                            if order[0] == 'state':
-                                #stateCheck = True
+                            #if order[0] == 'state':
+                            #    stateCheck = True
                             lastPop = order.pop(0)
                             jobsToRunOrdered.append(job)
                             if lastPop == 'state':
