@@ -577,6 +577,7 @@ def run(server):
         if len(endpoints) == 1:
             health = 'healthy'
         preQuorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
+        trace(f"preQuorum check - {preQuorum}")
         """
         epRequests = {}
         for endpoint in endpoints:
