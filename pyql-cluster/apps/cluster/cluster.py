@@ -574,6 +574,7 @@ def run(server):
         if len(endpoints) == 0:
             # may be a new node / still syncing
             return {"message": trace(f"cluster_quorum_update node {nodeId} is still syncing")}, 200
+        preQuorum = server.clusters.quorum.select('*', where={'node': nodeId})[0]
         """
         epRequests = {}
         for endpoint in endpoints:
@@ -589,6 +590,7 @@ def run(server):
         """
         epResults = get_alive_endpoints(endpoints, trace=trace)
         # Check results
+        quorumToUpdate = {}
         inQuorumNodes = []
         for endpoint in epResults:
             if epResults[endpoint]['status'] == 200:
@@ -604,6 +606,11 @@ def run(server):
 
             # create an internal jobs to add to clusterJobQueue once quorum is re-establised
             # 1 - mark this endpoints state table OutOfSync globally
+            health = 'unhealthy'
+            quorumToUpdate['ready'] = False
+        # Quorum was previously not ready & outOfQuorum 
+        if preQuorum['health'] == 'unhealthy' and inQuorum == True:
+            health = 'healing'
             job = {
                 'job': f"{nodeId}_markStateOutOfSyncJob",
                 'jobtype': 'cluster',
@@ -624,11 +631,9 @@ def run(server):
             }
             trace.warning(f"This node is outOfQuorum - adding job {markStateOutOfSyncJob} to internaljobs queue")
             server.internal_job_add(markStateOutOfSyncJob)
-
+        quorumToUpdate.update({'inQuorum': inQuorum, 'health': health, 'nodes': inQuorumNodes, 'lastUpdateTime': float(time.time())})
         server.clusters.quorum.update(
-            inQuorum=inQuorum, 
-            nodes={"nodes": inQuorumNodes},
-            lastUpdateTime=float(time.time()),
+            **quorumToUpdate,
             where={'node': nodeId}
         )
         return {
