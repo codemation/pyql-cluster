@@ -639,6 +639,23 @@ def run(server):
                 health = 'healthy'
             else:
                 health = 'healing'
+                # check healing job
+                healingJob = server.clusters.jobs.select('*', where={'name': f'mark_ready_{nodeId}'})
+                if len(healingJob) == 1:
+                    trace(f"quorum is currently healing using job: {healingJob}")
+                    updateJobConfig = healingJob[0]['config']
+                    for endpoint in endpoints:
+                        if endpoint['uuid'] == nodeId:
+                            if not updateJobConfig['path'] == endpoint['path']
+                                trace("current healing job endpoint path is incorrect, updating job and requeing")
+                                updateJobConfig['path'] = endpoint['path']
+                                post_request_tables(
+                                    pyql, 
+                                    'jobs', 
+                                    'update', 
+                                    {'set': {'config': updateJobConfig, 'status': 'queued'}, 'where': {'name': f'mark_ready_{nodeId}'}},
+                                    trace=trace
+                                    )
         quorumToUpdate.update({'inQuorum': inQuorum, 'health': health, 'nodes': {"nodes": inQuorumNodes}, 'lastUpdateTime': float(time.time())})
         server.clusters.quorum.update(
             **quorumToUpdate,
@@ -1799,6 +1816,7 @@ def run(server):
             if cluster == pyql:
                 order = ['state','tables','clusters', 'auth', 'endpoints', 'databases', 'jobs', 'transactions']
                 jobsToRunOrdered = []
+                readyJobs = []
                 while len(order) > 0:
                     #stateCheck = False
                     lastPop = None
@@ -1812,7 +1830,7 @@ def run(server):
                             jobsToRunOrdered.append(job)
                             if lastPop == 'state':
                                 for endpoint in job['tablePaths']:
-                                    jobsToRunOrdered.append({
+                                    readyJobs.append({
                                         'job': f"mark_ready_{endpoint['endpoint']}",
                                         'jobtype': 'cluster',
                                         'action': 'update_cluster_ready',
@@ -1820,6 +1838,7 @@ def run(server):
                                     })
                     if lastPop == None:
                         order.pop(0)
+                jobsToRunOrdered = jobsToRunOrdered + readyJobs
                 wait_on_jobs(pyql, 0, jobsToRunOrdered)
             else:
                 for job in jobs[cluster]:
