@@ -646,7 +646,7 @@ def run(server):
                     updateJobConfig = healingJob[0]['config']
                     for endpoint in endpoints:
                         if endpoint['uuid'] == nodeId:
-                            if not updateJobConfig['path'] == endpoint['path']
+                            if not updateJobConfig['path'] == endpoint['path']:
                                 trace("current healing job endpoint path is incorrect, updating job and requeing")
                                 updateJobConfig['path'] = endpoint['path']
                                 post_request_tables(
