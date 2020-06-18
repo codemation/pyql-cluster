@@ -632,7 +632,7 @@ def run(server):
                             }
                             trace(f"adding job to delete missing node: {node['uuid']} - missing for more than 180 s")
                             jobs_add(job, trace=trace)
-                        missingNodes.pop(node['uuid'])
+                        missingNodes.pop(missingNodes.index(node['uuid']))
             for node in missingNodes:
                 missingNodesTimes.append({'uuid': node, 'time': float(time.time())})
         else:
