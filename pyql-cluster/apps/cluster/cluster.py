@@ -1827,8 +1827,8 @@ def run(server):
                             #if order[0] == 'state':
                             #    stateCheck = True
                             lastPop = order.pop(0)
-                            """
                             jobsToRunOrdered.append(job)
+                            """
                             if lastPop == 'state':
                                 for endpoint in job['tablePaths']:
                                     readyJobs.append({
