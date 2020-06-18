@@ -468,13 +468,19 @@ def run(server):
 
     server.clusterjobs['update_cluster_ready'] = update_cluster_ready
     @server.trace
-    def cluster_endpoint_delete(cluster, endpoint, **kw):
+    def cluster_endpoint_delete(cluster=None, endpoint=None, config=None, **kw):
         trace = kw['trace']
+        pyql = server.env['PYQL_UUID']
+        if not config == None:
+            cluster, endpoint = config['cluster'], config['endpoint']
         trace.error(f"cluster_endpoint_delete called for cluster - {cluster}, endpoint - {endpoint}")
         deleteWhere = {'where': {'uuid': endpoint, 'cluster': cluster}}
-        server.clusters.state.delete(**deleteWhere)
-        server.clusters.endpoints.delete(**deleteWhere)
-        return {"message": trace(f"deleted {endpoint} successfully")}, 200
+        results = {}
+        results['state'], rc = post_request_tables(pyql, 'state', delete, deleteWhere)
+        results['endpoints'], rc = post_request_tables(pyql, 'endpoints', delete, deleteWhere)
+        results['transactions'], rc = post_request_tables(pyql, 'transactions', delete, {'where': {'cluster': cluster, 'endpoint': endpoint}})
+        return {"message": trace(f"deleted {endpoint} successfully - results {results}")}, 200
+    server.clusterJobs['cluster_endpoint_delete'] = cluster_endpoint_delete
 
     @server.trace
     def get_alive_endpoints(endpoints, timeout=2.0, **kw):
@@ -595,15 +601,39 @@ def run(server):
         # Check results
         quorumToUpdate = {}
         inQuorumNodes = []
+        missingNodes = []
+        missingNodesTimes = []
         for endpoint in epResults:
             if epResults[endpoint]['status'] == 200:
                 inQuorumNodes.append(endpoint)
+            else:
+                missingNodes.append(endpoint)
         # Quorum always assume local checking node is alive
         if not nodeId in inQuorumNodes:
             inQuorumNodes.append(nodeId)
         inQuorum = False
         if len(inQuorumNodes) / len(endpoints) >= 2/3:
             inQuorum = True
+            # updating missing nodes - if any - only if inQuroum
+            if 'nodes' in preQuorum['missing']:
+                for node in preQuorum['missing']['nodes']['nodes']:
+                    # check if pre missing node is still missing
+                    if node['uuid'] in missingNodes: 
+                        if time.time() - node['time'] >= 180:
+                            # create job to delete missing node
+                            job = {
+                                'job': f"delete_missing_node_{node['uuid']}",
+                                'jobtype': 'cluster',
+                                'action': 'cluster_endpoint_delete',
+                                'config': {
+                                    'cluster': pyql, 
+                                    'endpoint': node['uuid']
+                            }
+                            trace(f"adding job to delete missing node: {node['uuid']} - missing for more than 180 s")
+                            jobs_add(job, trace=trace)
+                        missingNodes.pop(node['uuid'])
+            for node in missingNodes:
+                missingNodesTimes.append({'uuid': node, 'time': float(time.time())})
         else:
             # mark this endpoint state OutOfsync
 
@@ -656,7 +686,13 @@ def run(server):
                                     {'set': {'config': updateJobConfig, 'status': 'queued'}, 'where': {'name': f'mark_ready_{nodeId}'}},
                                     trace=trace
                                     )
-        quorumToUpdate.update({'inQuorum': inQuorum, 'health': health, 'nodes': {"nodes": inQuorumNodes}, 'lastUpdateTime': float(time.time())})
+        quorumToUpdate.update({
+            'inQuorum': inQuorum, 
+            'health': health, 
+            'nodes': {"nodes": inQuorumNodes},
+            'missing': {'nodes': missingNodesTimes},
+            'lastUpdateTime': float(time.time())
+            })
         server.clusters.quorum.update(
             **quorumToUpdate,
             where={'node': nodeId}
