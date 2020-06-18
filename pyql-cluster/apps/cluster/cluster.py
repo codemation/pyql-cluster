@@ -628,6 +628,7 @@ def run(server):
                                 'config': {
                                     'cluster': pyql, 
                                     'endpoint': node['uuid']
+                                }
                             }
                             trace(f"adding job to delete missing node: {node['uuid']} - missing for more than 180 s")
                             jobs_add(job, trace=trace)
