@@ -2330,6 +2330,7 @@ def run(server):
     server.clusters.quorum.insert(**{
         'node': nodeId,
         'nodes': {'nodes': [nodeId]},
+        'missing': {},
         'inQuorum': readyAndQuorum,
         'health': health,
         'lastUpdateTime': float(time.time()),
