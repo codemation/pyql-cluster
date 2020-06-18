@@ -615,8 +615,8 @@ def run(server):
         if len(inQuorumNodes) / len(endpoints) >= 2/3:
             inQuorum = True
             # updating missing nodes - if any - only if inQuroum
-            if 'nodes' in preQuorum['missing']:
-                for node in preQuorum['missing']['nodes']['nodes']:
+            if 'nodes' in preQuorum['missing'] and 'nodes' in :
+                for node in preQuorum['missing']['nodes']:
                     # check if pre missing node is still missing
                     if node['uuid'] in missingNodes: 
                         if time.time() - node['time'] >= 180:
