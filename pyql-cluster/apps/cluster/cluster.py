@@ -476,9 +476,9 @@ def run(server):
         trace.error(f"cluster_endpoint_delete called for cluster - {cluster}, endpoint - {endpoint}")
         deleteWhere = {'where': {'uuid': endpoint, 'cluster': cluster}}
         results = {}
-        results['state'], rc = post_request_tables(pyql, 'state', delete, deleteWhere)
-        results['endpoints'], rc = post_request_tables(pyql, 'endpoints', delete, deleteWhere)
-        results['transactions'], rc = post_request_tables(pyql, 'transactions', delete, {'where': {'cluster': cluster, 'endpoint': endpoint}})
+        results['state'], rc = post_request_tables(pyql, 'state', 'delete', deleteWhere)
+        results['endpoints'], rc = post_request_tables(pyql, 'endpoints', 'delete', deleteWhere)
+        results['transactions'], rc = post_request_tables(pyql, 'transactions', 'delete', {'where': {'cluster': cluster, 'endpoint': endpoint}})
         return {"message": trace(f"deleted {endpoint} successfully - results {results}")}, 200
     server.clusterjobs['cluster_endpoint_delete'] = cluster_endpoint_delete
 
