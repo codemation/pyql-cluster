@@ -480,7 +480,7 @@ def run(server):
         results['endpoints'], rc = post_request_tables(pyql, 'endpoints', delete, deleteWhere)
         results['transactions'], rc = post_request_tables(pyql, 'transactions', delete, {'where': {'cluster': cluster, 'endpoint': endpoint}})
         return {"message": trace(f"deleted {endpoint} successfully - results {results}")}, 200
-    server.clusterJobs['cluster_endpoint_delete'] = cluster_endpoint_delete
+    server.clusterjobs['cluster_endpoint_delete'] = cluster_endpoint_delete
 
     @server.trace
     def get_alive_endpoints(endpoints, timeout=2.0, **kw):
