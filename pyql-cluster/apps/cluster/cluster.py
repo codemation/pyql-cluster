@@ -1827,6 +1827,7 @@ def run(server):
                             #if order[0] == 'state':
                             #    stateCheck = True
                             lastPop = order.pop(0)
+                            """
                             jobsToRunOrdered.append(job)
                             if lastPop == 'state':
                                 for endpoint in job['tablePaths']:
@@ -1836,6 +1837,7 @@ def run(server):
                                         'action': 'update_cluster_ready',
                                         'config': {'ready': True, 'path': endpoint['path']}
                                     })
+                            """
                     if lastPop == None:
                         order.pop(0)
                 jobsToRunOrdered = jobsToRunOrdered + readyJobs
@@ -2082,13 +2084,16 @@ def run(server):
             sync_cluster_table_logs()
 
             if cluster == pyql and table in pyqlSyncExclusions:
-                pass
+                if table == 'state':
+                    tableEndpoint = f'{endpoint}{table}'
+                    if server.clusters.state.select('inSync', where={"name": tableEndpoint})[0]['inSync'] == True:
+                        update_cluster_ready(path=path, ready=True)
             else:
                 track("completed initial pull of change logs & starting a cutover by pausing table")
                 r, rc = table_pause(cluster, table, 'start', trace=kw['trace'], delayAfterPause=4.0)
                 #message, rc = table_cutover(clusterId, table, 'start')
                 track(f"cutover result: {r} rc: {rc}")
-                tableEndpoint = f'{endpoint}{table}'
+                
                 try:
                     track("starting post-cutover pull of change logs")
                     sync_cluster_table_logs()
