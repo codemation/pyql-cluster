@@ -8,6 +8,7 @@ def db_attach(server):
            ('inQuorum', bool),
            ('health', str),
            ('nodes', str),
+           ('missing', str), 
            ('lastUpdateTime', float)
        ],
        'node'
