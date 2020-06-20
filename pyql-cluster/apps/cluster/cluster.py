@@ -619,7 +619,7 @@ def run(server):
                 for node in preQuorum['missing']['nodes']:
                     # check if pre missing node is still missing
                     if node['uuid'] in missingNodes: 
-                        if time.time() - node['time'] >= 180:
+                        if time.time() - node['time'] >= 45:
                             # create job to delete missing node
                             job = {
                                 'job': f"delete_missing_node_{node['uuid']}",
