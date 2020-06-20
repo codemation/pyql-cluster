@@ -2122,10 +2122,13 @@ def run(server):
             sync_cluster_table_logs()
 
             if cluster == pyql and table in pyqlSyncExclusions:
-                if table == 'state':
-                    tableEndpoint = f'{endpoint}{table}'
-                    if server.clusters.state.select('inSync', where={"name": tableEndpoint})[0]['inSync'] == True:
-                        update_cluster_ready(path=path, ready=True)
+                ready = True
+                for tableState in server.clusters.state.select('inSync', where={"uuid": uuid})
+                    if tableState['inSync'] == False:
+                        ready=False
+                # no tables for endpoint are inSync false - mark endpoint ready = True
+                if ready:
+                    update_cluster_ready(path=path, ready=True)
             else:
                 track("completed initial pull of change logs & starting a cutover by pausing table")
                 r, rc = table_pause(cluster, table, 'start', trace=kw['trace'], delayAfterPause=4.0)
