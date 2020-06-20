@@ -2123,7 +2123,7 @@ def run(server):
 
             if cluster == pyql and table in pyqlSyncExclusions:
                 ready = True
-                for tableState in server.clusters.state.select('inSync', where={"uuid": uuid})
+                for tableState in server.clusters.state.select('inSync', where={"uuid": uuid}):
                     if tableState['inSync'] == False:
                         ready=False
                 # no tables for endpoint are inSync false - mark endpoint ready = True
