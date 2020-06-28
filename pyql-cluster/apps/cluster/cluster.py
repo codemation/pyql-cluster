@@ -1102,7 +1102,7 @@ def run(server):
         trace = kw['trace']
         if request.method == 'GET':
             return endpoint_probe(cluster, table, **kw)
-        return cluster_table_insert(cluster, table, **kw)
+        return table_insert(cluster, table, **kw)
 
     @server.route('/cluster/<cluster>/table/<table>/select', methods=['GET','POST'])
     @state_and_quorum_check
