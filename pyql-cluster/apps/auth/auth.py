@@ -213,40 +213,41 @@ def run(server):
     def cluster_set_token_key(location):
         return set_token_key(location)
 
+    """TODO - Delete after testing 
     @server.route('/auth/tokenkey/update', methods=['POST'])
     @server.is_authenticated('local')
     def cluster_key_update(key=None):
         key = request.get_json() if not key == None else key
         if not 'key' in key:
-            return {"error": f"""missing key in input {key} expected  {"{key': 'keyvalue....'}"}"""}, 400
+            return {"error": f"missing key"}, 400
         if keytype == 'cluster':
             server.env['PYQL_CLUSTER_TOKEN_KEY'] = key['key']
+    """
 
-    @server.route('/auth/setup/<location>', methods=['POST'])
+    @server.route('/auth/setup/cluster', methods=['POST'])
     @server.is_authenticated('local')
-    def cluster_set_service_token(location):
+    def cluster_set_service_token():
         """
         used primary to update joining nodes with a PYQL_CLUSTER_SERVICE_TOKEN 
         so joining node can pull and set its PYQL_CLUSTER_TOKEN_KEY
         """
-        if location == 'cluster':
-            serviceToken = request.get_json()
-            if not 'PYQL_CLUSTER_SERVICE_TOKEN' in serviceToken:
-                return {"error": log.error(f"missing PYQL_CLUSTER_SERVICE_TOKEN")}, 400
-            server.env['PYQL_CLUSTER_SERVICE_TOKEN'] = serviceToken['PYQL_CLUSTER_SERVICE_TOKEN']
-            r, rc = server.probe(
-                f"http://{os.environ['PYQL_CLUSTER_SVC']}/auth/key/cluster",
-                auth='remote',
-                token=server.env['PYQL_CLUSTER_SERVICE_TOKEN'],
-                session=server.session
-            )
-            if not 'PYQL_CLUSTER_TOKEN_KEY' in r:
-                warning = f"error pulling key {r} {rc}"
-                return {"error": log.error(warning)}, rc
-            setKey, rc = set_token_key('cluster', r)
-            if not rc == 200:
-                log.warning(setKey)
-            return setKey, rc
+        serviceToken = request.get_json()
+        if not 'PYQL_CLUSTER_SERVICE_TOKEN' in serviceToken:
+            return {"error": log.error(f"missing PYQL_CLUSTER_SERVICE_TOKEN")}, 400
+        server.env['PYQL_CLUSTER_SERVICE_TOKEN'] = serviceToken['PYQL_CLUSTER_SERVICE_TOKEN']
+        r, rc = server.probe(
+            f"http://{os.environ['PYQL_CLUSTER_SVC']}/auth/key/cluster",
+            auth='remote',
+            token=server.env['PYQL_CLUSTER_SERVICE_TOKEN'],
+            session=server.session
+        )
+        if not 'PYQL_CLUSTER_TOKEN_KEY' in r:
+            warning = f"error pulling key {r} {rc}"
+            return {"error": log.error(warning)}, rc
+        setKey, rc = set_token_key('cluster', r)
+        if not rc == 200:
+            log.warning(setKey)
+        return setKey, rc
     # Retrieve current local / cluster token - requires auth 
     @server.route('/auth/token/<tokentype>')
     @server.is_authenticated('pyql')
