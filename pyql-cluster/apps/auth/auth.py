@@ -259,7 +259,7 @@ def run(server):
 
     # Retrieve current local / cluster token keys - requires auth 
     @server.route('/auth/key/<keytype>')
-    @server.is_authenticated('cluster')
+    @server.is_authenticated('pyql')
     def cluster_service_token_key(keytype):
         if keytype == 'cluster':
             return {"PYQL_CLUSTER_TOKEN_KEY": server.env['PYQL_CLUSTER_TOKEN_KEY']}, 200
