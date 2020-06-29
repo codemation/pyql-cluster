@@ -1158,10 +1158,11 @@ def run(server):
         if request.method == 'GET':
             return endpoint_probe(cluster, table, path=f'/{key}', **kw)
         data = None
-        try:
-            data = request.get_json()
-        except Exception as e:
-            return {"error": trace.error("expected json input for request")}, 400
+        if request.method == 'POST':
+            try:
+                data = request.get_json()
+            except Exception as e:
+                return {"error": trace.error("expected json input for request")}, 400
         primary = server.clusters.tables.select(
             'config', 
             where={'cluster': cluster, 'name': table})
