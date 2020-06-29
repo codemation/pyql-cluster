@@ -7,7 +7,7 @@ spec:
     matchLabels:
       app: pyql-cluster # has to match .spec.template.metadata.labels
   serviceName: "pyql-cluster"
-  replicas: 1 # by default is 1
+  replicas: 3 # by default is 1
   template:
     metadata:
       labels:
@@ -16,23 +16,13 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: pyql-cluster
-        image: joshjamison/pyql-cluster:dev0.4.9.8
+        image: joshjamison/pyql-cluster:alpha0.028
+        envFrom:
+          - configMapRef:
+              name: pyql-cluster-config
+          - secretRef:
+              name: pyql-cluster-join-token
         env:
-          - name: PYQL_CLUSTER_SVC
-            valueFrom:  
-              configMapKeyRef:          
-                name: pyql-cluster-config
-                key: PYQL_CLUSTER_SVC
-          - name: PYQL_PORT
-            valueFrom:  
-              configMapKeyRef:          
-                name: pyql-cluster-config
-                key: PYQL_PORT
-          - name: PYQL_VOLUME_PATH
-            valueFrom:           
-              configMapKeyRef:          
-                name: pyql-cluster-config
-                key: PYQL_VOLUME_PATH
           - name: PYQL_TYPE
             value: K8S
           - name: PYQL_CLUSTER_ACTION
@@ -46,15 +36,16 @@ spec:
             port: 80
           initialDelaySeconds: 3
           periodSeconds: 10
+          timeoutSeconds: 5
         volumeMounts:
         - name: pyql-cluster-db
-          mountPath: /mnt/pyql-cluster-db
+          mountPath: /mnt/pyql-cluster
   volumeClaimTemplates:
   - metadata:
       name: pyql-cluster-db
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "manual"
+      storageClassName: "pyql-pv-manual-sc"
       resources:
         requests:
           storage: 20Gi
