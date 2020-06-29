@@ -5,7 +5,7 @@ ENV PATH="$V_ENV/bin:$PATH"
 # Add Dependencies
 #COPY /requirements.txt .
 
-RUN apt-get install -y curl
+RUN apt-get update && apt-get install -y curl
 
 RUN git clone https://github.com/codemation/pyql-cluster.git
 
