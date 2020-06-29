@@ -2131,13 +2131,7 @@ def run(server):
             sync_cluster_table_logs()
 
             if cluster == pyql and table in pyqlSyncExclusions:
-                ready = True
-                for tableState in server.clusters.state.select('inSync', where={"uuid": uuid}):
-                    if tableState['inSync'] == False:
-                        ready=False
-                # no tables for endpoint are inSync false - mark endpoint ready = True
-                if ready:
-                    update_cluster_ready(path=path, ready=True)
+                pass
             else:
                 track("completed initial pull of change logs & starting a cutover by pausing table")
                 r, rc = table_pause(cluster, table, 'start', trace=kw['trace'], delayAfterPause=4.0)
@@ -2163,6 +2157,14 @@ def run(server):
             #if cluster == pyql:
             #    r, rc = table_pause(cluster, table, 'stop', trace=kw['trace'])
             syncResults[endpoint] = track(f"finished syncing {uuid} for table {table} in cluster {cluster}")
+            if cluster == pyql:
+                ready = True
+                for tableState in server.clusters.state.select('inSync', where={"uuid": uuid}):
+                    if tableState['inSync'] == False:
+                        ready=False
+                # no tables for endpoint are inSync false - mark endpoint ready = True
+                if ready:
+                    update_cluster_ready(path=path, ready=True)
         message = trace(f"finished syncing cluster {cluster} table {table} - results: {syncResults}")
         return {"message": message, "results": syncResults}, 200
     server.clusterjobs['table_sync_run'] = table_sync_run
