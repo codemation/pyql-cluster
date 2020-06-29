@@ -1212,10 +1212,10 @@ def run(server):
     @cluster_name_to_uuid
     @server.trace
     def cluster_table_delete(cluster, table, **kw):
-        return table_delete(cluster, table, **kw)
+        return table_delete(cluster, table, request.get_json(), **kw)
     @server.trace
-    def table_delete(cluster, table, **kw):
-        return post_request_tables(cluster, table, 'delete', request.get_json(), **kw)
+    def table_delete(cluster, table, data, **kw):
+        return post_request_tables(cluster, table, 'delete', data, **kw)
 
     @server.route('/cluster/<cluster>/table/<table>/pause/<pause>', methods=['POST'])
     @state_and_quorum_check
