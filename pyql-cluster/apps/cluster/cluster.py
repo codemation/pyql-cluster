@@ -1507,6 +1507,10 @@ def run(server):
                 if not bootstrap and clusterName == 'pyql':
                     trace.warning(f"{os.environ['HOSTNAME']} was not bootstrapped - create tablesync job for table state")
                     if clusterName == 'pyql':
+                        post_request_tables(
+                            pyql, 'state', 'update', 
+                            {"set": {"inSync": False}, "where": {"tableName": "state", "cluster": pyql}}, 
+                            trace=kw['trace'])
                         cluster_tablesync_mgr('check', trace=kw['trace'])
                         return {"message": trace.info(f"re-join cluster {clusterName} for endpoint {config['name']} completed successfully")}, 200
             # Trigger quorum update using any new endpoints if cluster name == pyql
