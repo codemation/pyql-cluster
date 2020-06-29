@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  creationTimestamp: null
-  name: pyql-cluster-config
-data:
-  PYQL_CLUSTER_SVC: 'pyql-cluster-lb.default.svc.cluster.local'
-  PYQL_PORT: '80'
-  PYQL_VOLUME_PATH: '/mnt/pyql-cluster-db'
