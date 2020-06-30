@@ -1,5 +1,5 @@
 # pyql-cluster
-A scale-in / out cluster which orchestrates the creation, managment, expansion, scaling, and healing of pyql-rest clusters. 
+A distributed and scale-in/out REST API application, built with python, which provides users of any language the ability to access, store, and update data, via the Rest PYQL JSON syntax, with a cluster of managed & distributed table replicas consisting of multiple database types & locations.
 
 ## Key Features
 - Scale-in / out orchestration plane  - As load increases / decreases, endpoints can be scaled up / down. 
