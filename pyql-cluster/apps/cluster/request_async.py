@@ -63,7 +63,7 @@ def get_requester(method):
             
 def requests_async(urls, method='GET', loop=None):
     """
-    urls= {'requestId': {'path: 'http://google.com', 'data': {}, 'headers': headers}}
+    urls= {'requestId': {'path: 'http://google.com', 'data': {}, 'headers': headers, 'session': requests.Session()}}
     """
     if loop == None:
         loop = asyncio.new_event_loop()
