@@ -1,15 +1,15 @@
 import sys, time, requests, os
 
 if 'PYQL_NODE' in os.environ:
-    nodeIP = os.environ['PYQL_NODE']
+    NODE_IP = os.environ['PYQL_NODE']
 
 if 'PYQL_TYPE' in os.environ:
     if os.environ['PYQL_TYPE'] == 'K8S' or os.environ['PYQL_TYPE'] == 'DOCKER':
         import socket
-        nodeIP = socket.gethostbyname(socket.getfqdn())
+        NODE_IP = socket.gethostbyname(socket.getfqdn())
 
 session = requests.Session()
-nodePort = os.environ['PYQL_PORT']
+NODE_PORT = os.environ['PYQL_PORT']
 
 def set_db_env(path):
     sys.path.append(path)
@@ -19,7 +19,7 @@ def set_db_env(path):
     env = database.tables['env']
 
 def probe(path, method='GET', data=None, auth=None):
-    path = f'http://{nodeIP}:{nodePort}{path}'
+    path = f'http://{NODE_IP}:{NODE_PORT}{path}'
     auth = 'PYQL_CLUSTER_SERVICE_TOKEN' if not auth == 'local' else 'PYQL_LOCAL_SERVICE_TOKEN'
     headers = {
         'Accept': 'application/json', "Content-Type": "application/json",

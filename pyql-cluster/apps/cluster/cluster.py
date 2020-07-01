@@ -89,7 +89,7 @@ def run(server):
         server.data['cluster'].tables['pyql'].insert({
             'uuid': dbuuid,
             'database': 'cluster', 
-            'lastModTime': time.time()
+            'last_mod_time': time.time()
         })
     node_id = dbuuid
     server.sessions[node_id] = server.session
@@ -111,8 +111,8 @@ def run(server):
     join_job_type = "node" if os.environ['PYQL_CLUSTER_ACTION'] == 'init' or len(endpoints) == 1 else 'cluster'
 
     join_cluster_job = {
-        "job": f"{os.environ['HOSTNAME']}{os.environ['PYQL_CLUSTER_ACTION']}Cluster",
-        "jobtype": join_job_type,
+        "job": f"{os.environ['HOSTNAME']}{os.environ['PYQL_CLUSTER_ACTION']}_cluster",
+        "job_type": join_job_type,
         "method": "POST",
         "path": "/cluster/pyql/join",
         "data": {
@@ -128,7 +128,7 @@ def run(server):
         }
     }
     if 'PYQL_CLUSTER_JOIN_TOKEN' in os.environ and os.environ['PYQL_CLUSTER_ACTION'] == 'join':
-        join_cluster_job['joinToken'] = os.environ['PYQL_CLUSTER_JOIN_TOKEN']
+        join_cluster_job['join_token'] = os.environ['PYQL_CLUSTER_JOIN_TOKEN']
 
     def get_clusterid_by_name_authorized(cluster_name, **kwargs):
         user_id = request.auth
@@ -140,9 +140,9 @@ def run(server):
             if user_id == cluster['owner'] or user_id in cluster['access']['allow']:
                 cluster_allowed = cluster['id']
                 break
-            if 'authChildren' in request.__dict__:
-                for childId in request.authChildren:
-                    if childId == cluster['owner'] or childId in cluster['access']['allow']:
+            if 'auth_children' in request.__dict__:
+                for child_id in request.auth_children:
+                    if child_id == cluster['owner'] or child_id in cluster['access']['allow']:
                         cluster_allowed = cluster['id']
                         break
         if cluster_allowed == None:
@@ -377,7 +377,7 @@ def run(server):
                 'cluster': cluster_id,
                 'config': cfg,
                 'consistency': consistency,
-                'isPaused': False
+                'is_paused': False
             }
         def get_state_data(table, cluster_id):
             return {
@@ -387,7 +387,7 @@ def run(server):
                 'table_name': table,
                 'cluster': cluster_id,
                 'uuid': config['database']['uuid'], # used for syncing logs 
-                'lastModTime': time.time()
+                'last_mod_time': time.time()
             }
         def execute_request(endpoint, db, table, action, data):
             server.data[db].tables[table].insert(**data)
@@ -607,7 +607,7 @@ def run(server):
                             # create job to delete missing node
                             job = {
                                 'job': f"delete_missing_node_{node['uuid']}",
-                                'jobtype': 'cluster',
+                                'job_type': 'cluster',
                                 'action': 'cluster_endpoint_delete',
                                 'config': {
                                     'cluster': pyql, 
@@ -632,7 +632,7 @@ def run(server):
             health = 'healing'
             job = {
                 'job': f"{node_id}_mark_state_out_of_sync",
-                'jobtype': 'cluster',
+                'job_type': 'cluster',
                 'action': 'table_update',
                 'config': {
                     'cluster': pyql, 
@@ -644,7 +644,7 @@ def run(server):
             }
             mark_state_out_of_sync_job = {
                 "job": f"add_job_{node_id}_mark_state_out_of_sync",
-                "jobtype": 'cluster',
+                "job_type": 'cluster',
                 "action": "jobs_add",
                 "config": job,
             }
@@ -959,11 +959,11 @@ def run(server):
                         trace(f"{alert} - result: {fr} {frc}")
 
             return {"message": async_results, "consistency": tb['consistency']}, 200
-        if tb['isPaused'] == False:
+        if tb['is_paused'] == False:
             return process_request()
         else:
             if cluster == pyql and table == 'tables' or table == 'state' and action == 'update':
-                # tables val isPaused / state in_sync are values and we need to allow tables updates through if updating
+                # tables val is_paused / state in_sync are values and we need to allow tables updates through if updating
                 return process_request()
             total_sleep = 0.5
             sleep = 0.5
@@ -973,7 +973,7 @@ def run(server):
                 table_endpoints = get_table_endpoints(cluster, table, caller='post_request_tables', trace=kw['trace'])
                 tb = get_table_info(cluster, table, table_endpoints, trace=kw['trace'])
                 #TODO - create a counter stat to track how often this occurs
-                if tb['isPaused'] == False:
+                if tb['is_paused'] == False:
                     return process_request()
                 total_sleep+=0.5
             error = "table is paused preventing changes, maybe an issue occured during sync cutover, try again later"
@@ -1211,13 +1211,13 @@ def run(server):
         trace=kw['trace']
         pyql = server.env['PYQL_UUID']
         pause = True if pause == 'start' else False
-        pauseSet = {
-            'set': {'isPaused': pause},
+        pause_set = {
+            'set': {'is_paused': pause},
             'where': {'cluster': cluster, 'name': table}
         }
-        result, rc = post_request_tables(pyql, 'tables', 'update', pauseSet, trace=kw['trace'])
-        if 'delayAfterPause' in kw:
-            time.sleep(kw['delayAfterPause'])
+        result, rc = post_request_tables(pyql, 'tables', 'update', pause_set, trace=kw['trace'])
+        if 'delay_after_pause' in kw:
+            time.sleep(kw['delay_after_pause'])
         trace.warning(f'cluster_table_pause {cluster} {table} pause {pause} result: {result}')
         return result, rc
 
@@ -1233,15 +1233,15 @@ def run(server):
         """ Sets state 
         cluster: uuid, table: name, endpoint: uuid, 
         config: {'in_sync': True|False, 'state': 'loaded|new'}
-        lastModTime: float(time.time())
+        last_mod_time: float(time.time())
         
         """
         pyql = server.env['PYQL_UUID']
         set_config = request.get_json() if config == None else config
-        validInputs = ['in_sync', 'state']
+        valid_inputs = ['in_sync', 'state']
         for cfg in set_config:
-            if not cfg in validInputs:
-                return {"error": trace.error(f"invalid input {cfg}, supported config inputs {validInputs}")}, 400
+            if not cfg in valid_inputs:
+                return {"error": trace.error(f"invalid input {cfg}, supported config inputs {valid_inputs}")}, 400
         sync_set = {
             'set': set_config,
             'where': {'cluster': cluster, 'table_name': table, 'uuid': endpoint}
@@ -1452,7 +1452,7 @@ def run(server):
                             'cluster': cluster_id,
                             'config': table_config,
                             'consistency': table_name in config['consistency'],
-                            'isPaused': False
+                            'is_paused': False
                         }
                         post_request_tables(pyql, 'tables', 'insert', data, trace=kw['trace'])
             # If new endpoint was added - update endpoints in each table 
@@ -1486,7 +1486,7 @@ def run(server):
                                 'table_name': table,
                                 'cluster': cluster_id,
                                 'uuid': endpoint['uuid'], # used for syncing logs
-                                'lastModTime': 0.0
+                                'last_mod_time': 0.0
                             }
                             post_request_tables(pyql, 'state', 'insert', data, trace=kw['trace'])
             else:
@@ -1578,21 +1578,21 @@ def run(server):
         return {"message": trace.warning(f"job manager cleanup completed")}, 200
     server.clusterjobs['jobmgr_cleanup'] = jobmgr_cleanup
 
-    @server.route('/cluster/jobqueue/<jobtype>', methods=['POST'])
+    @server.route('/cluster/jobqueue/<job_type>', methods=['POST'])
     @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
-    def cluster_jobqueue(jobtype, **kw):
-        return jobqueue(jobtype, **kw)
+    def cluster_jobqueue(job_type, **kw):
+        return jobqueue(job_type, **kw)
     
     @server.trace
-    def jobqueue(jobtype, node=None, **kw):
+    def jobqueue(job_type, node=None, **kw):
         """
             Used by jobworkers or tablesyncers to pull jobs from clusters job queues
-            jobtype = 'job|syncjob|cron'
+            job_type = 'job|syncjob|cron'
         """
         trace=kw['trace']
-        queue = f'{jobtype}s' if not jobtype == 'cron' else jobtype
+        queue = f'{job_type}s' if not job_type == 'cron' else job_type
 
         pyql = server.env['PYQL_UUID']
         if pyql == None:
@@ -1607,7 +1607,7 @@ def run(server):
                     'type': queue
                 }
             }
-            if not jobtype == 'cron':
+            if not job_type == 'cron':
                 job_select['where']['node'] = None
             trace("starting to pull list of jobs")
             job_list, rc = table_select(pyql, 'jobs', data=job_select, method='POST', **kw)
@@ -1631,7 +1631,7 @@ def run(server):
 
             if len(job_list) == 0:
                 return {"message": trace("no jobs to process at this time")}, 200 
-            if jobtype == 'cron':
+            if job_type == 'cron':
                 job_list = sorted(job_list, key=lambda job: job['next_run_time'])
                 job = job_list[0]
             else:
@@ -1661,14 +1661,14 @@ def run(server):
         return {"message": trace("no jobs to process at this time")}, 200
         
 
-    @server.route('/cluster/job/<jobtype>/<uuid>/<status>', methods=['POST'])
+    @server.route('/cluster/job/<job_type>/<uuid>/<status>', methods=['POST'])
     @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
-    def cluster_job_update(jobtype, uuid, status, **kw):
-        return job_update(jobtype, uuid, status, trace=kw['trace'])
+    def cluster_job_update(job_type, uuid, status, **kw):
+        return job_update(job_type, uuid, status, trace=kw['trace'])
 
-    def job_update(jobtype, uuid, status, job_info=None, **kw):
+    def job_update(job_type, uuid, status, job_info=None, **kw):
         pyql = server.env['PYQL_UUID']
         trace=kw['trace']
         try:
@@ -1679,7 +1679,7 @@ def run(server):
             job_info = {}
         if status == 'finished':
             update_from = {'where': {'id': uuid}}
-            if jobtype == 'cron':
+            if job_type == 'cron':
                 cron_select = {'select': ['id', 'config'], 'where': {'id': uuid}}
                 job, rc = table_select(pyql, 'jobs', data=cron_select, method='POST', **kw)[0]['data'][0]
                 update_from['set'] = {
@@ -1740,9 +1740,9 @@ def run(server):
             'path', 'db_name', 'uuid', 'token',
             where={'cluster': cluster}
         )
-        latest = {'endpoint': None, 'lastModTime': 0.0}
+        latest = {'endpoint': None, 'last_mod_time': 0.0}
         trace.warning(f"cluster {cluster} endpoints {cluster_endpoints}")
-        find_latest = {'select': ['lastModTime'], 'where': {'table_name': table}}
+        find_latest = {'select': ['last_mod_time'], 'where': {'table_name': table}}
         for endpoint in cluster_endpoints:
             if cluster == pyql and not endpoint['uuid'] in quorum_check['quorum']['nodes']['nodes']:
                 trace.warning(f"endpoint {endpoint} is not in quorum, so assumed as dead")
@@ -1757,10 +1757,10 @@ def run(server):
                 timeout=2.0,
                 trace=kw['trace']
             )
-            trace(f"table_sync_recovery - checking lastModTime on cluster {cluster} endpoint {endpoint}")
-            if len(pyql_tb_check) > 0 and pyql_tb_check['data'][0]['lastModTime'] > latest['lastModTime']:
+            trace(f"table_sync_recovery - checking last_mod_time on cluster {cluster} endpoint {endpoint}")
+            if len(pyql_tb_check) > 0 and pyql_tb_check['data'][0]['last_mod_time'] > latest['last_mod_time']:
                 latest['endpoint'] = endpoint['uuid']
-                latest['lastModTime'] = pyql_tb_check['data'][0]['lastModTime']
+                latest['last_mod_time'] = pyql_tb_check['data'][0]['last_mod_time']
         trace(f"table_sync_recovery latest endpoint is {latest['endpoint']}")
         update_set_in_sync = {
             'set': {'in_sync': True}, 
@@ -1828,7 +1828,7 @@ def run(server):
                 # Add sync_table job for each table in cluster
                 jobs[cluster].append({
                     'job': f'sync_table_{cluster}_{table}',
-                    'jobtype': 'syncjobs',
+                    'job_type': 'syncjobs',
                     'action': 'table_sync_run',
                     'table': table, 
                     'tablePaths': jobs_to_create[cluster][table],
@@ -1859,7 +1859,7 @@ def run(server):
                                 for endpoint in job['tablePaths']:
                                     ready_jobs.append({
                                         'job': f"mark_ready_{endpoint['endpoint']}",
-                                        'jobtype': 'cluster',
+                                        'job_type': 'cluster',
                                         'action': 'update_cluster_ready',
                                         'config': {'ready': True, 'path': endpoint['path']}
                                     })
@@ -1982,7 +1982,7 @@ def run(server):
 
             def load_table():
                 track("load_table starting - pausing table to get a consistent table_copy")
-                r, rc = table_pause(cluster, table, 'start', delayAfterPause=4.0)
+                r, rc = table_pause(cluster, table, 'start', delay_after_pause=4.0)
                 if cluster == pyql and table in pyql_sync_exclusions: 
                     #need to blackout changes to these tables during entire copy as txn logs not generated
                     try:
@@ -2104,7 +2104,7 @@ def run(server):
                 pass
             else:
                 track("completed initial pull of change logs & starting a cutover by pausing table")
-                r, rc = table_pause(cluster, table, 'start', trace=kw['trace'], delayAfterPause=4.0)
+                r, rc = table_pause(cluster, table, 'start', trace=kw['trace'], delay_after_pause=4.0)
                 #message, rc = table_cutover(cluster_id, table, 'start')
                 track(f"cutover result: {r} rc: {rc}")
                 
@@ -2140,11 +2140,11 @@ def run(server):
     server.clusterjobs['table_sync_run'] = table_sync_run
 
                     
-    @server.route('/cluster/<jobtype>/add', methods=['POST'])
+    @server.route('/cluster/<job_type>/add', methods=['POST'])
     @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
-    def cluster_jobs_add(jobtype, **kw):
+    def cluster_jobs_add(job_type, **kw):
         config = request.get_json()
         return jobs_add(config=config, trace=kw['trace'])
         
@@ -2167,16 +2167,16 @@ def run(server):
         job = config
         trace.warning(f"jobs_add for job {job} started")
         job_id = f'{uuid.uuid1()}'
-        jobtype = job['jobtype']
+        job_type = job['job_type']
         job_insert = {
             'id': job_id,
             'name': job['job'],
-            'type': jobtype if not jobtype == 'cluster' else 'jobs', # cluster is converted to jobs
+            'type': job_type if not job_type == 'cluster' else 'jobs', # cluster is converted to jobs
             'status': 'queued' if not 'status' in kw else kw['status'],
             'action': job['action'],
             'config': job['config']
         }
-        if jobtype == 'cron':
+        if job_type == 'cron':
             job_insert['next_run_time'] = str(float(time.time()) + job['interval'])
         else:
             job_check, rc = table_select(
@@ -2198,45 +2198,45 @@ def run(server):
                 }, 200
 
         response, rc = post_request_tables(pyql, 'jobs', 'insert', job_insert, trace=kw['trace'])
-        trace.warning(f"cluster {jobtype} add for job {job} finished - {response} {rc}")
+        trace.warning(f"cluster {job_type} add for job {job} finished - {response} {rc}")
         return {
             "message": f"job {job} added to jobs queue - {response}",
             "job_id": job_id}, rc
     server.clusterjobs['jobs_add'] = jobs_add
     
 
-    @server.route('/cluster/jobs/<jobtype>/run', methods=['POST'])
+    @server.route('/cluster/jobs/<job_type>/run', methods=['POST'])
     @state_and_quorum_check
     @server.is_authenticated('pyql')
     @server.trace
-    def cluster_job_check_and_run(jobtype, **kw):
+    def cluster_job_check_and_run(job_type, **kw):
         trace = kw['trace']
         # try to pull job 
-        job, rc = jobqueue(jobtype, node_id, **kw)
+        job, rc = jobqueue(job_type, node_id, **kw)
 
         if not rc == 200 or 'message' in job:
             return job,rc
         trace(f"job pulled {job['name']}")
         job_config = job['config']
 
-        job_update(jobtype, job['id'], 'running', job_info={"message": f"starting {job['name']}"}, **kw)
+        job_update(job_type, job['id'], 'running', job_info={"message": f"starting {job['name']}"}, **kw)
 
         trace(f"running job with config {job_config}")
         result, rc = server.clusterjobs[job['action']](config=job_config, **kw)
         
         if rc == 200:
             job_update(
-                jobtype, job['id'], 'finished', 
+                job_type, job['id'], 'finished', 
                 job_info={
                     "message": f"finished {job['name']}",
                     "result": result
                     }, **kw)
         else:
             error = trace(f"non - 200 result for job {job['name']} config: {job_config} with result: {result} - rc {rc}")
-            job_update(jobtype, job['id'], 'queued', job_info={"error": f"{error} - requeuing"}, **kw)
+            job_update(job_type, job['id'], 'queued', job_info={"error": f"{error} - requeuing"}, **kw)
             return result, rc
         if 'nextJob' in job_config:
-            job_update(jobtype, job_config['nextJob'], 'queued', job_info={"message": f"queued after {job['name']} completed"}, **kw)
+            job_update(job_type, job_config['nextJob'], 'queued', job_info={"message": f"queued after {job['name']} completed"}, **kw)
         trace(f"finished {job['name']} with result: {result} - rc {rc}")
         return result, rc
         
@@ -2246,7 +2246,7 @@ def run(server):
         #Job to trigger cluster_quorum()
         init_quorum = {
             "job": "init_quorum",
-            "jobtype": "cluster",
+            "job_type": "cluster",
             "method": "POST",
             "action": 'cluster_quorum_update',
             "path": "/pyql/quorum",
@@ -2254,47 +2254,47 @@ def run(server):
         }
         init_mark_ready_job = {
             "job": "init_mark_ready",
-            "jobtype": "cluster",
+            "job_type": "cluster",
             "method": "POST",
             "path": "/cluster/pyql/ready",
             "config": {'ready': True}
         }
         # Create Cron Jobs inside init node
-        cronJobs = []
+        cron_jobs = []
         if not os.environ.get('PYQL_TYPE') == 'K8S':
             server.internal_job_add(init_quorum)
             #server.internal_job_add(initMarkReadyJob)
-            cronJobs.append({
+            cron_jobs.append({
                 'job': 'cluster_quorum_check',
-                'jobtype': 'cron',
+                'job_type': 'cron',
                 "action": 'cluster_quorum_check',
                 "interval": 15,
                 "config": {}
             })
         for i in [30,90]:
-            cronJobs.append({
+            cron_jobs.append({
                 'job': f'tablesync_check_{i}',
-                'jobtype': 'cron',
+                'job_type': 'cron',
                 "action": 'tablesync_mgr',
                 "interval": i,
                 "config": {}
             })
-            cronJobs.append({
+            cron_jobs.append({
                 'job': f'cluster_job_cleanup_{i}',
-                'jobtype': 'cron',
+                'job_type': 'cron',
                 'action': 'jobmgr_cleanup',
                 'interval': i,
                 'config': {}
             })
-        for job in cronJobs:
-            newCronJob = {
+        for job in cron_jobs:
+            new_cron_job = {
                 "job": f"add_cron_job_{job['job']}",
-                "jobtype": 'cluster',
+                "job_type": 'cluster',
                 "action": "jobs_add",
                 "config": job,
             }
             log.warning(f"adding job {job['job']} to internaljobs queue")
-            server.internal_job_add(newCronJob)
+            server.internal_job_add(new_cron_job)
         
 
     # Check for number of endpoints in pyql cluster, if == 1, mark ready=True
@@ -2304,11 +2304,11 @@ def run(server):
         server.clusters.quorum.delete(where={'node': node['node']})
 
     if len(endpoints) == 1 or os.environ['PYQL_CLUSTER_ACTION'] == 'init':
-        readyAndQuorum = True
+        ready_and_quorum = True
         health = 'healthy'
     else:
         server.clusters.state.update(in_sync=False, where={'uuid': node_id}) 
-        readyAndQuorum = False
+        ready_and_quorum = False
         health = 'unhealthy'
     # Sets ready false for any node with may be restarting as resync is required before marked ready
 
@@ -2316,8 +2316,8 @@ def run(server):
         'node': node_id,
         'nodes': {'nodes': [node_id]},
         'missing': {},
-        'in_quorum': readyAndQuorum,
+        'in_quorum': ready_and_quorum,
         'health': health,
         'last_update_time': float(time.time()),
-        'ready': readyAndQuorum,
+        'ready': ready_and_quorum,
     })

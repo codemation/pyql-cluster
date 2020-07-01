@@ -11,7 +11,7 @@ def run(server):
             if not 'where' in params:
                 return {'error': f"""missing key-value pair "where": {'{"column": "value"}'} for delete"""}, 400
             response = table.delete(where=params['where'])
-            return {"status": 200, "message": "OK"}, 200
+            return {"message": "OK"}, 200
         else:
             return message,rc
     server.actions['delete'] = delete_func

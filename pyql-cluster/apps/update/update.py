@@ -13,8 +13,8 @@ def run(server):
         table = server.data[database].tables[table]
         params = request.get_json() if params == None else params
         if not 'set' in params or not 'where' in params:
-            return f"""missing key-values set: {'{"columnName": "value"}'} and where: {'{"columnName": "value"}'}""", 400
+            return f"""missing key-values set: {'{"column_name": "value"}'} and where: {'{"column_name": "value"}'}""", 400
         response = table.update(**params['set'], where=params['where'])
-        return {"status": 200, "message": "OK"}, 200
+        return {"message": "OK"}, 200
         
     server.actions['update'] = update_func

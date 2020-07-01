@@ -27,7 +27,7 @@ def run(server):
             if action == 'commit':
                 while True:
                     txns = cache.select('id','timestamp',
-                        where={'tableName': table}
+                        where={'table_name': table}
                     )
                     if not txn_id in {tx['id'] for tx in txns}:
                         return {"message": trace.error(f"{txn_id} does not exist in cache")}, 500
@@ -81,11 +81,11 @@ def run(server):
                     # update last txn id
                     set_params = {
                         'set': {
-                            'lastTxnUuid': txn_id,
-                            'lastModTime': float(time.time())
+                            'last_txn_uuid': txn_id,
+                            'last_mod_time': float(time.time())
                             },
                         'where': {
-                            'tableName': table
+                            'table_name': table
                         }
                     }
                     server.data['cluster'].tables['pyql'].update(
@@ -104,7 +104,7 @@ def run(server):
         transaction = request.get_json()
         server.data[database].tables['cache'].insert(**{
             'id': txuuid,
-            'tableName': table,
+            'table_name': table,
             'type': action,
             'timestamp': transaction['time'],
             'txn': transaction['txn']

@@ -3,7 +3,7 @@ def run(server):
     from flask import request, make_response
     import os, uuid, time, json, base64, jwt, string, random, socket
     hostname = socket.getfqdn()
-    charNums = string.ascii_letters + ''.join([str(i) for i in range(10)])
+    char_nums = string.ascii_letters + ''.join([str(i) for i in range(10)])
     log = server.log
     def debug(error):
         if os.environ.get('PYQL_DEBUG') == True:
@@ -55,6 +55,8 @@ def run(server):
                     if not 'Authentication' in request.headers:
                         return {"error": debug(log.error("missing Authentication"))}, 401
                     auth = request.headers['Authentication']
+
+                    # Token handling
                     if 'Token' in auth:
                         token = auth.split(' ')[1].rstrip()
                         decoded_token = decode(token, key)
@@ -71,6 +73,8 @@ def run(server):
                                 warning = f"token valid but expired for user with id {decoded_token['id']}"
                                 return {"error": debug(log.warning(warning))}, 401
                         log.warning(f"token auth successful for {request.auth} using type {token_type} key {key}")
+
+                    # Basic Authentication Handling
                     if 'Basic' in auth:
                         base64_cred = auth.split(' ')[1]
                         creds = base64.decodestring(base64_cred.encode('utf-8')).decode()
@@ -98,7 +102,7 @@ def run(server):
                             log.warning(pyql)
                             return {"error": debug(log.error("un-authorized access"))}, 403
                 return f(*args, **kwargs)
-            # modifies check_auth func name to be unique 
+            # modifies check_auth func name to be unique - required for flask endpoint routing
             check_auth.__name__ = '_'.join(str(uuid.uuid4()).split('-'))
             return check_auth
         return is_auth
@@ -128,7 +132,7 @@ def run(server):
         log.warning('creating PYQL_LOCAL_TOKEN_KEY')
         r, rc = set_token_key(  
             'local', 
-            {'PYQL_LOCAL_TOKEN_KEY': ''.join(random.choice(charNums) for i in range(12))}
+            {'PYQL_LOCAL_TOKEN_KEY': ''.join(random.choice(char_nums) for i in range(12))}
             )
         log.warning(f"finished creating PYQL_LOCAL_TOKEN_KEY {server.env['PYQL_LOCAL_TOKEN_KEY']} - {r} {rc}")
     else:
@@ -141,14 +145,14 @@ def run(server):
         if not 'PYQL_CLUSTER_TOKEN_KEY' in server.env:
             set_token_key(
                 'cluster', 
-                {'PYQL_CLUSTER_TOKEN_KEY': ''.join(random.choice(charNums) for i in range(24))}
+                {'PYQL_CLUSTER_TOKEN_KEY': ''.join(random.choice(char_nums) for i in range(24))}
                 )
         
     def create_auth_token(userid, expiration, location):
         secret = server.env[f'PYQL_{location.upper()}_TOKEN_KEY']
         data = {'id': userid, 'expiration': expiration}
         if expiration == 'join':
-            data['createTime'] = time.time()
+            data['create_time'] = time.time()
         token = encode(secret, **data)
         log.warning(f"create_auth_token created token {token} using {secret} from {location}")
         return token

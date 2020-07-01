@@ -9,8 +9,8 @@ def run(server):
             result = db.get(f"SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
             tables = [t[0] for t in result]
             if database == 'cluster':
-                clusterTables = ['clusters', 'endpoints', 'tables', 'state', 'pyql']
-                for index, check in enumerate(clusterTables):
+                cluster_tables = ['clusters', 'endpoints', 'tables', 'state', 'pyql']
+                for index, check in enumerate(cluster_tables):
                     log.info(f"checking {check}")
                     if not check in tables:
                         error = f"missing table {check} in database {database}"
@@ -29,9 +29,9 @@ def run(server):
     server.db_check = db_check
     
     def internal_job_add(job):
-        jobId = str(uuid.uuid1())
+        job_id = str(uuid.uuid1())
         server.clusters.internaljobs.insert(**{
-            'id': jobId,
+            'id': job_id,
             'name': job['job'],
             'status': 'queued',
             'config': job

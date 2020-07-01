@@ -36,11 +36,11 @@ def run(server):
             return message
         return log
     
-    class log_return:
+    class LogReturn:
         def __init__(self, loggr):
             self.debug = log_and_return(loggr.debug)
             self.error = log_and_return(loggr.error)
             self.warning = log_and_return(loggr.warning)
             self.info = log_and_return(loggr.info)
             self.exception = log_and_return(loggr.exception)
-    server.log = log_return(logger)
+    server.log = LogReturn(logger)

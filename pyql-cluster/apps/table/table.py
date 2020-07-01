@@ -9,19 +9,19 @@ def run(server):
         if not database in server.data:
             return {"message": f"no database with name {database} attached to endpoint"}, 400
         tables = server.data[database].tables
-        tablesConfig = []
+        tables_config = []
         for table in tables:
-            tablesConfig.append(
+            tables_config.append(
                 {
                     table: {
-                        "primaryKey": tables[table].prim_key,
-                        "foreignKeys": tables[table].fKeys,
+                        "primary_key": tables[table].prim_key,
+                        "foreign_keys": tables[table].foreign_keys,
                         "columns": [{"name": col.name,"type": str(col.type.__name__), 
                         "mods": col.mods } for k,col in tables[table].columns.items() ]
                     }
                 }
             ) 
-        return {"tables": tablesConfig}, 200
+        return {"tables": tables_config}, 200
 
     @server.route('/db/<database>/table/<table>', methods=['GET', 'PUT', 'POST'])
     @server.is_authenticated('local')
@@ -42,13 +42,13 @@ def run(server):
     def db_table_key(database, table, key):
         return table_key(database, table, key, method=request.method)
     def table_key(database, table, key, method='GET'):
-        primaryKey = server.data[database].tables[table].prim_key
+        primary_key = server.data[database].tables[table].prim_key
         if method == 'GET':
-            return db_table_key_get(database, table, primaryKey, key)
+            return db_table_key_get(database, table, primary_key, key)
         if method == 'POST':
-            return db_table_key_post(database, table, primaryKey, key)
+            return db_table_key_post(database, table, primary_key, key)
         if method == 'DELETE':
-            return db_table_key_delete(database, table, primaryKey, key)
+            return db_table_key_delete(database, table, primary_key, key)
     server.actions['select_key'] = table_key
 
     def db_table_key_get(database, table, key, val):
@@ -56,11 +56,11 @@ def run(server):
     
     def db_table_key_post(database, table, key, val):
         try:
-            setVals = request.get_json()
+            set_vals = request.get_json()
         except Exception as e:
-            log.exception("db_table_key_post missing json input for setVals")
-            setVals = {}
-        return server.actions['update'](database, table, {'set': setVals, 'where': {key: val}})
+            log.exception("db_table_key_post missing json input for set_vals")
+            set_vals = {}
+        return server.actions['update'](database, table, {'set': set_vals, 'where': {key: val}})
     def db_table_key_delete(database, table, key, val):
         return server.actions['delete'](database, table, {'where': {key: val}})
 
@@ -80,8 +80,8 @@ def run(server):
                     "name": col.name,
                     "type": str(col.type.__name__), 
                     "mods": col.mods } for k,col in table.columns.items()],
-                "primaryKey": table.prim_key,
-                "foreignKeys": table.fKeys
+                "primary_key": table.prim_key,
+                "foreign_keys": table.foreign_keys
             }        
         }
         return response, 200
@@ -91,8 +91,8 @@ def run(server):
     @server.route('/db/<database>/table/<table>/create', methods=['POST'])
     @server.is_authenticated('local')
     def database_table_create(database, table):
-        newTableConfig = request.get_json()
-        return create_table_func(database, newTableConfig)
+        new_table_config = request.get_json()
+        return create_table_func(database, new_table_config)
 
     @server.route('/db/<database>/table/<table>/sync', methods=['POST'])
     @server.is_authenticated('local')
@@ -105,12 +105,12 @@ def run(server):
             server.db_check(database)
         if not table in server.data[database].tables:
             return {'message': log.error(f"{table} not found in database {database}")}, 400
-        dataToSync = request.get_json()
-        tableConfig, _ = db_get_table_config(database, table)
+        data_to_sync = request.get_json()
+        table_config, _ = db_get_table_config(database, table)
         server.data[database].run(f'drop table {table}')
-        message, rc = create_table_func(database, tableConfig)
+        message, rc = create_table_func(database, table_config)
         log.warning(f"table /sync create_table_func response {message} {rc}")
-        for row in dataToSync['data']:
+        for row in data_to_sync['data']:
             log.warning(f"table sync insert row - {row}")
             server.data[database].tables[table].insert(**row)
         return {"message": log.warning(f"{database} {table} sync successful")}, 200
@@ -123,41 +123,41 @@ def run(server):
     def create_table_func(database, config=None):
         if database in server.data:
             db = server.data[database]
-            tableConfig = request.get_json() if config == None else config
+            table_config = request.get_json() if config == None else config
             convert = {'str': str, 'int': int, 'blob': bytes, 'float': float, 'bool': bool}
             columns = []
-            for tableName in tableConfig:
-                if tableName in db.tables:
-                    log.warning(f'table {tableName} already exists - trying anyway')
-                if not "columns" in tableConfig[tableName]:
+            for table_name in table_config:
+                if table_name in db.tables:
+                    log.warning(f'table {table_name} already exists - trying anyway')
+                if not "columns" in table_config[table_name]:
                     return {
                         "error": log.error(f"""missing new table config {'"columns": [{"name": "<name>", "type": "<type>", "mods": "<mods>"}, ..]'}""")
                         }, 400
                 
-                for col in tableConfig[tableName]["columns"]:
+                for col in table_config[table_name]["columns"]:
                     if not col['type'] in convert:
                         return {
                             "error": log.error(f"""invalid type {col['type']} provided in column {col['name']}. use: {convert}""")
                             }, 400
                     columns.append((col['name'], convert[col['type']], col['mods']))
-                colNames = [c[0] for c in columns]
-                if not "primaryKey" in tableConfig[tableName]:
-                    return {'error': log.error(f'missing new table config "primaryKey": <column_name>')},  400
-                if not tableConfig[tableName]["primaryKey"] in colNames:
-                    error = f'provided primaryKey {tableConfig[tableName]["primaryKey"]} is not a column with "columns": {colNames}'
+                col_names = [c[0] for c in columns]
+                if not "primary_key" in table_config[table_name]:
+                    return {'error': log.error(f'missing new table config "primary_key": <column_name>')},  400
+                if not table_config[table_name]["primary_key"] in col_names:
+                    error = f'provided primary_key {table_config[table_name]["primary_key"]} is not a column with "columns": {col_names}'
                     return {'error': log.error(error)}, 400
-                if 'foreignKeys' in tableConfig[tableName] and isinstance(tableConfig[tableName]['foreignKeys'], dict):
-                    for localKey, forignKey in tableConfig[tableName]['foreignKeys'].items():
-                        if not localKey in colNames:
-                            return {"error": log.error(f"localKey {localKey} is not a valid column for foreignKey {forignKey}")}, 400
+                if 'foreign_keys' in table_config[table_name] and isinstance(table_config[table_name]['foreign_keys'], dict):
+                    for local_key, foreign_key in table_config[table_name]['foreign_keys'].items():
+                        if not local_key in col_names:
+                            return {"error": log.error(f"local_key {local_key} is not a valid column for foreign_key {foreign_key}")}, 400
                 else:
-                    tableConfig[tableName]['foreignKeys'] = None
+                    table_config[table_name]['foreign_keys'] = None
                 # All required table configuration has been provided, Creating table.
                 db.create_table(
-                    tableName, 
+                    table_name, 
                     columns,
-                    tableConfig[tableName]["primaryKey"],
-                    fKeys=tableConfig[tableName]["foreignKeys"]
+                    table_config[table_name]["primary_key"],
+                    foreign_keys=table_config[table_name]["foreign_keys"]
                     )
                 server.db_check(database)
-                return {"message": log.warning(f"""table {tableName} created successfully """)}, 200
+                return {"message": log.warning(f"""table {table_name} created successfully """)}, 200
