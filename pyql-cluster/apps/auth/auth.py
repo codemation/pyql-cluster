@@ -27,12 +27,12 @@ def run(server):
     def decode_password(encodedPw, auth):
         return decode(encodedPw, auth)
     def validate_user_pw(user, pw):
-        userSel = server.clusters.auth.select('id', 'password', where={'username': user})
-        if len(userSel) > 0:
-            log.warning(f"checking auth for {userSel}")
+        user_creds = server.clusters.auth.select('id', 'password', where={'username': user})
+        if len(user_creds) > 0:
+            log.warning(f"checking auth for {user_creds}")
             try:
-                decoded = decode_password(userSel[0]['password'], pw)
-                return {"message": f"Auth Ok", "userid": userSel[0]['id']}, 200
+                decoded = decode_password(user_creds[0]['password'], pw)
+                return {"message": f"Auth Ok", "userid": user_creds[0]['id']}, 200
             except Exception as e:
                 log.exception(f"Auth failed for user {user} - invalid credentials")
         return {"message": debug(f"user / pw combination does not exist or is incorrect")}, 401
@@ -49,7 +49,7 @@ def run(server):
         def is_auth(f):
             def check_auth(*args, **kwargs):
                 if not 'auth' in request.__dict__:
-                    tokenType = 'PYQL_CLUSTER_TOKEN_KEY' if not location == 'local' else 'PYQL_LOCAL_TOKEN_KEY'
+                    token_type = 'PYQL_CLUSTER_TOKEN_KEY' if not location == 'local' else 'PYQL_LOCAL_TOKEN_KEY'
                     key = server.env[tokenType]
                     log.warning(f"checking auth from {check_auth.__name__} for {f} {args} {kwargs} {request.headers}")
                     if not 'Authentication' in request.headers:
@@ -57,24 +57,23 @@ def run(server):
                     auth = request.headers['Authentication']
                     if 'Token' in auth:
                         token = auth.split(' ')[1].rstrip()
-                        #decodedToken = decode(token, os.environ[tokenType])
-                        decodedToken = decode(token, key)
-                        if decodedToken == None:
+                        decoded_token = decode(token, key)
+                        if decoded_token == None:
                             return {"error": debug(log.error(f"token authentication failed"))}, 401
-                        request.auth = decodedToken['id']
-                        if isinstance(decodedToken['expiration'], dict) and 'join' in decodedToken['expiration']:
+                        request.auth = decoded_token['id']
+                        if isinstance(decoded_token['expiration'], dict) and 'join' in decoded_token['expiration']:
                             # Join tokens should only be used to join an endpoint to a cluster
                             if not 'join_cluster' in str(f):
                                 error = log.error(f"token authentication failed, join token auth attempted for {f}")
                                 return {"error": debug(error)}, 401
-                        if isinstance(decodedToken['expiration'], float):
-                            if not decodedToken['expiration'] > time.time():
-                                warning = f"token valid but expired for user with id {decodedToken['id']}"
+                        if isinstance(decoded_token['expiration'], float):
+                            if not decoded_token['expiration'] > time.time():
+                                warning = f"token valid but expired for user with id {decoded_token['id']}"
                                 return {"error": debug(log.warning(warning))}, 401
-                        log.warning(f"token auth successful for {request.auth} using type {tokenType} key {key}")
+                        log.warning(f"token auth successful for {request.auth} using type {token_type} key {key}")
                     if 'Basic' in auth:
-                        base64Cred = auth.split(' ')[1]
-                        creds = base64.decodestring(base64Cred.encode('utf-8')).decode()
+                        base64_cred = auth.split(' ')[1]
+                        creds = base64.decodestring(base64_cred.encode('utf-8')).decode()
                         if not ':' in creds:
                             return {
                                 "error": "Basic authentication did not contain user pw separated by ':' Use: echo user:password | base64"
@@ -91,8 +90,8 @@ def run(server):
                         if not request.auth in server.clusters.authlocal:
                             return {"error": debug(log.error("un-authorized access"))}, 403
                     else:
-                        childUsers = server.clusters.auth.select('id', where={'parent': request.auth})
-                        request.authChildren = [user['id'] for user in childUsers]
+                        child_users = server.clusters.auth.select('id', where={'parent': request.auth})
+                        request.auth_children = [user['id'] for user in child_users]
                     if location == 'pyql':
                         pyql, rc = server.get_clusterid_by_name_authorized('pyql')
                         if not rc == 200:
@@ -125,7 +124,6 @@ def run(server):
         return {"error": log.error("invalid location or key - specified")}, 400
 
 
-    #if not 'PYQL_LOCAL_TOKEN_KEY' in os.environ:
     if not 'PYQL_LOCAL_TOKEN_KEY' in server.env:
         log.warning('creating PYQL_LOCAL_TOKEN_KEY')
         r, rc = set_token_key(  
@@ -161,11 +159,11 @@ def run(server):
     if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
         if not 'PYQL_CLUSTER_SERVICE_TOKEN' in server.env:
             #initializing cluster admin user
-            adminId = str(uuid.uuid1())
-            log.warning(f'creating admin user with id {adminId}')
+            admin_id = str(uuid.uuid1())
+            log.warning(f'creating admin user with id {admin_id}')
             server.data['cluster'].tables['auth'].insert(
                 **{
-                    'id': adminId,
+                    'id': admin_id,
                     'username': 'admin',
                     'type': 'admin',
                     'password': encode_password(os.environ['PYQL_CLUSTER_INIT_ADMIN_PW']) # init pw
@@ -173,56 +171,43 @@ def run(server):
             )
             # initializing cluster service user 
             # cluster service token is used for expanding pyql cluster or other joining endpoints
-            clusterServiceId = str(uuid.uuid1())
+            cluster_service_id = str(uuid.uuid1())
             server.data['cluster'].tables['auth'].insert(**{
-                'id': clusterServiceId,
+                'id': cluster_service_id,
                 'username': 'pyql',
                 'type': 'service',
-                'parent': adminId
+                'parent': admin_id
             })
-            clusterServiceToken = create_auth_token(clusterServiceId, 'never', 'CLUSTER')
-            server.env['PYQL_CLUSTER_SERVICE_TOKEN'] = str(clusterServiceToken)
+            cluster_service_token = create_auth_token(cluster_service_id, 'never', 'CLUSTER')
+            server.env['PYQL_CLUSTER_SERVICE_TOKEN'] = str(cluster_service_token)
             log.warning(f"PYQL_CLUSTER_SERVICE_TOKEN set to {server.env['PYQL_CLUSTER_SERVICE_TOKEN']}")
-            #os.environ['PYQL_CLUSTER_SERVICE_TOKEN'] = str(clusterServiceToken)
-            #NOTE PYQL_CLUSTER_SERVICE_KEY should be input as an env var for non-init endpoints
 
         
     # check for existing local pyql service user, create if not exists
-    pyqlServiceUser = server.data['cluster'].tables['authlocal'].select('*', where={'username': 'pyql'})
+    pyql_service_user = server.data['cluster'].tables['authlocal'].select('*', where={'username': 'pyql'})
 
-    if not len(pyqlServiceUser) > 0:
-        serviceId = str(uuid.uuid1())
+    if not len(pyql_service_user) > 0:
+        service_id = str(uuid.uuid1())
         server.data['cluster'].tables['authlocal'].insert(**{
-            'id': serviceId,
+            'id': service_id,
             'username': 'pyql',
             'type': 'service'
         })
-        log.warning(f"created new service account with id {serviceId}")
-        serviceToken = create_auth_token(serviceId, 'never', 'LOCAL')
-        log.warning(f"created service account token {serviceToken}")
+        log.warning(f"created new service account with id {service_id}")
+        service_token = create_auth_token(service_id, 'never', 'LOCAL')
+        log.warning(f"created service account token {service_token}")
     else:
         log.warning(f"found existing service account")
-        serviceToken = create_auth_token(
-            pyqlServiceUser[0]['id'], 
+        service_token = create_auth_token(
+            pyql_service_user[0]['id'], 
             'never', 'LOCAL')
     # Local Token
-    server.env['PYQL_LOCAL_SERVICE_TOKEN'] = serviceToken
+    server.env['PYQL_LOCAL_SERVICE_TOKEN'] = service_token
 
     @server.route('/auth/key/<location>', methods=['POST'])
     @server.is_authenticated('local')
     def cluster_set_token_key(location):
         return set_token_key(location)
-
-    """TODO - Delete after testing 
-    @server.route('/auth/tokenkey/update', methods=['POST'])
-    @server.is_authenticated('local')
-    def cluster_key_update(key=None):
-        key = request.get_json() if not key == None else key
-        if not 'key' in key:
-            return {"error": f"missing key"}, 400
-        if keytype == 'cluster':
-            server.env['PYQL_CLUSTER_TOKEN_KEY'] = key['key']
-    """
 
     @server.route('/auth/setup/cluster', methods=['POST'])
     @server.is_authenticated('local')
@@ -231,10 +216,10 @@ def run(server):
         used primary to update joining nodes with a PYQL_CLUSTER_SERVICE_TOKEN 
         so joining node can pull and set its PYQL_CLUSTER_TOKEN_KEY
         """
-        serviceToken = request.get_json()
-        if not 'PYQL_CLUSTER_SERVICE_TOKEN' in serviceToken:
+        service_token = request.get_json()
+        if not 'PYQL_CLUSTER_SERVICE_TOKEN' in service_token:
             return {"error": log.error(f"missing PYQL_CLUSTER_SERVICE_TOKEN")}, 400
-        server.env['PYQL_CLUSTER_SERVICE_TOKEN'] = serviceToken['PYQL_CLUSTER_SERVICE_TOKEN']
+        server.env['PYQL_CLUSTER_SERVICE_TOKEN'] = service_token['PYQL_CLUSTER_SERVICE_TOKEN']
         r, rc = server.probe(
             f"http://{os.environ['PYQL_CLUSTER_SVC']}/auth/key/cluster",
             auth='remote',
@@ -244,10 +229,10 @@ def run(server):
         if not 'PYQL_CLUSTER_TOKEN_KEY' in r:
             warning = f"error pulling key {r} {rc}"
             return {"error": log.error(warning)}, rc
-        setKey, rc = set_token_key('cluster', r)
+        set_key, rc = set_token_key('cluster', r)
         if not rc == 200:
-            log.warning(setKey)
-        return setKey, rc
+            log.warning(set_key)
+        return set_key, rc
     # Retrieve current local / cluster token - requires auth 
     @server.route('/auth/token/<tokentype>')
     @server.is_authenticated('pyql')
@@ -272,45 +257,45 @@ def run(server):
         run following cluster app initializing so that state_and_quorum_check can be run
         """
         @server.trace
-        def user_register(authtype, userInfo=None, **kw):
+        def user_register(authtype, user_info=None, **kw):
             trace = kw['trace']
             pyql = server.env['PYQL_UUID']
-            userInfo = request.get_json() if userInfo == None else userInfo
-            userInfo['type'] = authtype
-            requiredFields = set()
+            user_info = request.get_json() if user_info == None else user_info
+            user_info['type'] = authtype
+            required_fields = set()
             # 3 types 'user', 'admin', 'service'
             if authtype == 'user' or authtype == 'admin':
-                requiredFields = {'username', 'password', 'email'}
-            for field in requiredFields:
-                if not field in userInfo:
+                required_fields = {'username', 'password', 'email'}
+            for field in required_fields:
+                if not field in user_info:
                     return {"error": f"missing {field}"}, 400
-            if 'email' in userInfo:
-                if not '@' in userInfo['email']:
+            if 'email' in user_info:
+                if not '@' in user_info['email']:
                     return {"error": f"enter a valid email"}, 400
-                atIndex = userInfo['email'].index('@')
-                if not '.' in userInfo['email'][atIndex:]:
+                email_index = user_info['email'].index('@')
+                if not '.' in user_info['email'][email_index:]:
                     return {"error": f"enter a valid email"}, 400 
-                emailCheck, rc = server.cluster_table_select(
+                email_check, rc = server.cluster_table_select(
                     pyql, 'auth', 
                     method='POST', 
                     data={
                         'select': ['id', 'password'], 
-                        'where': {'email': userInfo['email']}
+                        'where': {'email': user_info['email']}
                     },
                     trace=trace
                 )
-                if len(emailCheck['data']) > 0:
-                    return {"error": trace(f"an account with provided email already exists {emailCheck}")}, 400
-                if not len(userInfo['password']) >= 8:
+                if len(email_check['data']) > 0:
+                    return {"error": trace(f"an account with provided email already exists {email_check}")}, 400
+                if not len(user_info['password']) >= 8:
                     return {"error", trace.error(f"password must be a atleast 8 chars")}, 400
-                userInfo['password'] = encode_password(userInfo['password'])
+                user_info['password'] = encode_password(user_info['password'])
             # User is unique - adding user
-            userInfo['id'] = str(uuid.uuid1())
-            trace(f"creating new user with id {userInfo['id']}")
-            response, rc = server.cluster_table_insert(pyql, 'auth', userInfo, trace=trace)
+            user_info['id'] = str(uuid.uuid1())
+            trace(f"creating new user with id {user_info['id']}")
+            response, rc = server.cluster_table_insert(pyql, 'auth', user_info, trace=trace)
             if rc == 200:
                 if authtype == 'user' or authtype == 'admin':
-                    svc, status = user_register('service', {'parent': userInfo['id']})
+                    svc, status = user_register('service', {'parent': user_info['id']})
                     trace(f"creating service account for new user {svc} {status}")
                 return {"message": trace(f"user created successfully")}, 201
             return response, rc
@@ -337,7 +322,7 @@ def run(server):
         @server.trace
         def cluster_service_join_token(**kw):
             trace = kw['trace']
-            serviceId, rc = server.cluster_table_select(
+            service_id, rc = server.cluster_table_select(
                 server.env['PYQL_UUID'],
                 'auth', 
                 data={
@@ -348,9 +333,9 @@ def run(server):
                 quorum=kw['quorum'],
                 trace=trace
             )
-            trace(f"join token creating for - {serviceId}")
-            if len(serviceId['data']) > 0:
-                return {"join": create_auth_token(serviceId['data'][0]['id'], 'join', 'CLUSTER')}
+            trace(f"join token creating for - {service_id}")
+            if len(service_id['data']) > 0:
+                return {"join": create_auth_token(service_id['data'][0]['id'], 'join', 'CLUSTER')}
             return {"error": trace.error(f"unable to find a service account for user")}, 400
 
 
