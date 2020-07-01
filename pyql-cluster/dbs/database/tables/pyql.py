@@ -1,4 +1,3 @@
-
 def db_attach(server):
     """
         special table added to all dbs in server.data for id / state tracking
@@ -13,18 +12,18 @@ def db_attach(server):
             [
                 ('uuid', str), 
                 ('database', str),
-                ('tableName', str),
-                ('lastTxnUuid', str), 
-                ('lastModTime', float)
+                ('table_name', str),
+                ('last_txn_uuid', str), 
+                ('last_mod_time', float)
             ],
-            'tableName'
+            'table_name'
             )
-            dbUuid = uuid.uuid1()
+            db_uuid = uuid.uuid1()
             for tb in server.data[database].tables:
                 db.tables['pyql'].insert(**{
-                    'uuid': dbUuid,
+                    'uuid': db_uuid,
                     'database': database,
-                    'tableName': tb,
-                    'lastModTime': time.time()
+                    'table_name': tb,
+                    'last_mod_time': time.time()
                     })
     pass # Enter db.create_table statement here

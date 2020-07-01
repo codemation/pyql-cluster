@@ -12,7 +12,7 @@ def db_attach(server):
            ('config', str), # What config is used by action
            ('start_time', str),
            ('next_run_time', str),
-           ('lastError', str)
+           ('last_error', str)
        ],
        'id'
     )

@@ -10,8 +10,8 @@ def db_attach(server):
             ('owner', str), # UUID of auth user who created cluster 
             ('access', str), # {"alllow": ['uuid1', 'uuid2', 'uuid3']}
             ('key', str),
-            ('createdByEndpoint', str),
-            ('createDate', str)
+            ('created_by_endpoint', str),
+            ('create_date', str)
         ],
         'id'
     )

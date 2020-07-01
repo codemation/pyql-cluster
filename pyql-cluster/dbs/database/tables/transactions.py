@@ -6,7 +6,7 @@ def db_attach(server):
        [
            ('uuid', str, 'UNIQUE'),
            ('endpoint', str), 
-           ('tableName', str), 
+           ('table_name', str), 
            ('cluster', str),
            ('timestamp', float),
            ('txn', str)

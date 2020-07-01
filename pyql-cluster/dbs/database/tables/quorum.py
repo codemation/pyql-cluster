@@ -5,11 +5,11 @@ def db_attach(server):
        'quorum', [
            ('node', str, 'UNIQUE NOT NULL'), 
            ('ready', bool), 
-           ('inQuorum', bool),
+           ('in_quorum', bool),
            ('health', str),
            ('nodes', str),
            ('missing', str), 
-           ('lastUpdateTime', float)
+           ('last_update_time', float)
        ],
        'node'
     )

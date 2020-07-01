@@ -23,7 +23,7 @@ def db_attach(server):
             ('cluster', str),
             ('config', str),
             ('consistency', bool),
-            ('isPaused', bool)
+            ('is_paused', bool)
        ],
         'id'
     )
