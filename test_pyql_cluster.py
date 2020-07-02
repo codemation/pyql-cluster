@@ -89,8 +89,8 @@ class cluster:
                 # for each table endpoint - verify data
                 table_endpoints, rc = self.probe(f"/cluster/{cluster['id']}/table/{table}/endpoints")
                 #print(f"table_endpoints - {table_endpoints}")
-                for endpoint in table_endpoints['inSync']:
-                    endpoint_info = table_endpoints['inSync'][endpoint]
+                for endpoint in table_endpoints['in_sync']:
+                    endpoint_info = table_endpoints['in_sync'][endpoint]
                     data_to_verify[endpoint], rc = probe(
                         f"http://{endpoint_info['path']}/db/{endpoint_info['dbname']}/table/{table}/select",
                         auth={  
@@ -229,7 +229,7 @@ class cluster:
         self.sync_job_check()
     def insync_and_state_check(self):
         """
-        checks state of tables & querries sync_job_check until state is inSync True
+        checks state of tables & querries sync_job_check until state is in_sync True
         """
         self.step('verifying tables are properly synced on all endpoints')
         is_ok = True
@@ -239,8 +239,8 @@ class cluster:
                 state_check, rc = self.probe('/cluster/pyql/table/state/select')
                 assert rc == 200, f"something wrong happened when checking state table {rc}"
                 for state in state_check['data']:
-                    if not state['inSync'] == True or not state['state'] == 'loaded':
-                        print(f"found state which was not inSync=True & 'loaded {state}, retrying")
+                    if not state['in_sync'] == True or not state['state'] == 'loaded':
+                        print(f"found state which was not in_sync=True & 'loaded {state}, retrying")
                         is_ok = False
                         self.sync_job_check()
                         break
@@ -351,15 +351,15 @@ class PyqlCluster(unittest.TestCase):
             state_check, rc = test_cluster.probe('/cluster/pyql/table/state/select')
             assert rc == 200, f"something wrong happened when checking state table {rc}"
             for state in state_check['data']:
-                if not state['inSync'] == True or not state['state'] == 'loaded':
-                    print(f"found state which was not inSync=True & 'loaded {state}, retrying")
+                if not state['in_sync'] == True or not state['state'] == 'loaded':
+                    print(f"found state which was not in_sync=True & 'loaded {state}, retrying")
                     is_ok = False
                     self.sync_job_check()
                     break
             if is_ok:
                 break
         for state in state_check['data']:
-            assert state['inSync'] == True and state['state'] == f'loaded', f"found state which was not inSync=True & 'loaded {state}"
+            assert state['in_sync'] == True and state['state'] == f'loaded', f"found state which was not in_sync=True & 'loaded {state}"
         
         # check each endpoint individually to verify if there are any differences in state
         test_cluster.verify_data()

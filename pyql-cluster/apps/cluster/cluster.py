@@ -700,7 +700,7 @@ def run(server):
     @server.is_authenticated('pyql')
     @server.trace
     def get_db_table_path(cluster, table, **kw):
-        paths = {'in_sync': {}, 'outOfSync': {}}
+        paths = {'in_sync': {}, 'out_of_sync': {}}
         table_endpoints = get_table_endpoints(cluster, table, caller='get_db_table_path', trace=kw['trace'])
         tb = get_table_info(cluster, table, table_endpoints, trace=kw['trace'])
         for pType in paths:
@@ -725,7 +725,7 @@ def run(server):
             get_table_endpoints('cluster_uuid', 'table_name')
         """
         trace = kw['trace']
-        table_endpoints = {'in_sync': {}, 'outOfSync': {}}
+        table_endpoints = {'in_sync': {}, 'out_of_sync': {}}
 
         endpoints = server.clusters.endpoints.select(
             '*', 
@@ -740,7 +740,7 @@ def run(server):
                 renamed[k.split('.')[1]] = v
             endpointsKeySplit.append(renamed)
         for endpoint in endpointsKeySplit:
-            sync = 'in_sync' if endpoint['in_sync'] == True else 'outOfSync'
+            sync = 'in_sync' if endpoint['in_sync'] == True else 'out_of_sync'
             table_endpoints[sync][endpoint['uuid']] = endpoint
         if not cluster_name == None:
             table_endpoints['cluster_name'] = cluster_name
@@ -767,7 +767,7 @@ def run(server):
             where={'cluster': cluster, 'name': table}
             )[0]
         tb['endpoints'] = {}
-        for sync in ['in_sync', 'outOfSync']:
+        for sync in ['in_sync', 'out_of_sync']:
             for endpoint in endpoints[sync]:
                 path = endpoints[sync][endpoint]['path']
                 db = endpoints[sync][endpoint]['db_name']
@@ -851,7 +851,7 @@ def run(server):
                         "where": {"name": failed_endpoint}
                     }
                     if cluster == pyql and table == 'state' and 'state' in failed_endpoint:
-                        # this is a pyql <endpoint>state table that is outOfSync,
+                        # this is a pyql <endpoint>state table that is out_of_sync,
                         ep_state_requests = {}
                         for endpoint in endpoint_response:
                             db = table_endpoints['in_sync'][endpoint]['db_name']
@@ -877,7 +877,7 @@ def run(server):
                     # Creating txn log for future replay for table endpoint
                     if not tb['endpoints'][failed_endpoint]['state'] == 'new':
                         if cluster == pyql and table in pyql_txn_exceptions:
-                            trace.warning(f"{failed_endpoint} is outOfSync for pyql table {table}")
+                            trace.warning(f"{failed_endpoint} is out_of_sync for pyql table {table}")
                             continue
                         # Write data to a change log for resyncing
                         change_logs['txns'].append(
@@ -891,7 +891,7 @@ def run(server):
                 # No InSync failures
                 pass
             # Update any previous out of sync table change-logs, if any
-            for out_of_sync_endpoint in table_endpoints['outOfSync']:
+            for out_of_sync_endpoint in table_endpoints['out_of_sync']:
                 tb_endpoint = f'{out_of_sync_endpoint}{table}'
                 if not tb_endpoint in tb['endpoints']:
                     trace(f"out_of_sync_endpoint {tb_endpoint} may be new, not triggering resync yet {tb['endpoints']}")
@@ -953,7 +953,7 @@ def run(server):
                             "set": {"in_sync": False, "state": 'new'},
                             "where": {"name": f"{endpoint}{table}"}
                         }
-                        alert = f"failed to commit {request_uuid} in endpoint {endpoint}{table}, marking outOfSync & state 'new'"
+                        alert = f"failed to commit {request_uuid} in endpoint {endpoint}{table}, marking out_of_sync & state 'new'"
                         trace(f"{alert} as chain is broken")
                         fr, frc = post_request_tables(pyql, 'state', 'update', state_set, trace=trace)
                         trace(f"{alert} - result: {fr} {frc}")
@@ -1811,10 +1811,10 @@ def run(server):
             table_name = table['name']
             endpoints = get_table_endpoints(cluster,table_name, caller='tablesync_mgr',trace=kw['trace'])
             if not len(endpoints['in_sync'].keys()) > 0:
-                trace.warning(f"cluster_tablesync_mgr - detected all endpoints for {cluster} {table_name} are outOfSync")
+                trace.warning(f"cluster_tablesync_mgr - detected all endpoints for {cluster} {table_name} are out_of_sync")
                 table_sync_recovery(cluster, table_name, **kw)
                 endpoints = get_table_endpoints(cluster,table_name, caller='tablesync_mgr', trace=kw['trace'])
-            endpoints = endpoints['outOfSync']
+            endpoints = endpoints['out_of_sync']
             for endpoint in endpoints:
                 endpoint_path = endpoints[endpoint]['path']
                 if not cluster in jobs_to_create:
@@ -1953,14 +1953,14 @@ def run(server):
         if len(table_endpoints['in_sync']) == 0:
             trace(f"no in_sync endpoints - running table_sync_recovery")
             table_sync_recovery(cluster, table, **kw)
-        for endpoint in table_endpoints['outOfSync']:
+        for endpoint in table_endpoints['out_of_sync']:
             step = tracker()
             def track(message):
                 trace.warning(f"tablesyncer {job} cluster {cluster} table {table} endpoint {endpoint} seq={step.step} {message}")
                 step.incr()
                 return message
-            # outOfSync endpoint to sync
-            ep = table_endpoints['outOfSync'][endpoint]
+            # out_of_sync endpoint to sync
+            ep = table_endpoints['out_of_sync'][endpoint]
 
             uuid, path, token, db, table_state = ep['uuid'], ep['path'], ep['token'], ep['db_name'], ep['state']
             cluster_id = ep['cluster']
