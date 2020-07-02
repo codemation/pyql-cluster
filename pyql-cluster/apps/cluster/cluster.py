@@ -5,7 +5,7 @@ def run(server):
     import time, uuid, random
     from random import randrange
     import json, os
-    from apps.cluster import asyncrequest,request_async
+    from apps.cluster import request_async
 
     log = server.log
 
