@@ -16,7 +16,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: pyql-cluster
-        image: joshjamison/pyql-cluster:alpha0.038
+        image: joshjamison/pyql-cluster:alpha0.039
         envFrom:
           - configMapRef:
               name: pyql-cluster-config
