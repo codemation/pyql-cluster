@@ -1442,7 +1442,7 @@ def run(server):
             # if tables not exist, add
             newTables = []
             for table in config['tables']:
-                for table_name, table_config in table.items():
+                for table_name, tb_config in table.items():
                     if not table_name in tables:
                         newTables.append(table_name)
                         #JobIfy - create as job so config
@@ -1450,7 +1450,7 @@ def run(server):
                             'id': str(uuid.uuid1()),
                             'name': table_name,
                             'cluster': cluster_id,
-                            'config': table_config,
+                            'config': tb_config,
                             'consistency': table_name in config['consistency'],
                             'is_paused': False
                         }
@@ -1905,13 +1905,13 @@ def run(server):
             if 'not found in database' in response['message']:
                 # create table & retry resync
                 trace.warning(f"table {table} was not found, attempting to create")
-                table_config, rc = table_config(cluster, table)
+                tb_config, rc = table_config(cluster, table)
                 response, rc = probe(
-                    f'{out_of_sync_path}/create', 'POST', table_config, 
+                    f'{out_of_sync_path}/create', 'POST', tb_config, 
                     token=out_of_sync_token, session=get_endpoint_sessions(out_of_sync_uuid),  
                     trace=kw['trace'])
                 if not rc == 200:
-                    response, rc = trace.error(f"failed to create table using {table_config}"), 500
+                    response, rc = trace.error(f"failed to create table using {tb_config}"), 500
                 #Retry sync since new table creation
                 response, rc = probe(
                     f'{out_of_sync_path}/sync', 'POST', in_sync_table_copy, 
