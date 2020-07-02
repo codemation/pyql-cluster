@@ -17,7 +17,7 @@ async def main(urls, action, loop=None):
     return response
 def get_requester(method):
     if method == 'POST':
-        def requests_post_results(urlId, url, config):
+        def requests_post_results(url_id, url, config):
             action = requests
             if 'path' in config:
                 config.pop('path')
@@ -27,20 +27,20 @@ def get_requester(method):
                 action = config['session']
                 config.pop('session')
             try:
-                print(f"started requests_post_results for {urlId} with config: {config}")
+                print(f"started requests_post_results for {url_id} with config: {config}")
                 r = action.post(url, **config)
-                print(f"finished requests_post_results for {urlId}")
-                return {urlId: {'content':r.json(), 'status': r.status_code}}
+                print(f"finished requests_post_results for {url_id}")
+                return {url_id: {'content':r.json(), 'status': r.status_code}}
             except Exception as e:
                 error = repr(e)
                 try:
-                    print(f"finished requests_post_results for {urlId} with exception: {repr(e)} on {r.text}")
-                    return {urlId: {'content': r.text, 'status': r.status_code, "error": repr(e)}}
+                    print(f"finished requests_post_results for {url_id} with exception: {repr(e)} on {r.text}")
+                    return {url_id: {'content': r.text, 'status': r.status_code, "error": repr(e)}}
                 except Exception:
-                    return {urlId:  {'content': error, 'status': 500, 'error': error}}
+                    return {url_id:  {'content': error, 'status': 500, 'error': error}}
         return requests_post_results
     if method == 'GET':
-        def requests_get_results(urlId, url, config):
+        def requests_get_results(url_id, url, config):
             action = requests
             if 'path' in config:
                 config.pop('path')
@@ -48,17 +48,17 @@ def get_requester(method):
                 action = config['session']
                 config.pop('session')
             try:
-                print(f"started requests_get_results for {urlId} with config: {config}")
+                print(f"started requests_get_results for {url_id} with config: {config}")
                 r = action.get(url, **config)
-                print(f"finished requests_get_results for {urlId}")
-                return {urlId:  {'content': r.json(), 'status': r.status_code}}
+                print(f"finished requests_get_results for {url_id}")
+                return {url_id:  {'content': r.json(), 'status': r.status_code}}
             except Exception as e:
                 error = repr(e)
                 try:
-                    print(f"finished requests_get_results for {urlId} with exception: {repr(e)} on {r.text}")
-                    return {urlId:  {'content': r.text, 'status': r.status_code, "error": repr(e)}}
+                    print(f"finished requests_get_results for {url_id} with exception: {repr(e)} on {r.text}")
+                    return {url_id:  {'content': r.text, 'status': r.status_code, "error": repr(e)}}
                 except Exception:
-                    return {urlId:  {'content': error, 'status': 500, 'error': error}}
+                    return {url_id:  {'content': error, 'status': 500, 'error': error}}
         return requests_get_results
             
 def requests_async(urls, method='GET', loop=None):

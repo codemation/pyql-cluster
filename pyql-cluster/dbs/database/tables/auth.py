@@ -13,4 +13,3 @@ def db_attach(server):
         'id'
     )
     pass # Enter db.create_table statement here
-            
