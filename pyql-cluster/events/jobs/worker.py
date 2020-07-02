@@ -6,20 +6,11 @@ def log(log):
     logging.warning(log)
     return log
 
-
-"""TODO - Delete later
-if 'PYQL_TYPE' in os.environ:
-    if os.environ['PYQL_TYPE'] == 'K8S':
-        import socket
-        os.environ['PYQL_NODE'] = socket.getfqdn()
-"""
-#if 'PYQL_NODE' in os.environ:
-#    nodeIP = os.environ['PYQL_NODE']
-nodeIP = os.environ.get('PYQL_NODE')
+NODE_IP = os.environ.get('PYQL_NODE')
 
 if os.environ.get('PYQL_TYPE') in ['K8S', 'DOCKER']:
     import socket
-    nodeIP = socket.gethostbyname(socket.getfqdn())
+    NODE_IP = socket.gethostbyname(socket.getfqdn())
 
 session = requests.Session()
 
@@ -30,8 +21,8 @@ def set_db_env(path):
     global env
     env = database.tables['env']
 
-clusterSvcName = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
-nodePath = f'http://{nodeIP}:{os.environ["PYQL_PORT"]}'
+CLUSTER_SVC_NAME = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
+NODE_PATH = f'http://{NODE_IP}:{os.environ["PYQL_PORT"]}'
 
 def probe(path, method='GET', data=None, auth=None, **kw):
     action = requests if not 'session' in kw else kw['session']
@@ -52,9 +43,9 @@ def probe(path, method='GET', data=None, auth=None, **kw):
 
 def add_job_to_queue(path, job, **kw):
     try:
-        message, rc = probe(f'{clusterSvcName}{path}', 'POST', job, **kw)
+        message, rc = probe(f'{CLUSTER_SVC_NAME}{path}', 'POST', job, **kw)
     except Exception as e:
-        message = {"message": f"encountered exception {repr(e)} with {clusterSvcName}{path} for  job {job}"}
+        message = {"message": f"encountered exception {repr(e)} with {CLUSTER_SVC_NAME}{path} for  job {job}"}
         logging.exception(log(message))
         rc = 500
     
@@ -66,46 +57,46 @@ def add_job_to_queue(path, job, **kw):
 
 def get_and_process_job(path):
     try:
-        job, rc = probe(f'{nodePath}{path}', auth='local', session=session)
+        job, rc = probe(f'{NODE_PATH}{path}', auth='local', session=session)
     except Exception as e:
         print(f"worker.py - Error probing {path}, try again later")
         return {"message": f"worker.py - Error probing {path}"}, 400
     if not "message" in job:
         print(f"pulled job {job} with {path} with rc {rc}")
-        jobId = job['id']
+        job_id = job['id']
         job = job['config']
         try:
-            if job['jobtype'] == 'cluster':
+            if job['job_type'] == 'cluster':
                 #Distribute to cluster job queue
                 
-                if 'joinCluster' in job['job']: # need to use joinToken
+                if 'joinCluster' in job['job']: # need to use join_token
                     log(f"join cluster job {job}, attempting to join")
-                    message, rc = probe(f"{clusterSvcName}{job['path']}", job['method'], job['data'], token=job['joinToken'], timeout=30)
+                    message, rc = probe(f"{CLUSTER_SVC_NAME}{job['path']}", job['method'], job['data'], token=job['join_token'], timeout=30)
                 else:
                     log(f"adding job {job} to cluster jobs queue")
-                    message, rc = probe(f"{clusterSvcName}/cluster/jobs/add", 'POST', job, timeout=30)
+                    message, rc = probe(f"{CLUSTER_SVC_NAME}/cluster/jobs/add", 'POST', job, timeout=30)
                 log(f"finished adding job {job} to cluster jobs queue {message} {rc}")
-            elif job['jobtype'] == 'node':
-                auth = 'local' if not 'initCluster' in job['job'] else 'cluster'
-                message, rc = probe(f"{nodePath}{job['path']}", job['method'], job['data'], auth=auth, session=session)
-            elif job['jobtype'] == 'tablesync':
+            elif job['job_type'] == 'node':
+                auth = 'local' if not 'init_cluster' in job['job'] else 'cluster'
+                message, rc = probe(f"{NODE_PATH}{job['path']}", job['method'], job['data'], auth=auth, session=session)
+            elif job['job_type'] == 'tablesync':
                 log(f"adding job {job} to tablesync queue")
                 message, rc = add_job_to_queue(f'/cluster/syncjobs/add', job)
             else:
-                message, rc =  f"{job['job']} is missing jobtype field", 200
+                message, rc =  f"{job['job']} is missing job_type field", 200
             if not rc == 200:
-                probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST', auth='local', session=session)
+                probe(f'{NODE_PATH}/internal/job/{job_id}/queued', 'POST', auth='local', session=session)
             else:
                 try:
-                    probe(f'{nodePath}/internal/job/{jobId}/finished', 'POST', auth='local', session=session)
+                    probe(f'{NODE_PATH}/internal/job/{job_id}/finished', 'POST', auth='local', session=session)
                 except Exception as e:
-                    warning = f'encountered exception finishing job, need to cleanup {jobId} later'
+                    warning = f'encountered exception finishing job, need to cleanup {job_id} later'
                     logging.exception(log(warning))
-                    probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST', auth='local', session=session)
+                    probe(f'{NODE_PATH}/internal/job/{job_id}/queued', 'POST', auth='local', session=session)
         except Exception as e:
             message = f"{os.environ['HOSTNAME']} worker.py encountered exception {repr(e)} hanlding job {job} - add back to queue"
             logging.exception(log(message))
-            probe(f'{nodePath}/internal/job/{jobId}/queued', 'POST', auth='local', session=session)
+            probe(f'{NODE_PATH}/internal/job/{job_id}/queued', 'POST', auth='local', session=session)
         return message,rc
     return job,rc
 print(__name__)
