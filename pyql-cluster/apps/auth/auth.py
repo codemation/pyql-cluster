@@ -50,7 +50,7 @@ def run(server):
             def check_auth(*args, **kwargs):
                 if not 'auth' in request.__dict__:
                     token_type = 'PYQL_CLUSTER_TOKEN_KEY' if not location == 'local' else 'PYQL_LOCAL_TOKEN_KEY'
-                    key = server.env[tokenType]
+                    key = server.env[token_type]
                     log.warning(f"checking auth from {check_auth.__name__} for {f} {args} {kwargs} {request.headers}")
                     if not 'Authentication' in request.headers:
                         return {"error": debug(log.error("missing Authentication"))}, 401
@@ -107,9 +107,6 @@ def run(server):
             return check_auth
         return is_auth
     server.is_authenticated = is_authenticated
-
-
-
 
 
     def set_token_key(location, value=None):
