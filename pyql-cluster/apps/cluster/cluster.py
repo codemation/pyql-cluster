@@ -1694,12 +1694,12 @@ def run(server):
                 return post_request_tables(pyql, 'jobs', 'update', update_from, trace=kw['trace']) 
             return post_request_tables(pyql, 'jobs', 'delete', update_from)
         if status == 'running' or status == 'queued':
-            update_set = {'lastError': {}, 'status': status}
+            update_set = {'last_error': {}, 'status': status}
             for k,v in job_info.items():
                 if k =='start_time' or k == 'status':
                     update_set[k] = v
                     continue
-                update_set['lastError'][k] = v
+                update_set['last_error'][k] = v
             update_where = {'set': update_set, 'where': {'id': uuid}}
             if status =='queued':
                 update_where['set']['node'] = None
