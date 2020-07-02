@@ -1149,7 +1149,7 @@ def run(server):
         primary = server.clusters.tables.select(
             'config', 
             where={'cluster': cluster, 'name': table})
-        primary = primary[0]['config'][table]['primaryKey']
+        primary = primary[0]['config'][table]['primary_key']
         if request.method == 'POST':
             return table_update(cluster=cluster, table=table, data={'set': data, 'where': {primary: key}}, trace=trace)
         if request.method == 'DELETE':
