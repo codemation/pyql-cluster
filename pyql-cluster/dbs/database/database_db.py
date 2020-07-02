@@ -24,7 +24,7 @@ def run(server):
         import sqlite3
         from . import setup
         log.info("finished imports")
-        server.data[db_name] = data.database(sqlite3.connect, **config)
+        server.data[db_name] = data.Database(sqlite3.connect, **config)
         log.info("finished dbsetup")
         setup.attach_tables(server)
         log.info("finished attach_tables")
