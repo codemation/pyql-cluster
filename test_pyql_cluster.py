@@ -5,7 +5,7 @@ class cluster:
         self.steps = 0
         self.session = requests.Session()
         # loads 
-        # {'cluster_port': 8090, 'cluster_ip': '192.168.3.33', 'initAdminPw': 'YWRtaW46YWJjZDEyMzQ='}
+        # {'cluster_port': 8090, 'cluster_ip': '192.168.3.33', 'init_admin_pw': 'YWRtaW46YWJjZDEyMzQ='}
         self.nodes = []
         if not 'config' in kw:
             with open('pyql-cluster/test_config.json', 'r') as config:
@@ -24,7 +24,7 @@ class cluster:
         token, rc = self.probe(
             f'/auth/token/cluster',
             auth={
-                'method': 'basic', 'auth': self.config['initAdminPw']
+                'method': 'basic', 'auth': self.config['init_admin_pw']
             }
         )
         print(f"token {token} rc {rc}")
@@ -53,7 +53,7 @@ class cluster:
             token, rc = self.probe(
                 f'/auth/token/join',
                 auth={
-                    'method': 'basic', 'auth': self.config['initAdminPw']
+                    'method': 'basic', 'auth': self.config['init_admin_pw']
                 }
             )
             assert isinstance(token, dict), f"expected token is type dict, found {type(token)} with value {token}"
@@ -62,11 +62,11 @@ class cluster:
             self.nodes.append(self.nodes[-1]+1)
             port = self.nodes[-1]
             print(f"expanding cluster using port {port}")
-        clusterHost = self.config['cluster_ip']
+        cluster_host = self.config['cluster_ip']
         cluster_port = self.config['cluster_port']
         debug = '--debug' if self.debug == True else ''
         
-        os.system(f"./restart_pyql_cluster.sh dryrun.0.0 {port} {clusterHost} {cluster_port} {join} {token} '' {debug}")
+        os.system(f"./restart_pyql_cluster.sh dryrun.0.0 {port} {cluster_host} {cluster_port} {join} {token} '' {debug}")
     def verify_data(self, try_count=0):
         # for each cluster;
         clusters, rc = self.probe('/cluster/pyql/table/clusters/select')
@@ -90,12 +90,12 @@ class cluster:
                 table_endpoints, rc = self.probe(f"/cluster/{cluster['id']}/table/{table}/endpoints")
                 #print(f"table_endpoints - {table_endpoints}")
                 for endpoint in table_endpoints['inSync']:
-                    endpointInfo = table_endpoints['inSync'][endpoint]
+                    endpoint_info = table_endpoints['inSync'][endpoint]
                     data_to_verify[endpoint], rc = probe(
-                        f"http://{endpointInfo['path']}/db/{endpointInfo['dbname']}/table/{table}/select",
+                        f"http://{endpoint_info['path']}/db/{endpoint_info['dbname']}/table/{table}/select",
                         auth={  
                             'method': 'token',
-                            'auth': endpointInfo['token']
+                            'auth': endpoint_info['token']
                         },
                         session=self.session
                     )
@@ -103,7 +103,7 @@ class cluster:
                         data_to_verify[endpoint] = data_to_verify[endpoint]['data']
                         #print(f"data_to_verify {data_to_verify[endpoint]}")
                     else:
-                        assert False, f"data_to_verify ERROR  when acessing endpoint: {endpointInfo} table: {table} -- {data_to_verify[endpoint]}"
+                        assert False, f"data_to_verify ERROR  when acessing endpoint: {endpoint_info} table: {table} -- {data_to_verify[endpoint]}"
                 verify[table] = {}
                 for endpoint in data_to_verify:
                     verify[table][endpoint] = {'status': [], 'diff': {}}
