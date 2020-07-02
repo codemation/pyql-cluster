@@ -69,7 +69,7 @@ def get_and_process_job(path):
             if job['job_type'] == 'cluster':
                 #Distribute to cluster job queue
                 
-                if 'joinCluster' in job['job']: # need to use join_token
+                if 'join_cluster' in job['job']: # need to use join_token
                     log(f"join cluster job {job}, attempting to join")
                     message, rc = probe(f"{CLUSTER_SVC_NAME}{job['path']}", job['method'], job['data'], token=job['join_token'], timeout=30)
                 else:
