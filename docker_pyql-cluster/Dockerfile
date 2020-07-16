@@ -3,7 +3,7 @@ FROM joshjamison/python37:latest
 
 RUN apt-get install -y curl
 
-RUN git clone -branch fastpi https://github.com/codemation/pyql-cluster.git
+RUN git clone -branch fastapi https://github.com/codemation/pyql-cluster.git
 
 RUN pip install -r pyql-cluster/requirements.txt
 
