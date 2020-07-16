@@ -46,4 +46,4 @@ fi
 
 # starting pyql-cluster instance
 
-docker container run --name pyql-cluster-$2 $env0 $env1 -p $2:$2 -v $(pwd)/pyql-cluster-$2-vol:/mnt/pyql-cluster -d joshjamison/pyql-cluster:$1
+docker container run --name pyql-cluster-$2 $env0 $env1 -p $2:8090 -v $(pwd)/pyql-cluster-$2-vol:/mnt/pyql-cluster -d joshjamison/pyql-cluster:$1
