@@ -17,6 +17,6 @@ RUN pip install -r pyql-cluster/requirements.txt
 
 WORKDIR /pyql-cluster/pyql-cluster/
 
-EXPOSE 80
+EXPOSE $PYQL_PORT
 
-CMD ["./startserver.sh" ]
+CMD ["./startserver.sh"]

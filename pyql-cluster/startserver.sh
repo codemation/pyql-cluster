@@ -1,2 +1,3 @@
 #/pyql-cluster/bin/python3.7
-uvicorn --host 0.0.0.0 --port 80 server:app
+echo "starting uvicorn using port "$PYQL_PORT
+uvicorn --host 0.0.0.0 --port $PYQL_PORT server:app
