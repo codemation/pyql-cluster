@@ -392,7 +392,7 @@ async def run(server):
                 return {"join": await create_auth_token(service_id['data'][0]['id'], 'join', 'CLUSTER')}
             server.http_exception(400, trace.error(f"unable to find a service account for user"))
         # Retrieve current local / cluster token - requires auth 
-        @server.api_route('/auth/token/{tokentype}')
+        @server.api_route('/auth/token/{token_type}')
         async def cluster_token_api(token_type: str, request: Request):
             request = await server.process_request(request)
             if token_type in ['local', 'cluster']:
