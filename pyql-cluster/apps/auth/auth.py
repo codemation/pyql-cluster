@@ -322,7 +322,8 @@ async def run(server):
                         'select': ['id', 'password'], 
                         'where': {'email': user_info['email']}
                     },
-                    trace=trace
+                    trace=trace,
+                    request=request
                 )
                 if len(email_check['data']) > 0:
                     server.http_exception(
@@ -350,21 +351,24 @@ async def run(server):
         @server.trace
         async def auth_user_register(authtype, user_info, **kw):
             return user_register(authtype, user_info, **kw)
-
+        """TODO - Delete after testing
         @server.api_route('/auth/token/user')
         async def get_user_auth_token_endpoint(request: Request):
-            return await get_user_auth_token( request=await server.process_request(request))
+            return await get_user_auth_token(request=await server.process_request(request))
+        """
+        
         @server.state_and_quorum_check
         @server.is_authenticated('cluster')
         @server.trace
         async def get_user_auth_token(**kw):
             return {"token": await create_auth_token(kw['authentication'], time.time() + 3600, 'cluster')}
 
-
+        """TODO - Delete after testing
         # Retrieve current local / cluster token - requires auth 
         @server.api_route('/auth/token/join')
         async def cluster_service_join_token_endpoint(request: Request):
             return await cluster_service_join_token( request=await server.process_request(request))
+        """
         @server.state_and_quorum_check
         @server.is_authenticated('cluster')
         @server.trace
@@ -380,6 +384,7 @@ async def run(server):
                     },
                 method='POST',
                 quorum=kw['quorum'],
+                request=request,
                 trace=trace
             )
             trace(f"join token creating for - {service_id}")
@@ -388,8 +393,14 @@ async def run(server):
             server.http_exception(400, trace.error(f"unable to find a service account for user"))
         # Retrieve current local / cluster token - requires auth 
         @server.api_route('/auth/token/{tokentype}')
-        async def cluster_service_token_endpoint(tokentype: str, request: Request):
-            return await cluster_service_token(tokentype,  request=await server.process_request(request))
-
+        async def cluster_token_api(token_type: str, request: Request):
+            request = await server.process_request(request)
+            if token_type in ['local', 'cluster']:
+                return await cluster_service_token(tokentype, request=request)
+            if token_type == 'user':
+                return await get_user_auth_token(request=request)
+            if token_type == 'join':
+                return await cluster_service_join_token(request=request)
+            
 
     server.auth_post_cluster_setup = auth_post_cluster_setup
