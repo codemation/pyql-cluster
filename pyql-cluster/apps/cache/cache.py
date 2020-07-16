@@ -18,7 +18,7 @@ async def run(server):
             method for managing txns - canceling / commiting
         """
         trace = kw['trace']
-        cache = await server.data[database].tables['cache']
+        cache = server.data[database].tables['cache']
         if 'txn' in transaction:
             txn_id = transaction['txn']
             tx=None
