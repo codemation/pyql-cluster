@@ -270,10 +270,6 @@ async def run(server):
             log.warning(set_key)
         return set_key, rc
 
-    # Retrieve current local / cluster token - requires auth 
-    @server.api_route('/auth/token/{tokentype}')
-    async def cluster_service_token_endpoint(tokentype: str, request: Request):
-        return await cluster_service_token(tokentype,  request=await server.process_request(request))
     @server.is_authenticated('pyql')
     async def cluster_service_token(tokentype, **kw):
         if tokentype == 'cluster':
@@ -390,6 +386,10 @@ async def run(server):
             if len(service_id['data']) > 0:
                 return {"join": await create_auth_token(service_id['data'][0]['id'], 'join', 'CLUSTER')}
             server.http_exception(400, trace.error(f"unable to find a service account for user"))
+        # Retrieve current local / cluster token - requires auth 
+        @server.api_route('/auth/token/{tokentype}')
+        async def cluster_service_token_endpoint(tokentype: str, request: Request):
+            return await cluster_service_token(tokentype,  request=await server.process_request(request))
 
 
     server.auth_post_cluster_setup = auth_post_cluster_setup
