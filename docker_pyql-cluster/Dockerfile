@@ -17,6 +17,8 @@ RUN pip install -r pyql-cluster/requirements.txt
 
 WORKDIR /pyql-cluster/pyql-cluster/
 
-EXPOSE $PYQL_PORT
+ENV PYQL_VOLUME_PATH=/mnt/pyql-cluster
 
-CMD ["./startserver.sh"]
+EXPOSE 8090
+
+CMD ["uvicorn", "--host", "0.0.0.0", "--port", "8090",  "server:app"]
