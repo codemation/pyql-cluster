@@ -19,4 +19,4 @@ WORKDIR /pyql-cluster/pyql-cluster/
 
 EXPOSE 80
 
-CMD ["./startserver.sh"]
+CMD ["uvicorn","--host","$(echo -n $HOSTIP)","--port","80","server:app" ]
