@@ -71,15 +71,15 @@ async def run(server):
                         where={'id': txn_id})
                 tx = tx[0]
                 try:
-                    r, rc = await server.actions[tx['type']](database, table, tx['txn'])
-                    trace.warning(f"##cache {action} response {r} rc {rc}")
+                    response = await server.actions[tx['type']](database, table, tx['txn'])
+                    trace.warning(f"##cache {action} response {response}")
                 except Exception as e:
-                    r, rc = trace.exception(f"Exception when performing cache {action}"), 500
+                    trace.exception(f"Exception when performing cache {action} - response {response}")
                 
                 del_txn = await cache.delete(
                     where={'id': txn_id}
                 )
-                if rc == 200:
+                if response:
                     # update last txn id
                     set_params = {
                         'set': {
