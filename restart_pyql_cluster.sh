@@ -7,7 +7,7 @@
 # build image
 
 action=$(echo $5 | grep 'join' > /dev/null && echo -n 'join' || echo -n 'init')
-env0='-e PYQL_CLUSTER_SVC='$3':'$4' -e PYQL_PORT=80 -e PYQL_CLUSTER_ACTION='$action' -e PYQL_TYPE=DOCKER '
+env0='-e PYQL_CLUSTER_SVC='$3':'$4' -e PYQL_PORT='$2' -e PYQL_CLUSTER_ACTION='$action' -e PYQL_TYPE=DOCKER '
 env1='-e PYQL_HOST='$3
 
 echo $5 | grep 'join' > /dev/null
@@ -46,4 +46,4 @@ fi
 
 # starting pyql-cluster instance
 
-docker container run --name pyql-cluster-$2 $env0 $env1 -p $2:80 -v $(pwd)/pyql-cluster-$2-vol:/mnt/pyql-cluster -d joshjamison/pyql-cluster:$1
+docker container run --name pyql-cluster-$2 $env0 $env1 -p $2:$2 -v $(pwd)/pyql-cluster-$2-vol:/mnt/pyql-cluster -d joshjamison/pyql-cluster:$1
