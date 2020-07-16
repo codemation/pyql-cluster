@@ -94,7 +94,7 @@ async def run(server):
                             **set_params['set'],
                             where=set_params['where']
                     )
-                server.http_exception(rc, r)
+                server.http_exception(response)
             if action == 'cancel':
                 del_txn = await cache.delete(
                     where={'id': txn_id}
