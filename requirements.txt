@@ -3,3 +3,4 @@ aiohttp
 pyjwt
 fastapi
 uvicorn
+requests
