@@ -352,7 +352,8 @@ async def run(server):
             job_list[cur_ind]['config']['nextJob'] = await wait_on_jobs(pyql, cur_ind+1, job_list)
         if cur_ind == 0:
             return await jobs_add(job_list[cur_ind])[0]['job_id']
-        return await jobs_add(job_list[cur_ind], status='waiting')[0]['job_id']
+        result = await jobs_add(job_list[cur_ind], status='waiting')
+        return result[0]['job_id']
     @server.trace
     async def bootstrap_pyql_cluster(config, **kw):
         """
