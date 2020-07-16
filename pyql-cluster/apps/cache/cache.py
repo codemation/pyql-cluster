@@ -103,7 +103,7 @@ async def run(server):
 
     @server.api_route('/db/{database}/cache/{table}/{action}/{txuuid}', methods=['POST'])
     async def cache_action_endpoint(database: str, table: str, action: str, txuuid: str, txn: dict, request: Request):
-        return await cache_action(database, table, action, txuuid,  request=await server.process_request(request))
+        return await cache_action(database, table, action, txuuid, txn, request=await server.process_request(request))
 
     @server.is_authenticated('local')
     async def cache_action(database, table, action, txuuid, txn, **kw):
