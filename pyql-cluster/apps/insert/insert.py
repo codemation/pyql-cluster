@@ -9,6 +9,9 @@ async def run(server):
 
     @server.is_authenticated('local')
     async def insert_func(database, table, params, **kw):
+        return await insert(database, table, params, **kw)
+
+    async def insert(database, table, params, **kw):
         message, rc = server.check_db_table_exist(database,table)
         if rc == 200:
             table = server.data[database].tables[table]
@@ -27,4 +30,4 @@ async def run(server):
             return {"message": "items added"}
         else:
             server.http_exception(rc, message)
-    server.actions['insert'] = insert_func
+    server.actions['insert'] = insert

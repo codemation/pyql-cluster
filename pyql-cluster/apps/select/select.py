@@ -4,13 +4,13 @@ async def run(server):
 
     log = server.log
     @server.api_route('/db/{database}/table/{table}/select', methods=['GET', 'POST'])
-    async def cluster_select_func(database: str, table: str, request: Request, params: dict = None):
-        return await cluster_select_func(database, table, params=params,  request=await server.process_request(request))
+    async def select_func_api(database: str, table: str, request: Request, params: dict = None):
+        return await select_func(database, table, params=params,  request=await server.process_request(request))
     @server.is_authenticated('local')
-    async def cluster_select_func(database, table, **kw):
+    async def select_func(database, table, **kw):
         request = kw['request']
         return await select_func(database, table, method=request.method, **kw)
-    async def select_func(database,table, params=None, method='GET', **kw):
+    async def select(database,table, params=None, method='GET', **kw):
         message, rc = server.check_db_table_exist(database,table)
         if not rc == 200:
             server.http_exception(
@@ -35,4 +35,4 @@ async def run(server):
         response = [response] if isinstance(response, dict) else response
         return {"data": response}
             
-    server.actions['select'] = select_func
+    server.actions['select'] = select
