@@ -396,7 +396,7 @@ async def run(server):
         async def cluster_token_api(token_type: str, request: Request):
             request = await server.process_request(request)
             if token_type in ['local', 'cluster']:
-                return await cluster_service_token(tokentype, request=request)
+                return await cluster_service_token(token_type, request=request)
             if token_type == 'user':
                 return await get_user_auth_token(request=request)
             if token_type == 'join':
