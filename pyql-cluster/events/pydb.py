@@ -13,7 +13,6 @@ def get_db():
             for projectPath in projDir:
                 db_name = os.getenv('DB_NAME').rstrip()
                 config['database'] = f'{projectPath}dbs/database/{db_name}'
-    from pyql import data
-    import sqlite3
-    db = data.Database(sqlite3.connect, **config)
+    from aiopyql import data
+    db = data.Database(**config)
     return db

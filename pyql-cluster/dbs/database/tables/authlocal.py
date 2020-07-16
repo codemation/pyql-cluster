@@ -1,10 +1,10 @@
 
-def db_attach(server):
+async def db_attach(server):
     db = server.data['cluster']
     # 'id': serviceId,
     # 'username': 'pyql',
     # 'type': 'service'
-    db.create_table(
+    await db.create_table(
        'authlocal', [
            ('id', str, 'UNIQUE NOT NULL'), 
            ('username', str, 'UNIQUE NOT NULL'), 
@@ -13,5 +13,5 @@ def db_attach(server):
        ],
        'id'
     )
-    pass # Enter db.create_table statement here
+    return # Enter db.create_table statement here
             

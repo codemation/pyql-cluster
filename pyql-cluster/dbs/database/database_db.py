@@ -1,9 +1,19 @@
 # database - type sqlite3
-def run(server):
+async def run(server):
     import sys, os
+    from fastapi.testclient import TestClient
+    from fastapi.websockets import WebSocket
+    import uvloop, asyncio
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     log = server.log
-    @server.route('/internal/db/attach')
-    def database_attach():
+
+    event_loop = asyncio.get_event_loop()
+    print(f"databse_db event_loop: {event_loop}")
+
+    @server.api_route('/internal/db/attach')
+    async def database_attach_api():
+        return await database_attach()
+    async def database_attach():
         config=dict()
         os.environ['DB_NAME'] = 'cluster' # TODO - Add to env variables config later
         if 'PYQL_TYPE' in os.environ:
@@ -20,14 +30,29 @@ def run(server):
         if server.PYQL_DEBUG == True:
             config['debug'] = True
 
-        from pyql import data
-        import sqlite3
+        from aiopyql import data
         from . import setup
         log.info("finished imports")
-        server.data[db_name] = data.Database(sqlite3.connect, **config)
+        server.data[db_name] = await data.Database.create(
+            **config,
+            loop=event_loop 
+            )
         log.info("finished dbsetup")
-        setup.attach_tables(server)
+        await setup.attach_tables(server)
         log.info("finished attach_tables")
-        return {"status": 200, "message": "database attached successfully"}, 200
-    response = database_attach()
-    log.info(response)
+        return {"message": "database attached successfully"}
+
+    @server.websocket_route("/attach_dbs")
+    async def attach_databases(websocket: WebSocket):
+        await websocket.accept()
+        response = await database_attach()
+        await websocket.send_json({"message": log.info(response)})
+        await websocket.close()
+    def trigger_attach_dbs():
+        client = TestClient(server)
+        with client.websocket_connect("/attach_dbs") as websocket:
+            return websocket.receive_json()
+
+
+    response = await database_attach()
+    log.info(f"database_attach result: {response}")

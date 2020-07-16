@@ -1,8 +1,8 @@
-def db_attach(server):
+async def db_attach(server):
     import os
     db = server.data['cluster']
     # Example 
-    # db.create_table(
+    # await db.create_table(
     #    'users', # table-name
     #     [
     #        ('userid', int, 'AUTOINCREMENT'),
@@ -15,7 +15,7 @@ def db_attach(server):
     # )
     #UNCOMMENT Below to create
     #
-    db.create_table(
+    await db.create_table(
        'tables', [
             ('id', str, 'NOT NULL'),
             ('name', str, 'NOT NULL'),
@@ -27,5 +27,5 @@ def db_attach(server):
        ],
         'id'
     )
-    pass # Enter db.create_table statement here
+    return # Enter db.create_table statement here
             

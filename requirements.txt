@@ -1,4 +1,5 @@
-jawf
-pyql-db
-requests
+aiopyql
+aiohttp
 pyjwt
+fastapi
+uvicorn

@@ -2,10 +2,17 @@
 ./apps/update/.cmddir
 ./apps/.cmddir
 ./apps/insert/.cmddir
+./apps/cache/.cmddir
 ./apps/table/.cmddir
 ./apps/internal/.cmddir
+./apps/cluster/.cmddir
+./apps/auth/.cmddir
 ./apps/select/.cmddir
 ./apps/delete/.cmddir
+./events/.cmddir
+./events/cluster/.cmddir
+./events/jobs/.cmddir
+./events/health/.cmddir
 ./dbs/.cmddir
 ./dbs/database/.cmddir
 ./dbs/database/tables/.cmddir

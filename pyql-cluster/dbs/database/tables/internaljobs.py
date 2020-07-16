@@ -1,6 +1,6 @@
-def db_attach(server):
+async def db_attach(server):
     db = server.data['cluster']
-    db.create_table(
+    await db.create_table(
        'internaljobs', [
            ('id', str, 'UNIQUE NOT NULL'),
            ('name', str, 'UNIQUE NOT NULL'),

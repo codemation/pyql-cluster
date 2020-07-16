@@ -1,5 +1,29 @@
 
-def run(server):
+async def run(server):
+
+    #### Create HTTPException Handler
+    from fastapi import HTTPException, Request
+    import json
+    def http_exception(status, detail):
+        raise HTTPException(status_code=status, detail=detail)
+    server.http_exception = http_exception
+
+    class RequestStorage:
+        def __init__(self, headers, method, json_body):
+            self.headers = dict(headers)
+            self.method = method
+            self.json = json_body
+
+
+
+    async def process_request(request: Request):
+        json_body = None
+        if 'content-length' in request.headers and request.headers['content-type'] == 'application/json':
+            body = await request.body()
+            json_body = json.loads(body) if len(body) > 0 else None
+        return RequestStorage(request.headers, request.method, json_body)
+    server.process_request = process_request
+
     pass # apps start here
     def check_db_table_exist(database,table):
         if not database in server.data:
@@ -15,30 +39,32 @@ def run(server):
             return {'status': 404, 'message': f'database with name {database} not found'}, 404
     server.check_db_table_exist = check_db_table_exist
     
+
+
     from apps.auth import auth
-    auth.run(server)       
+    await auth.run(server)       
 
     from apps.select import select
-    select.run(server)            
+    await select.run(server)            
             
     from apps.update import update
-    update.run(server)            
+    await update.run(server)            
             
     from apps.delete import delete
-    delete.run(server)            
+    await delete.run(server)            
             
     from apps.insert import insert
-    insert.run(server)            
+    await insert.run(server)            
             
     from apps.table import table
-    table.run(server)            
+    await table.run(server)            
             
     from apps.internal import internal
-    internal.run(server)
+    await internal.run(server)
       
     from apps.cluster import cluster
-    cluster.run(server)     
+    await cluster.run(server)     
 
     from apps.cache import cache
-    cache.run(server)
+    await cache.run(server)
             

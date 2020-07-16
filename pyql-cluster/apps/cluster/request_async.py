@@ -65,11 +65,8 @@ def requests_async(urls, method='GET', loop=None):
     """
     urls= {'requestId': {'path: 'http://google.com', 'data': {}, 'headers': headers, 'session': requests.Session()}}
     """
-    if loop == None:
-        loop = asyncio.new_event_loop()
-
     action = get_requester(method)
-    return loop.run_until_complete(main(urls,action, loop))
+    return main(urls,action, loop)
         
 
     

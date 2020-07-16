@@ -1,10 +1,13 @@
-from flask import Flask
 import os, socket
-app = Flask(__name__)
+
+from fastapi import FastAPI
+app = FastAPI()
+
+print(app.__dict__)
+
 def main(PORT, debug):
     import setup
     setup.run(app)
-    app.run('0.0.0.0', PORT, debug=debug)
 if __name__ == '__main__':
     try:
         import sys
@@ -32,8 +35,15 @@ if __name__ == '__main__':
         main(PORT, debug=True if os.environ.get('PYQL_DEBUG') == 'True'else False)
 else:
     # For loading when triggered by uWSGI
-    if os.environ['PYQL_TYPE'] == 'K8S' or os.environ['PYQL_TYPE'] == 'DOCKER':
+    if os.environ.get('PYQL_TYPE') in ['K8S', 'DOCKER']:
         os.environ['PYQL_NODE'] = socket.gethostbyname(socket.getfqdn())
+    else:
+        # Triggered by uvicorn
+        os.environ['PYQL_NODE'] = '192.168.3.33'
+        os.environ['PYQL_PORT'] = '8090'
+        os.environ['PYQL_CLUSTER_SVC'] = '192.168.3.33:8090'
+        os.environ['PYQL_CLUSTER_ACTION'] = 'init'
+        os.environ['PYQL_DEBUG'] = 'True'
 
     import setup
     setup.run(app)

@@ -1,7 +1,7 @@
 
-def db_attach(server):
+async def db_attach(server):
     db = server.data['cluster']
-    db.create_table(
+    await db.create_table(
        'env', [
            ('env', str, 'UNIQUE NOT NULL'), 
            ('val', str)

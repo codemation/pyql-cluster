@@ -14,9 +14,10 @@ NODE_PORT = os.environ['PYQL_PORT']
 def set_db_env(path):
     sys.path.append(path)
     import pydb
-    database = pydb.get_db()
+    db = pydb.get_db()
+    db._run_async_tasks(db.load_tables())
     global env
-    env = database.tables['env']
+    env = db.tables['env']
 
 def probe(path, method='GET', data=None, auth=None):
     path = f'http://{NODE_IP}:{NODE_PORT}{path}'

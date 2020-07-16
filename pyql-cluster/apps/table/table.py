@@ -1,13 +1,15 @@
 # table
-def run(server):
-    from flask import request
+async def run(server):
+    from fastapi import Request
     log = server.log
 
-    @server.route('/db/<database>/tables')
+    @server.api_route('/db/{database}/tables')
+    async def get_all_tables_api(database, request: Request):
+        return await get_all_tables(database,  request=await server.process_request(request))
     @server.is_authenticated('local')
-    def get_all_tables_func(database):
+    async def get_all_tables(database):
         if not database in server.data:
-            return {"message": f"no database with name {database} attached to endpoint"}, 400
+            server.http_exception(400, f"no database with name {database} attached to endpoint")
         tables = server.data[database].tables
         tables_config = []
         for table in tables:
@@ -21,58 +23,64 @@ def run(server):
                     }
                 }
             ) 
-        return {"tables": tables_config}, 200
+        return {"tables": tables_config}
 
-    @server.route('/db/<database>/table/<table>', methods=['GET', 'PUT', 'POST'])
+    @server.api_route('/db/{database}/table/{table}', methods=['GET', 'PUT', 'POST'])
+    async def db_table_api(database: str, table: str, request: Request, params: dict = None):
+        return await db_table(database, table, params=params,  request=await server.process_request(request))
     @server.is_authenticated('local')
-    def db_table(database, table):
+    async def db_table(database, table, **kw):
         if request.method == 'GET':
-            return db_table_get(database, table)
+            return await db_table_get(database, table, **kw)
         if request.method == 'PUT' or request.method == 'POST':
-            return db_table_put_post(database, table)
+            return await db_table_put_post(database, table, **kw)
 
-    def db_table_get(database, table):
-        return server.actions['select'](database, table)
-    def db_table_put_post(database, table):
-        return server.actions['insert'](database, table)
+    async def db_table_get(database, table, **kw):
+        return await server.actions['select'](database, table, **kw)
+    async def db_table_put_post(database, table, **kw):
+        return await server.actions['insert'](database, table, **kw)
 
 
-    @server.route('/db/<database>/table/<table>/<key>', methods=['GET', 'POST', 'DELETE'])
+    @server.api_route('/db/{database}/table/{table}/{key}', methods=['GET', 'POST', 'DELETE'])
+    async def db_table_key_api(database: str, table: str, key: str, request: Request, params: dict = None):
+        return await db_table_key(database, table, key, params=params,  request=await server.process_request(request))
     @server.is_authenticated('local')
-    def db_table_key(database, table, key):
-        return table_key(database, table, key, method=request.method)
-    def table_key(database, table, key, method='GET'):
+    async def db_table_key(database, table, key, **kw):
+        request = kw['request']
+        return await table_key(database, table, key, method=request.method, **kw)
+    async def table_key(database, table, key, method='GET', **kw):
         primary_key = server.data[database].tables[table].prim_key
         if method == 'GET':
-            return db_table_key_get(database, table, primary_key, key)
+            return await db_table_key_get(database, table, primary_key, key)
         if method == 'POST':
-            return db_table_key_post(database, table, primary_key, key)
+            return await db_table_key_post(database, table, primary_key, key, set_vals=kw['params'])
         if method == 'DELETE':
-            return db_table_key_delete(database, table, primary_key, key)
+            return await db_table_key_delete(database, table, primary_key, key)
     server.actions['select_key'] = table_key
 
-    def db_table_key_get(database, table, key, val):
-        return server.actions['select'](database, table, {'select': ['*'], 'where': {key: val}})
+    async def db_table_key_get(database, table, key, val):
+        return await server.actions['select'](database, table, {'select': ['*'], 'where': {key: val}})
     
-    def db_table_key_post(database, table, key, val):
-        try:
-            set_vals = request.get_json()
-        except Exception as e:
-            log.exception("db_table_key_post missing json input for set_vals")
-            set_vals = {}
-        return server.actions['update'](database, table, {'set': set_vals, 'where': {key: val}})
-    def db_table_key_delete(database, table, key, val):
-        return server.actions['delete'](database, table, {'where': {key: val}})
+    async def db_table_key_post(database, table, key, val, set_vals=None):
+        if set_vals == None:
+            server.http_exception(
+                400, 
+                log.exception("db_table_key_post missing json input for values to update")
+            )
+        return await server.actions['update'](database, table, {'set': set_vals, 'where': {key: val}})
+    async def db_table_key_delete(database, table, key, val):
+        return await server.actions['delete'](database, table, {'where': {key: val}})
 
-
-    @server.route('/db/<database>/table/<table>/config')
+    @server.api_route('/db/{database}/table/{table}/config')
+    async def db_get_table_config_api(database: str, table: str, request: Request):
+        return await db_get_table_config(database, table,  request=await server.process_request(request))
     @server.is_authenticated('local')
-    def db_get_table_config(database,table):
-        return get_table_config(database, table)
-    def get_table_config(database,table):
-        message, rc = server.check_db_table_exist(database,table)
+    async def db_get_table_config(database,table, **kw):
+        return get_table_config(database, table, **kw)
+    def get_table_config(database, table, **kw):
+        message, rc = server.check_db_table_exist(database, table)
         if not rc == 200:
-            return message, rc
+            server.http_exception(rc, message)
         table = server.data[database].tables[table]
         response = {
             table.name: {
@@ -84,72 +92,88 @@ def run(server):
                 "foreign_keys": table.foreign_keys
             }        
         }
-        return response, 200
+        return response
             
     server.get_table_func = get_table_config
 
-    @server.route('/db/<database>/table/<table>/create', methods=['POST'])
+    @server.api_route('/db/{database}/table/{table}/create', methods=['POST'])
+    async def database_table_create_api(database, table, config: dict):
+        return await database_table_create(database, table, config)
     @server.is_authenticated('local')
-    def database_table_create(database, table):
-        new_table_config = request.get_json()
-        return create_table_func(database, new_table_config)
+    async def database_table_create(database, table, config):
+        return create_table_func(database, config)
 
-    @server.route('/db/<database>/table/<table>/sync', methods=['POST'])
+    @server.api_route('/db/{database}/table/{table}/sync', methods=['POST'])
+    async def sync_table_func_api(database: str, table: str, data_to_sync: dict):
+        return await sync_table_func(databse, table, data_to_sync)
     @server.is_authenticated('local')
-    def sync_table_func(database, table):
+    async def sync_table_func(database, table):
         if not database in server.data:
             server.db_check(database)
         if not database in server.data:
-            return {"message": log.error(f"{database} not found in endpoint")}, 500
+            server.http_exception(500, log.error(f"{database} not found in endpoint"))
         if not table in server.data[database].tables:
             server.db_check(database)
         if not table in server.data[database].tables:
-            return {'message': log.error(f"{table} not found in database {database}")}, 400
-        data_to_sync = request.get_json()
-        table_config, _ = db_get_table_config(database, table)
-        server.data[database].run(f'drop table {table}')
+            server.http_exception(400, log.error(f"{table} not found in database {database}"))
+        table_config, _ = await get_table_config(database, table)
+        await server.data[database].run(f'drop table {table}')
         message, rc = create_table_func(database, table_config)
         log.warning(f"table /sync create_table_func response {message} {rc}")
         for row in data_to_sync['data']:
             log.warning(f"table sync insert row - {row}")
-            server.data[database].tables[table].insert(**row)
-        return {"message": log.warning(f"{database} {table} sync successful")}, 200
+            await server.data[database].tables[table].insert(**row)
+        return {"message": log.warning(f"{database} {table} sync successful")}
 
 
-    @server.route('/db/<database>/table/create', methods=['POST'])
+    @server.api_route('/db/{database}/table/create', methods=['POST'])
+    async def db_create_table_func(database: str, config: dict):
+        return await create_table_func(database, config)
     @server.is_authenticated('local')
-    def db_create_table_func(database):
-        return create_table_func(database)
-    def create_table_func(database, config=None):
+    async def create_table_func(database, config):
         if database in server.data:
             db = server.data[database]
-            table_config = request.get_json() if config == None else config
+            table_config = config
             convert = {'str': str, 'int': int, 'blob': bytes, 'float': float, 'bool': bool}
             columns = []
             for table_name in table_config:
                 if table_name in db.tables:
                     log.warning(f'table {table_name} already exists - trying anyway')
                 if not "columns" in table_config[table_name]:
-                    return {
-                        "error": log.error(f"""missing new table config {'"columns": [{"name": "<name>", "type": "<type>", "mods": "<mods>"}, ..]'}""")
-                        }, 400
+                    server.http_exception(
+                        400, 
+                        log.error(
+                            f"""missing new table config {'"columns": [{"name": "<name>", "type": "<type>", "mods": "<mods>"}, ..]'}"""
+                            )
+                    )
                 
                 for col in table_config[table_name]["columns"]:
                     if not col['type'] in convert:
-                        return {
-                            "error": log.error(f"""invalid type {col['type']} provided in column {col['name']}. use: {convert}""")
-                            }, 400
+                        server.http_exception(
+                            400,
+                            log.error(
+                                f"""invalid type {col['type']} provided in column {col['name']}. use: {convert}"""
+                                )
+                        )
                     columns.append((col['name'], convert[col['type']], col['mods']))
                 col_names = [c[0] for c in columns]
                 if not "primary_key" in table_config[table_name]:
-                    return {'error': log.error(f'missing new table config "primary_key": <column_name>')},  400
+                   server.http_exception(
+                       400,
+                       log.error(f'missing new table config "primary_key": <column_name>')
+                       )
                 if not table_config[table_name]["primary_key"] in col_names:
                     error = f'provided primary_key {table_config[table_name]["primary_key"]} is not a column with "columns": {col_names}'
-                    return {'error': log.error(error)}, 400
+                    server.http_exception(400, log.error(error))
                 if 'foreign_keys' in table_config[table_name] and isinstance(table_config[table_name]['foreign_keys'], dict):
                     for local_key, foreign_key in table_config[table_name]['foreign_keys'].items():
                         if not local_key in col_names:
-                            return {"error": log.error(f"local_key {local_key} is not a valid column for foreign_key {foreign_key}")}, 400
+                            server.http_exception(
+                                400,
+                                log.error(
+                                    f"local_key {local_key} is not a valid column for foreign_key {foreign_key}"
+                                    )
+                            )
                 else:
                     table_config[table_name]['foreign_keys'] = None
                 # All required table configuration has been provided, Creating table.
@@ -160,4 +184,4 @@ def run(server):
                     foreign_keys=table_config[table_name]["foreign_keys"]
                     )
                 server.db_check(database)
-                return {"message": log.warning(f"""table {table_name} created successfully """)}, 200
+                return {"message": log.warning(f"""table {table_name} created successfully """)}

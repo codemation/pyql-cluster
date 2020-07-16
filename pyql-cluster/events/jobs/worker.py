@@ -17,9 +17,10 @@ session = requests.Session()
 def set_db_env(path):
     sys.path.append(path)
     import pydb
-    database = pydb.get_db()
+    db = pydb.get_db()
+    db._run_async_tasks(db.load_tables())
     global env
-    env = database.tables['env']
+    env = db.tables['env']
 
 CLUSTER_SVC_NAME = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
 NODE_PATH = f'http://{NODE_IP}:{os.environ["PYQL_PORT"]}'

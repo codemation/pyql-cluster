@@ -22,12 +22,14 @@ session = requests.Session()
 def set_db_env(path):
     sys.path.append(path)
     import pydb
-    database = pydb.get_db()
-    print(database.tables)
+    db = pydb.get_db()
+    db._run_async_tasks(db.load_tables())
+    print(db.tables)
     global env
-    env = database.tables['env']
-    global nodeId
-    nodeId = env['PYQL_ENDPOINT']
+    env = db.tables['env']
+    global node_id
+    node_id = env['PYQL_ENDPOINT']
+    logging.warning(f"jobworker initialized with node_id of {node_id}")
 
 def probe(path, method='GET', data=None, auth=None, timeout=300.0, **kw):
     path = f'{path}'   
@@ -47,8 +49,6 @@ def probe(path, method='GET', data=None, auth=None, timeout=300.0, **kw):
     except Exception as e:
         return r.text, r.status_code
 
-
-
 def set_job_status(jobId, jobtype, status, **kwargs):
     # Need to mark job finished/queued - # Using - /cluster/<jobtype>/<uuid>/<status>
     return probe(
@@ -61,7 +61,7 @@ def log(log):
     return log
 
 def get_and_process_job(path):
-    job, rc = probe(path,'POST', {'node': nodeId})
+    job, rc = probe(path,'POST', {'node': node_id})
     def process_job(job, rc):
         if not rc == 200 or 'message' in job:
             return job,rc
@@ -107,7 +107,7 @@ if __name__=='__main__':
     if len(args) > 2:
         jobpath, delay  = args[1], float(args[2])
         set_db_env(args[-1])
-        print(f"jobworker.py started with endpoint {nodeId} path {jobpath}")
+        print(f"jobworker.py started with endpoint {node_id} path {jobpath}")
         start = time.time() - 5
         while True:
             time.sleep(1)

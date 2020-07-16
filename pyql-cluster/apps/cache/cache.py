@@ -1,5 +1,5 @@
-def run(server):
-    from flask import request
+async def run(server):
+    from fastapi import Request
     import os, uuid, time, json
     log = server.log
     txn_default_wait_in_sec = 0.005     # default 5 ms
@@ -8,16 +8,17 @@ def run(server):
     # pull stats from docker instance
     # docker logs -f pyql-cluster-8090 2>&1 | grep '##cache commit' | grep 'WARNING' | awk '{print  $8" "$9" "$10" "$12}'
 
-    @server.route('/db/<database>/cache/<table>/txn/<action>', methods=['POST'])
+    @server.api_route('/db/{database}/cache/{table}/txn/{action}', methods=['POST'])
+    async def cache_txn_manage_endpoint(database:str, table: str, action: str, transaction: dict, request: Request):
+        return await cache_txn_manage(database, table, action, transaction,  request=await server.process_request(request))
     @server.is_authenticated('local')
     @server.trace
-    def cache_txn_manage(database, table, action, trans=None, **kw):
+    async def cache_txn_manage(database, table, action, transaction, **kw):
         """
             method for managing txns - canceling / commiting
         """
         trace = kw['trace']
-        cache = server.data[database].tables['cache']
-        transaction = request.get_json() if trans == None else trans
+        cache = await server.data[database].tables['cache']
         if 'txn' in transaction:
             txn_id = transaction['txn']
             tx=None
@@ -26,15 +27,15 @@ def run(server):
             # Get transaction from cache db
             if action == 'commit':
                 while True:
-                    txns = cache.select('id','timestamp',
+                    txns = await cache.select('id','timestamp',
                         where={'table_name': table}
                     )
                     if not txn_id in {tx['id'] for tx in txns}:
-                        return {"message": trace.error(f"{txn_id} does not exist in cache")}, 500
+                        server.http_exception(500, trace.error(f"{txn_id} does not exist in cache"))
                     if len(txns) == 1:
                         if not txns[0]['id'] == txn_id:
                             warning = f"txn with id {txn_id} does not exist for {database} {table}"
-                            return {'warning': trace.warning(warning)}, 500
+                            server.http_exception(500, trace.warning(warning))
                         # txn_id is only value inside
                         tx = txns[0]
                         break
@@ -49,7 +50,7 @@ def run(server):
                                 warning = f"timeout of {wait_time} reached while waiting to commit {txn_id} for {database} {table}, waiting on {txns[:ind]}"
                                 trace.warning(warning)
                                 trace.warning(f"removing txn with id {txns[0]['id']} maxWaitTime of {txn_max_wait_time_in_sec} reached")
-                                cache.delete(where={'id': txns[0]['id']})
+                                await cache.delete(where={'id': txns[0]['id']})
                                 break
                             break
                     if tx == None:
@@ -65,16 +66,17 @@ def run(server):
                 # Should not have broken out of loop here without a tx
                 if tx == None:
                     trace.error("tx is None, this should not hppen")
-                    return {"error": "tx was none"}, 500
-                tx = cache.select('type','txn',
-                        where={'id': txn_id})[0]
+                    server.http_exception(500, "tx was none")
+                tx = await cache.select('type','txn',
+                        where={'id': txn_id})
+                tx = tx[0]
                 try:
-                    r, rc = server.actions[tx['type']](database, table, tx['txn'])
+                    r, rc = await server.actions[tx['type']](database, table, tx['txn'])
                     trace.warning(f"##cache {action} response {r} rc {rc}")
                 except Exception as e:
                     r, rc = trace.exception(f"Exception when performing cache {action}"), 500
                 
-                del_txn = cache.delete(
+                del_txn = await cache.delete(
                     where={'id': txn_id}
                 )
                 if rc == 200:
@@ -88,25 +90,28 @@ def run(server):
                             'table_name': table
                         }
                     }
-                    server.data['cluster'].tables['pyql'].update(
+                    await server.data['cluster'].tables['pyql'].update(
                             **set_params['set'],
                             where=set_params['where']
                     )
-                return {"message": r, "status": rc}, rc
+                server.http_exception(rc, r)
             if action == 'cancel':
-                del_txn = cache.delete(
+                del_txn = await cache.delete(
                     where={'id': txn_id}
                 )
-                return {'deleted': txn_id}, 200
-    @server.route('/db/<database>/cache/<table>/<action>/<txuuid>', methods=['POST'])
+                return {'deleted': txn_id}
+
+    @server.api_route('/db/{database}/cache/{table}/{action}/{txuuid}', methods=['POST'])
+    async def cache_action_endpoint(database: str, table: str, action: str, txuuid: str, txn: dict, request: Request):
+        return await cache_action(database, table, action, txuuid,  request=await server.process_request(request))
+
     @server.is_authenticated('local')
-    def cache_action(database, table, action,txuuid):
-        transaction = request.get_json()
-        server.data[database].tables['cache'].insert(**{
+    async def cache_action(database, table, action, txuuid, txn, **kw):
+        await server.data[database].tables['cache'].insert(**{
             'id': txuuid,
             'table_name': table,
             'type': action,
-            'timestamp': transaction['time'],
-            'txn': transaction['txn']
+            'timestamp': txn['time'],
+            'txn': txn['txn']
         })
-        return {"txn": txuuid}, 200
+        return {"txn": txuuid}
