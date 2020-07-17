@@ -779,7 +779,7 @@ async def run(server):
 
         # pull cluster_name if None
         if cluster_name == None:
-            cluster_name = await server.clusters.select(
+            cluster_name = await server.clusters.clusters.select(
                 'name', where={'id': cluster}
             )
             cluster_name = cluster_name['name']
