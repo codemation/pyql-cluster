@@ -9,8 +9,8 @@ async def run(server):
     @server.is_authenticated('local')
     async def select_func(database, table, **kw):
         log.warning(f"## select_func **kw: {kw}")
-        request = kw['request']
-        return await select_func(database, table, method=request.method, **kw)
+        kw['method'] = kw['request'].method
+        return await select_func(database, table, **kw)
     async def select(database,table, params=None, method='GET', **kw):
         message, rc = server.check_db_table_exist(database,table)
         if not rc == 200:
