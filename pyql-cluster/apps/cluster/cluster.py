@@ -199,6 +199,7 @@ async def run(server):
                 cluster_name, **kwargs)
             args[0] = kwargs.pop('cluster') if cluster_name == args[0] else args[0]
             kwargs['cluster_name'] = cluster_name
+            request.cluster_name = cluster_name
             args = tuple(args)
             return await func(*args, **kwargs)
         return check_user_access
