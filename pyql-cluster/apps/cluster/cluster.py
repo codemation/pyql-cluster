@@ -782,7 +782,7 @@ async def run(server):
             cluster_name = await server.clusters.clusters.select(
                 'name', where={'id': cluster}
             )
-            cluster_name = cluster_name['name']
+            cluster_name = cluster_name[0]['name']
 
         table_endpoints = {'in_sync': {}, 'out_of_sync': {}}
 
