@@ -351,7 +351,8 @@ async def run(server):
         if len(job_list) > cur_ind + 1:
             job_list[cur_ind]['config']['nextJob'] = await wait_on_jobs(pyql, cur_ind+1, job_list)
         if cur_ind == 0:
-            return await jobs_add(job_list[cur_ind])[0]['job_id']
+            result = await jobs_add(job_list[cur_ind])
+            return result[0]['job_id']
         result = await jobs_add(job_list[cur_ind], status='waiting')
         return result[0]['job_id']
     @server.trace
