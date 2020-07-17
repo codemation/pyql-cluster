@@ -20,6 +20,7 @@ async def async_get_request(session: ClientSession, request: dict):
                 config['path'],
                 headers=headers_default if not 'headers' in config else config['headers'],
                 timeout=2.0 if not 'timeout' in config else config['timeout']
+            )
             json_body = await r.json()
             return {request_id: {'content': json_body, 'status': r.status}}
         except Exception as e:
@@ -43,6 +44,7 @@ async def async_post_request(session: ClientSession, request: dict):
                 headers=headers_default if not 'headers' in config else config['headers'],
                 json=config['data'] if 'data' in config else None,
                 timeout=2.0 if not 'timeout' in config else config['timeout']
+            )
             json_body = await r.json()
             return {request_id: {'content': json_body, 'status': r.status}}
         except Exception as e:
