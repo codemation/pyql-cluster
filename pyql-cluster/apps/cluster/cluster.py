@@ -1087,7 +1087,7 @@ async def run(server):
     @server.trace
     async def endpoint_probe(cluster, table, path='', data=None, timeout=1.0, quorum=None, **kw):
         trace = kw['trace']
-        request = kw['request']
+        request = kw['request'] if 'request' in kw else None
         errors = []
         method = request.method if not 'method' in kw else kw['method']
         if method in ['POST', 'PUT'] and data == None:
@@ -2273,6 +2273,7 @@ async def run(server):
                 pyql, 'jobs', 
                 data={'select': ['id'], 'where': {'name': job['job']}},
                 method='POST',
+
                 **kw
                 )
             if not job_check:
