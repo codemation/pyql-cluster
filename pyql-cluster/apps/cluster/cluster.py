@@ -766,8 +766,8 @@ async def run(server):
     @server.is_authenticated('pyql')
     @server.trace
     async def cluster_get_table_endpoints(cluster, table, **kw):
-        kw['request'].cluster_name = cluster
-        return await get_table_endpoints(cluster, table, cluster_name, **kw)
+        cluster_name = kw['request'].__dict__.get('cluster_name')
+        return await get_table_endpoints(cluster, table,cluster_name=cluster_name, **kw)
 
     @server.trace
     async def get_table_endpoints(cluster, table, cluster_name=None, caller=None, **kw):
@@ -776,6 +776,14 @@ async def run(server):
             get_table_endpoints('cluster_uuid', 'table_name')
         """
         trace = kw['trace']
+
+        # pull cluster_name if None
+        if cluster_name == None:
+            cluster_name = await server.clusters.select(
+                'name', where={'id': cluster}
+            )
+            cluster_name = cluster_name['name']
+
         table_endpoints = {'in_sync': {}, 'out_of_sync': {}}
 
         endpoints = await server.clusters.endpoints.select(
@@ -1335,6 +1343,7 @@ async def run(server):
     @server.is_authenticated('pyql')
     @server.trace
     async def cluster_table_endpoint_logs(cluster, table, endpoint, action, **kw):
+        request = kw['request']
         if request.method == 'GET':
             return await table_endpoint_logs(cluster, table, endpoint, action, trace=kw['trace'])
         if request.method == 'POST' and action == 'commit':
@@ -1771,12 +1780,6 @@ async def run(server):
     async def job_update(job_type, job_id, status, job_info={}, **kw):
         pyql = await server.env['PYQL_UUID']
         trace=kw['trace']
-        try:
-            job_info = request.get_json() if job_info == None else job_info
-        except Exception as e:
-            trace.exception("job_info is missing or nothing was provided")
-        if job_info == None:
-            job_info = {}
         if status == 'finished':
             update_from = {'where': {'id': job_id}}
             if job_type == 'cron':
