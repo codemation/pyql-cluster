@@ -2094,7 +2094,7 @@ async def run(server):
                     try:
                         track(f"cutover start result: {r}")
                         track(f"starting table_copy")
-                        tb_copy_result = table_copy(cluster, table, endpoint_path, token, uuid, **kw)
+                        tb_copy_result = await table_copy(cluster, table, endpoint_path, token, uuid, **kw)
                         track(f"table_copy result: {tb_copy_result} rc: {tb_copy_rc}")
                         if not tb_copy_rc == 200:
                             await table_pause(cluster, table, 'stop')
@@ -2121,7 +2121,7 @@ async def run(server):
                     r = await table_pause(cluster, table, 'stop', trace=kw['trace'])
                     track(f'PYQL - end of cutover, resuming table result: {r}')
                 else: 
-                    tb_copy_result = table_copy(cluster, table, endpoint_path, token, uuid, unPauseAfterCopy=True, **kw)
+                    tb_copy_result = await table_copy(cluster, table, endpoint_path, token, uuid, unPauseAfterCopy=True, **kw)
                     if tb_copy_result:
                         track(f"table_copy results: {tb_copy_result}")
                     else:
@@ -2216,7 +2216,7 @@ async def run(server):
                 track(f"setting TB endpoint as in_sync=True, 'state': 'loaded' result: {r}")
                 # Un-Pause
                 track("completing cutover by un-pausing table")
-                r = table_pause(cluster, table, 'stop', trace=kw['trace'])
+                r = await table_pause(cluster, table, 'stop', trace=kw['trace'])
                 track(f"completing cutover result: {r}")
             sync_results[endpoint] = track(f"finished syncing {uuid} for table {table} in cluster {cluster}")
             if cluster == pyql:
