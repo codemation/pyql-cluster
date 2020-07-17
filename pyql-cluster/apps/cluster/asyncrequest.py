@@ -40,7 +40,7 @@ async def async_post_request(session: ClientSession, request: dict):
             }
         }
     """
-    async def post_request()
+    async def post_request():
         for request_id, config in request.items():
             #try:
             print(f"async_post_request with data:  {config}")
