@@ -93,8 +93,10 @@ async def run(server):
                     await server.data['cluster'].tables['pyql'].update(
                             **set_params['set'],
                             where=set_params['where']
+                    
                     )
-                server.http_exception(500, response)
+                    return response
+                server.http_exception(500, "")
             if action == 'cancel':
                 del_txn = await cache.delete(
                     where={'id': txn_id}
