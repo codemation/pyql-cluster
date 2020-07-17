@@ -17,7 +17,6 @@ async def run(server):
     server.clusterjobs = {}
 
     # used for request session references
-    client_event_loop = asyncio.new_event_loop()
     server.sessions = {}
     server.session = requests.Session()
 
@@ -312,7 +311,7 @@ async def run(server):
         pulls endpoint session if exists else creates & returns
         """
         if not endpoint in server.sessions:
-            server.sessions[endpoint] = ClientSession(loop=client_event_loop)
+            server.sessions[endpoint] = ClientSession()
         return server.sessions[endpoint]
     server.get_endpoint_sessions = get_endpoint_sessions
 
