@@ -16,13 +16,11 @@ async def async_get_request(session: ClientSession, request: dict):
     """
     for request_id, config in request.items():
         try:
-            async with session.get(
+            r = await session.get(
                 config['path'],
                 headers=headers_default if not 'headers' in config else config['headers'],
                 timeout=2.0 if not 'timeout' in config else config['timeout']
-            ) as r:
-                json_body = await r.json()
-                #print(f"{url} completed")
+            json_body = await r.json()
             return {request_id: {'content': json_body, 'status': r.status}}
         except Exception as e:
             return {request_id: {'content': str(repr(e)), 'status': 400}}
@@ -40,13 +38,12 @@ async def async_post_request(session: ClientSession, request: dict):
     for request_id, config in request.items():
         try:
             print(f"async_post_request with data:  {config}")
-            async with session.post(
+           r = await session.post(
                 config['path'],
                 headers=headers_default if not 'headers' in config else config['headers'],
                 json=config['data'] if 'data' in config else None,
                 timeout=2.0 if not 'timeout' in config else config['timeout']
-            ) as r:
-                json_body = await r.json()
+            json_body = await r.json()
             return {request_id: {'content': json_body, 'status': r.status}}
         except Exception as e:
             return {request_id: {'content': str(repr(e)), 'status': 400}}
