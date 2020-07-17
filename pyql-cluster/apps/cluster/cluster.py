@@ -766,7 +766,7 @@ async def run(server):
     @server.is_authenticated('pyql')
     @server.trace
     async def cluster_get_table_endpoints(cluster, table, **kw):
-        cluster_name = request.__dict__.get('cluster_name')
+        kw['request'].cluster_name = cluster
         return await get_table_endpoints(cluster, table, cluster_name, **kw)
 
     @server.trace
