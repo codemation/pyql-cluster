@@ -157,7 +157,7 @@ async def run(server):
             env = kwargs
             warning = f"user {user_id} access to cluster with name {cluster_name}, no cluster was found which user has access rights or none exists - env {env}"
             server.http_exception(404, log.warning(warning))
-        return str(cluster_allowed), 200
+        return str(cluster_allowed)
     server.get_clusterid_by_name_authorized = get_clusterid_by_name_authorized
 
     @server.trace
@@ -196,11 +196,9 @@ async def run(server):
             """
             args = list(args)
             cluster_name = kwargs['cluster'] if 'cluster' in kwargs else args[0]
-            kwargs['cluster'], rc = await get_clusterid_by_name_authorized(
+            kwargs['cluster'] = await get_clusterid_by_name_authorized(
                 cluster_name, **kwargs)
             args[0] = kwargs.pop('cluster') if cluster_name == args[0] else args[0]
-            if not rc == 200: #TODO - This probably canot happen since raised implemented
-                server.http_exception(rc, kwargs['cluster'])
             kwargs['cluster_name'] = cluster_name
             args = tuple(args)
             return await func(*args, **kwargs)
@@ -219,9 +217,10 @@ async def run(server):
                 kwargs['quorum'] = quorum
             quorum = kwargs['quorum']
             if not 'quorum' in quorum or quorum['quorum']['in_quorum'] == False:
-                return {
-                    "message": log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {quorum}"),
-                    "quorum": quorum}, 500
+                server.http_exception(
+                    500,
+                    log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum - {quorum}")
+                )
             # Quorum passed - check that state is in_sync
             node_quorum_state = await server.clusters.quorum.select(
                 'quorum.nodes', 'quorum.in_quorum', 'state.in_sync', 
@@ -229,9 +228,10 @@ async def run(server):
                 where={'state.table_name': 'state', 'quorum.node': f'{node_id}'}
                 )
             if len(node_quorum_state) == 0 or node_quorum_state[0]['quorum.in_quorum'] == False:
-                return {
-                    "message": log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {quorum}"),
-                    "quorum": log.error(f"node_quorum_state error: {node_quorum_state}")}, 500
+                server.http_exception(
+                    500,
+                    log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {quorum}")
+                )
             node_quorum_state = node_quorum_state[0]
             if node_quorum_state['state.in_sync'] == True:
                 return await func(*args, **kwargs)
@@ -352,9 +352,9 @@ async def run(server):
             job_list[cur_ind]['config']['nextJob'] = await wait_on_jobs(pyql, cur_ind+1, job_list)
         if cur_ind == 0:
             result = await jobs_add(job_list[cur_ind])
-            return result[0]['job_id']
+            return result['job_id']
         result = await jobs_add(job_list[cur_ind], status='waiting')
-        return result[0]['job_id']
+        return result['job_id']
     @server.trace
     async def bootstrap_pyql_cluster(config, **kw):
         """
@@ -2297,7 +2297,7 @@ async def run(server):
         trace.warning(f"cluster {job_type} add for job {job} finished - {response}")
         return {
             "message": f"job {job} added to jobs queue - {response}",
-            "job_id": job_id}, 200
+            "job_id": job_id}
     server.clusterjobs['jobs_add'] = jobs_add
     
 
