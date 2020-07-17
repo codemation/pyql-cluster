@@ -2134,7 +2134,7 @@ async def run(server):
                 track('starting sync_cluster_table_logs')
                 while True:
                     try:
-                        logs_to_sync, rc = table_endpoint_logs(cluster, table, uuid, 'getAll', trace=kw['trace'])
+                        logs_to_sync = table_endpoint_logs(cluster, table, uuid, 'getAll', trace=kw['trace'])
                         break
                     except Exception as e:
                         try_count+=1
@@ -2160,7 +2160,7 @@ async def run(server):
                 # confirm txns are applied & remove from txns table
                 #/cluster/{cluster}/tablelogs/{table}/{endpoint}/commit - POST
                 if len(commited_logs) > 0:
-                    commit_result, rc = await commit_table_endpoint_logs(cluster, table, uuid, {'txns': commited_logs}, trace=kw['trace'])
+                    commit_result = await commit_table_endpoint_logs(cluster, table, uuid, {'txns': commited_logs}, trace=kw['trace'])
                 message = f"sync_cluster_table_logs completed for {cluster} {table}"
                 track(message)
                 return {"message": message}, 200
@@ -2181,7 +2181,7 @@ async def run(server):
             else:
                 # Check for un-commited logs - otherwise full resync needs to occur.
                 track("table already loaded, checking for change logs")
-                count, rc = table_endpoint_logs(cluster, table, uuid, 'count', trace=kw['trace'])
+                count = table_endpoint_logs(cluster, table, uuid, 'count', trace=kw['trace'])
                 if rc == 200:
                     if count['availableTxns'] == 0:
                         track("no change logs found for table, need to reload table - drop / load")
