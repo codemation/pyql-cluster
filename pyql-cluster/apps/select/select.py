@@ -8,6 +8,7 @@ async def run(server):
         return await select_func(database, table, params=params,  request=await server.process_request(request))
     @server.is_authenticated('local')
     async def select_func(database, table, **kw):
+        log.warning(f"## select_func **kw: {kw}")
         request = kw['request']
         return await select_func(database, table, method=request.method, **kw)
     async def select(database,table, params=None, method='GET', **kw):
