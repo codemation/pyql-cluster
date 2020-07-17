@@ -2134,7 +2134,7 @@ async def run(server):
                 track('starting sync_cluster_table_logs')
                 while True:
                     try:
-                        logs_to_sync = table_endpoint_logs(cluster, table, uuid, 'getAll', trace=kw['trace'])
+                        logs_to_sync = await table_endpoint_logs(cluster, table, uuid, 'getAll', trace=kw['trace'])
                         break
                     except Exception as e:
                         try_count+=1
@@ -2181,8 +2181,8 @@ async def run(server):
             else:
                 # Check for un-commited logs - otherwise full resync needs to occur.
                 track("table already loaded, checking for change logs")
-                count = table_endpoint_logs(cluster, table, uuid, 'count', trace=kw['trace'])
-                if rc == 200:
+                count = await table_endpoint_logs(cluster, table, uuid, 'count', trace=kw['trace'])
+                if count:
                     if count['availableTxns'] == 0:
                         track("no change logs found for table, need to reload table - drop / load")
                         # Need to reload table - drop / load
