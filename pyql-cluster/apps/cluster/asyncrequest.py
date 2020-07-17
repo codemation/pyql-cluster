@@ -39,7 +39,7 @@ async def async_post_request(session: ClientSession, request: dict):
     for request_id, config in request.items():
         try:
             print(f"async_post_request with data:  {config}")
-           r = await session.post(
+            r = await session.post(
                 config['path'],
                 headers=headers_default if not 'headers' in config else config['headers'],
                 json=config['data'] if 'data' in config else None,
