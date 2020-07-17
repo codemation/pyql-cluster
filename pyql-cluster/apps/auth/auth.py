@@ -115,8 +115,8 @@ async def run(server):
                         request.auth_children = [user['id'] for user in child_users]
                         kwargs['auth_children'] = [user['id'] for user in child_users]
                     if location == 'pyql':
-                        pyql, rc = await server.get_clusterid_by_name_authorized('pyql', **kwargs)
-                        if not rc == 200:
+                        pyql = await server.get_clusterid_by_name_authorized('pyql', **kwargs)
+                        if pyql:
                             log.warning(pyql)
                             server.http_exception(403, debug(log.error("un-authorized access")))
                 return await f(*args, **kwargs)
