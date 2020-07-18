@@ -355,10 +355,10 @@ async def run(server):
                 }
             }
             if method == 'GET':
-                result = await async_get_request(session, request)
+                result = await async_get_request(session, request, loop=server.event_loop)
             else:
                 request['probe']['data'] = data
-                result = await async_post_request(session, request)
+                result = await async_post_request(session, request, loop=server.event_loop)
         except Exception as e:
             error = f"Encountered exception when probing {path} - {repr(e)}"
             return {"error": trace.error(error)}, 500
@@ -544,7 +544,7 @@ async def run(server):
                 'session': await get_endpoint_sessions(endpoint['uuid'], **kw)
             }
         try:
-            ep_results = await async_request_multi(ep_requests)
+            ep_results = await async_request_multi(ep_requests, loop=server.event_loop)
         except Exception as e:
             server.http_exception(
                 500, trace.exception(f"Excepton found during get_alive_endpoints"))
@@ -609,7 +609,7 @@ async def run(server):
         if len(ep_list) == 0:
             return {"message": f"pyql node {node_id} is still syncing"}
         try:
-            ep_results = await async_request_multi(ep_requests, 'POST')
+            ep_results = await async_request_multi(ep_requests, 'POST', loop=server.event_loop)
         except Exception as e:
             trace.exception("Excepton found during cluster_quorum() check")
         trace.warning(f"cluster_quorum_check - results {ep_results}")
@@ -905,7 +905,7 @@ async def run(server):
                     'headers': await get_auth_http_headers('remote', token=token),
                     'session': await get_endpoint_sessions(epuuid, **kw)
                 }
-            async_results = await async_request_multi(ep_requests, 'POST')
+            async_results = await async_request_multi(ep_requests, 'POST', loop=server.event_loop)
             # async_results response format
             # [{'9f5f3600-c492-11ea-9ada-f3f7bc2ffe6c': {'content': {'message': 'items added'}, 'status': 200}}]
             trace(f"async_results - {async_results}")
@@ -945,7 +945,7 @@ async def run(server):
                                 'session': await get_endpoint_sessions(epuuid, **kw)
                             }
                         trace(f"marking {failed_endpoint} as in_sync=False on alive pyql state endpoints")
-                        ep_state_results = await async_request_multi(ep_state_requests, 'POST')
+                        ep_state_results = await async_request_multi(ep_state_requests, 'POST', loop=server.event_loop)
                         trace(f"marking {failed_endpoint} as in_sync=False on alive pyql state endpoints - results: {ep_state_results}")
                     else:
                         state_set = {
@@ -1012,7 +1012,7 @@ async def run(server):
                         'session': await get_endpoint_sessions(epuuid, **kw)
                     }
                 
-                async_results = await async_request_multi(ep_commit_requests, 'POST')
+                async_results = await async_request_multi(ep_commit_requests, 'POST', loop=server.event_loop)
                 trace.info(async_results)
                 # if a commit fails - due to a timeout or other internal - need to mark endpoint OutOfSync
                 success, fail = set(), set()
