@@ -7,7 +7,7 @@ async def run(server):
     async def get_all_tables_api(database, request: Request):
         return await get_all_tables(database,  request=await server.process_request(request))
     @server.is_authenticated('local')
-    async def get_all_tables(database):
+    async def get_all_tables(database, **kw):
         if not database in server.data:
             server.http_exception(400, f"no database with name {database} attached to endpoint")
         tables = server.data[database].tables
@@ -72,9 +72,11 @@ async def run(server):
     @server.api_route('/db/{database}/table/{table}/config')
     async def db_get_table_config_api(database: str, table: str, request: Request):
         return await db_get_table_config(database, table,  request=await server.process_request(request))
+
     @server.is_authenticated('local')
     async def db_get_table_config(database,table, **kw):
         return get_table_config(database, table, **kw)
+
     def get_table_config(database, table, **kw):
         message, rc = server.check_db_table_exist(database, table)
         if not rc == 200:
@@ -95,17 +97,19 @@ async def run(server):
     server.get_table_func = get_table_config
 
     @server.api_route('/db/{database}/table/{table}/create', methods=['POST'])
-    async def database_table_create_api(database, table, config: dict):
-        return await database_table_create(database, table, config)
+    async def database_table_create_api(database, table, config: dict, request: Request):
+        return await database_table_create(database, table, config, request=await server.process_request(request))
+
     @server.is_authenticated('local')
-    async def database_table_create(database, table, config):
+    async def database_table_create(database, table, config, **kw):
         return create_table_func(database, config)
 
     @server.api_route('/db/{database}/table/{table}/sync', methods=['POST'])
-    async def sync_table_func_api(database: str, table: str, data_to_sync: dict):
-        return await sync_table_func(database, table, data_to_sync)
+    async def sync_table_func_api(database: str, table: str, data_to_sync: dict, request: Request):
+        return await sync_table_func(database, table, data_to_sync, request=await server.process_request(request))
+
     @server.is_authenticated('local')
-    async def sync_table_func(database, table):
+    async def sync_table_func(database, table, **kw):
         if not database in server.data:
             server.db_check(database)
         if not database in server.data:
@@ -129,10 +133,11 @@ async def run(server):
 
 
     @server.api_route('/db/{database}/table/create', methods=['POST'])
-    async def db_create_table_func(database: str, config: dict):
-        return await create_table_func(database, config)
+    async def db_create_table_func(database: str, config: dict, request: Request):
+        return await create_table_func(database, config, request=await server.process_request(request))
+
     @server.is_authenticated('local')
-    async def create_table_func(database, config):
+    async def create_table_func(database, config, **kw):
         if database in server.data:
             db = server.data[database]
             table_config = config
