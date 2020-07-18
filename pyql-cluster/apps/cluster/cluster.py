@@ -311,7 +311,7 @@ async def run(server):
         """
         trace = kw['trace']
         async def session():
-            async with ClientSession() as client:
+            async with ClientSession(loop=server.event_loop) as client:
                 trace(f"started session for endpoint {endpoint}")
                 while True:
                     status = yield client
