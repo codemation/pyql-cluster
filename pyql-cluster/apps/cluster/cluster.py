@@ -323,10 +323,10 @@ async def run(server):
             server.sessions[endpoint] = session()
             return await server.sessions[endpoint].asend(None)
         return await server.sessions[endpoint].asend(endpoint)
-    server.get_endpoint_sessions = get_endpoint_sessions
+    server.get_endpoint_sessions = get_endpoint_sessionsq
 
-    # creating initial session for this node
-    server.sessions[node_id] = await get_endpoint_sessions(node_id) 
+    # creating initial session for this nodeq
+    await get_endpoint_sessions(node_id)
 
     async def cleanup_sessions():
         try:
