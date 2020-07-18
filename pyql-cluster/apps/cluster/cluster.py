@@ -17,8 +17,7 @@ async def run(server):
 
     # used for request session references
     server.sessions = {}
-    server.session = requests.Session()
-
+    
     class Tracer:
         def __init__(self, name, root=None):
             self.name = name
