@@ -1,6 +1,7 @@
 # table
 async def run(server):
     from fastapi import Request
+    import asyncio
     log = server.log
 
     @server.api_route('/db/{database}/tables')
@@ -120,11 +121,17 @@ async def run(server):
             server.http_exception(400, log.error(f"{table} not found in database {database}"))
         table_config = await get_table_config(database, table)
         await server.data[database].run(f'drop table {table}')
-        message, rc = await create_table(database, table_config)
-        log.warning(f"table /sync create_table_func response {message} {rc}")
-        for row in data_to_sync['data']:
-            log.warning(f"table sync insert row - {row}")
-            await server.data[database].tables[table].insert(**row)
+        message = await create_table(database, table_config)
+        log.warning(f"table /sync create_table_func response {message}")
+        #for row in data_to_sync['data']:
+        #    log.warning(f"table sync insert row - {row}")
+        #    await server.data[database].tables[table].insert(**row)
+        rows_to_insert = [
+            asyncio.create_task(
+                server.data[database].tables[table].insert(**row)
+                ) for row in  data_to_sync['data']
+            ]
+        await asyncio.gather(*rows_to_insert)
         return {"message": log.warning(f"{database} {table} sync successful")}
 
     @server.api_route('/db/{database}/table/{table}/{key}', methods=['GET', 'POST', 'DELETE'])
