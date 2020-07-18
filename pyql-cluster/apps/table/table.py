@@ -75,9 +75,9 @@ async def run(server):
 
     @server.is_authenticated('local')
     async def db_get_table_config(database,table, **kw):
-        return get_table_config(database, table, **kw)
+        return await get_table_config(database, table, **kw)
 
-    def get_table_config(database, table, **kw):
+    async def get_table_config(database, table, **kw):
         message, rc = server.check_db_table_exist(database, table)
         if not rc == 200:
             server.http_exception(rc, message)
@@ -111,11 +111,11 @@ async def run(server):
     @server.is_authenticated('local')
     async def sync_table_func(database, table, data_to_sync, **kw):
         if not database in server.data:
-            server.db_check(database)
+            await server.db_check(database)
         if not database in server.data:
             server.http_exception(500, log.error(f"{database} not found in endpoint"))
         if not table in server.data[database].tables:
-            server.db_check(database)
+            await server.db_check(database)
         if not table in server.data[database].tables:
             server.http_exception(400, log.error(f"{table} not found in database {database}"))
         table_config, _ = await get_table_config(database, table)
@@ -138,6 +138,8 @@ async def run(server):
 
     @server.is_authenticated('local')
     async def create_table_func(database, config, **kw):
+        return await create_table(database, config, **kw)
+    async def create_table(database, config, **kw):
         if database in server.data:
             db = server.data[database]
             table_config = config
@@ -184,11 +186,11 @@ async def run(server):
                 else:
                     table_config[table_name]['foreign_keys'] = None
                 # All required table configuration has been provided, Creating table.
-                db.create_table(
+                await db.create_table(
                     table_name, 
                     columns,
                     table_config[table_name]["primary_key"],
                     foreign_keys=table_config[table_name]["foreign_keys"]
                     )
-                server.db_check(database)
+                await server.db_check(database)
                 return {"message": log.warning(f"""table {table_name} created successfully """)}
