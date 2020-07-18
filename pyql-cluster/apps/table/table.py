@@ -41,9 +41,7 @@ async def run(server):
         return await server.actions['insert'](database, table, **kw)
 
 
-    @server.api_route('/db/{database}/table/{table}/{key}', methods=['GET', 'POST', 'DELETE'])
-    async def db_table_key_api(database: str, table: str, key: str, request: Request, params: dict = None):
-        return await db_table_key(database, table, key, params=params,  request=await server.process_request(request))
+
     @server.is_authenticated('local')
     async def db_table_key(database, table, key, **kw):
         request = kw['request']
@@ -124,6 +122,10 @@ async def run(server):
             log.warning(f"table sync insert row - {row}")
             await server.data[database].tables[table].insert(**row)
         return {"message": log.warning(f"{database} {table} sync successful")}
+
+    @server.api_route('/db/{database}/table/{table}/{key}', methods=['GET', 'POST', 'DELETE'])
+    async def db_table_key_api(database: str, table: str, key: str, request: Request, params: dict = None):
+        return await db_table_key(database, table, key, params=params,  request=await server.process_request(request))
 
 
     @server.api_route('/db/{database}/table/create', methods=['POST'])
