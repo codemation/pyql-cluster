@@ -4,7 +4,6 @@ async def run(server):
     import asyncio
     from aiohttp import ClientSession
     from apps.cluster.asyncrequest import async_request_multi, async_get_request, async_post_request
-    import requests
     from datetime import datetime
     import time, uuid, random
     from random import randrange
@@ -96,7 +95,7 @@ async def run(server):
             'last_mod_time': time.time()
         })
     node_id = dbuuid
-    server.sessions[node_id] = server.session
+    server.sessions[node_id] = await get_endpoint_sessions(node_id)
 
     os.environ['PYQL_ENDPOINT'] = dbuuid
     await server.env.set_item('PYQL_ENDPOINT', dbuuid)
