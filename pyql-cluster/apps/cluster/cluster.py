@@ -2043,7 +2043,7 @@ async def run(server):
                     f'{out_of_sync_path}/sync', 'POST', in_sync_table_copy, 
                     token=out_of_sync_token, session=await get_endpoint_sessions(out_of_sync_uuid, **kw),
                     trace=kw['trace'])
-                    
+
         # mark table endpoint as 'new'
         if not rc == 200:
             await table_endpoint(cluster, table, out_of_sync_uuid, {'state': 'new'}, trace=kw['trace'])
@@ -2113,27 +2113,24 @@ async def run(server):
                         track(f"cutover start result: {r}")
                         track(f"starting table_copy")
                         tb_copy_result = await table_copy(cluster, table, endpoint_path, token, uuid, **kw)
-                        track(f"table_copy result: {tb_copy_result} rc: {tb_copy_rc}")
-                        if not tb_copy_rc == 200:
-                            await table_pause(cluster, table, 'stop')
-                            return track(f"PYQL - table create failed - error"), 500
-                        else:
-                            track(f"PYQL - Marking table endpoint as in_sync & loaded")
-                            r = await table_endpoint(cluster, table, uuid, {'in_sync': True, 'state': 'loaded'}, trace=kw['trace'])
-                            track(f'PYQL - marking table endpoint {uuid} - result: {r}')
-                            if cluster == pyql and table == 'state':
-                                # as sync endpoint is pyql - state, need to manually set in_sync True on itself
-                                status, rc = await probe(
-                                    f'{endpoint_path}/update',
-                                    method='POST', 
-                                    data={'set': {
-                                        'state': 'loaded', 'in_sync': True},
-                                        'where': {'uuid': endpoint, 'table_name': 'state'}
-                                    },
-                                    token=token,
-                                    session=await get_endpoint_sessions(uuid, **kw),
-                                    trace=kw['trace']
-                                )
+                        track(f"table_copy result: {tb_copy_result}")
+                        
+                        track(f"PYQL - Marking table endpoint as in_sync & loaded")
+                        r = await table_endpoint(cluster, table, uuid, {'in_sync': True, 'state': 'loaded'}, trace=kw['trace'])
+                        track(f'PYQL - marking table endpoint {uuid} - result: {r}')
+                        if cluster == pyql and table == 'state':
+                            # as sync endpoint is pyql - state, need to manually set in_sync True on itself
+                            status, rc = await probe(
+                                f'{endpoint_path}/update',
+                                method='POST', 
+                                data={'set': {
+                                    'state': 'loaded', 'in_sync': True},
+                                    'where': {'uuid': endpoint, 'table_name': 'state'}
+                                },
+                                token=token,
+                                session=await get_endpoint_sessions(uuid, **kw),
+                                trace=kw['trace']
+                            )
                     except Exception as e:
                         trace.exception(track(f"PYQL - exception during load table - {repr(e)}"))
                     r = await table_pause(cluster, table, 'stop', trace=kw['trace'])
