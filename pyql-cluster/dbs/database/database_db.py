@@ -8,6 +8,7 @@ async def run(server):
     log = server.log
 
     event_loop = asyncio.get_event_loop()
+    server.event_loop = event_loop
     print(f"databse_db event_loop: {event_loop}")
 
     @server.api_route('/internal/db/attach')
