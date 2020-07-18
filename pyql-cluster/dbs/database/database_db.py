@@ -5,10 +5,12 @@ async def run(server):
     from fastapi.websockets import WebSocket
     import uvloop, asyncio
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    log = server.log
-
+   
     event_loop = asyncio.get_event_loop()
     server.event_loop = event_loop
+
+    log = server.log
+
     print(f"databse_db event_loop: {event_loop}")
 
     @server.api_route('/internal/db/attach')

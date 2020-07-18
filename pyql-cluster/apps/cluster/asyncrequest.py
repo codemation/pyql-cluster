@@ -14,6 +14,7 @@ async def async_get_request(session: ClientSession, request: dict, loop=None):
         }
 
     """
+    asyncio.set_event_loop(loop)
     async def get_request():
         for request_id, config in request.items():
             #try:
@@ -41,6 +42,7 @@ async def async_post_request(session: ClientSession, request: dict, loop=None):
             }
         }
     """
+    asyncio.set_event_loop(loop)
     async def post_request():
         for request_id, config in request.items():
             print(f"async_post_request with data:  {config}")
@@ -57,6 +59,8 @@ async def async_post_request(session: ClientSession, request: dict, loop=None):
     #return result[0]
 
 async def async_request_multi(urls, method='GET', loop=None, session=None):
+    asyncio.set_event_loop(loop)
+
     request_results = {}
     request = async_get_request if method == 'GET' else async_post_request
     results = await asyncio.gather(

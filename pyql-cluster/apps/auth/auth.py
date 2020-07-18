@@ -4,6 +4,8 @@ async def run(server):
     import os, uuid, time, json, base64, jwt, string, random, socket
     import uvloop, asyncio
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    asyncio.set_event_loop(loop)
+    
     hostname = socket.getfqdn()
     char_nums = string.ascii_letters + ''.join([str(i) for i in range(10)])
     log = server.log
