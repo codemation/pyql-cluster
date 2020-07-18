@@ -57,14 +57,14 @@ async def async_post_request(session: ClientSession, request: dict):
     #return result[0]
 
 async def async_request_multi(urls, method='GET', loop=None, session=None):
-    requests = {}
-    if method == 'GET':
-        for request in await asyncio.gather(*[async_get_request(url['session'], {url: urls[url]}) for url in urls]):
-            requests.update(request)
-        return requests
-    for request in await asyncio.gather(*[async_post_request(url['session'], {url: urls[url]}) for url in urls]):
-        requests.update(request)
-    return requests
+    request_results = {}
+    request = async_get_request if method == 'GET' else async_post_request
+    results = await asyncio.gather(
+        *[request(urls[url]['session'], {url: urls[url]}) for url in urls]
+        )
+    for result in results:
+        request_results.update(result)
+    return request_results
 
 def async_request(urls, method='GET', loop=None, session=None):
     """
