@@ -2014,10 +2014,6 @@ async def run(server):
         pyql = await server.env['PYQL_UUID']
         in_sync_table_copy = await table_select(cluster, table, method='GET', **kw)
 
-        if rc == 500:
-            error = f"#CRITICAL - tablesyncer was not able to find an in_sync endpoints"
-            r = await table_pause(cluster, table, 'stop')
-            server.http_exception(rc, trace.error(error))
         # This allows logs to generate for endpoint - following the copy
         await table_endpoint(cluster, table, out_of_sync_uuid, {'state': 'loaded'}, trace=kw['trace'])
         if 'unPauseAfterCopy' in kw:
@@ -2047,7 +2043,8 @@ async def run(server):
                     f'{out_of_sync_path}/sync', 'POST', in_sync_table_copy, 
                     token=out_of_sync_token, session=await get_endpoint_sessions(out_of_sync_uuid, **kw),
                     trace=kw['trace'])
-        # mark table endpoint as 'loaded'
+                    
+        # mark table endpoint as 'new'
         if not rc == 200:
             await table_endpoint(cluster, table, out_of_sync_uuid, {'state': 'new'}, trace=kw['trace'])
         trace.warning(f"#SYNC table_copy results {response} {rc}")
