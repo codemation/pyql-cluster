@@ -109,7 +109,7 @@ async def run(server):
         return await sync_table_func(database, table, data_to_sync, request=await server.process_request(request))
 
     @server.is_authenticated('local')
-    async def sync_table_func(database, table, **kw):
+    async def sync_table_func(database, table, data_to_sync, **kw):
         if not database in server.data:
             server.db_check(database)
         if not database in server.data:
