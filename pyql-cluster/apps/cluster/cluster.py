@@ -323,7 +323,9 @@ async def run(server):
             server.sessions[endpoint] = session()
             return await server.sessions[endpoint].asend(None)
         return await server.sessions[endpoint].asend(endpoint)
-    server.get_endpoint_sessions = get_endpoint_sessionsq
+
+    # attaching to global server var    
+    server.get_endpoint_sessions = get_endpoint_sessions
 
     # creating initial session for this nodeq
     await get_endpoint_sessions(node_id)
