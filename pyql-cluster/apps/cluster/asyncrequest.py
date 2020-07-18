@@ -59,10 +59,10 @@ async def async_post_request(session: ClientSession, request: dict):
 async def async_request_multi(urls, method='GET', loop=None, session=None):
     requests = {}
     if method == 'GET':
-        for request in await asyncio.gather(*[async_get_request(session, {url: urls[url]}) for url in urls]):
+        for request in await asyncio.gather(*[async_get_request(url['session'], {url: urls[url]}) for url in urls]):
             requests.update(request)
         return requests
-    for request in await asyncio.gather(*[async_post_request(session, {url: urls[url]}) for url in urls]):
+    for request in await asyncio.gather(*[async_post_request(url['session'], {url: urls[url]}) for url in urls]):
         requests.update(request)
     return requests
 
