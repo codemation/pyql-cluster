@@ -103,7 +103,7 @@ async def run(server):
 
     @server.api_route('/db/{database}/table/{table}/sync', methods=['POST'])
     async def sync_table_func_api(database: str, table: str, data_to_sync: dict):
-        return await sync_table_func(databse, table, data_to_sync)
+        return await sync_table_func(database, table, data_to_sync)
     @server.is_authenticated('local')
     async def sync_table_func(database, table):
         if not database in server.data:
