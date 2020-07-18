@@ -17,7 +17,7 @@ async def run(server):
 
     # used for request session references
     server.sessions = {}
-    
+
     class Tracer:
         def __init__(self, name, root=None):
             self.name = name
@@ -94,7 +94,7 @@ async def run(server):
             'last_mod_time': time.time()
         })
     node_id = dbuuid
-    server.sessions[node_id] = await get_endpoint_sessions(node_id)
+    
 
     os.environ['PYQL_ENDPOINT'] = dbuuid
     await server.env.set_item('PYQL_ENDPOINT', dbuuid)
@@ -324,6 +324,9 @@ async def run(server):
             return await server.sessions[endpoint].asend(None)
         return await server.sessions[endpoint].asend(endpoint)
     server.get_endpoint_sessions = get_endpoint_sessions
+
+    # creating initial session for this node
+    server.sessions[node_id] = await get_endpoint_sessions(node_id) 
 
     async def cleanup_sessions():
         try:
