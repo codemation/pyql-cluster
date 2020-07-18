@@ -260,7 +260,7 @@ async def run(server):
                         "method": request.method, 
                         "headers": headers, 
                         "data": request.json, 
-                        "session": await get_endpoint_sessions(node['uuid'])}
+                        "session": await get_endpoint_sessions(node['uuid'], **kw)}
                     r, rc =  await probe(url, **request_options)
                     if rc == 200: 
                         return r, rc
@@ -307,14 +307,33 @@ async def run(server):
         server.reset_cache()
         return {"message": f"{nodeId} reset_cache completed"} 
     server.node_reset_cache = node_reset_cache
-    async def get_endpoint_sessions(endpoint):
+    @server.trace
+    async def get_endpoint_sessions(endpoint, **kw):
         """
         pulls endpoint session if exists else creates & returns
         """
+        trace = kw['trace']
+        async def session():
+            async with ClientSession() as client:
+                trace(f"started session for endpoint {endpoint}")
+                while True:
+                    status = yield client
+                    if status == 'finished':
+                        trace(f"finished session for endpoint {endpoint}")
+                        break
         if not endpoint in server.sessions:
-            server.sessions[endpoint] = ClientSession()
-        return server.sessions[endpoint]
+            server.sessions[endpoint] = session()
+            return await server.sessions[endpoint].asend(None)
+        return await sessions[endpoint].asend(endpoint)
     server.get_endpoint_sessions = get_endpoint_sessions
+
+    async def cleanup_sessions():
+        try:
+            for session in server.sessions:
+                await server.sessions[session].asend('finished')
+        except StopAsyncIteration:
+            pass
+        return
 
     @server.trace
     async def probe(path, method='GET', data=None, timeout=5.0, auth=None, headers=None, **kw):
@@ -519,7 +538,7 @@ async def run(server):
             ep_requests[endpoint['uuid']] = {
                 'path': f"http://{endpoint['path']}/pyql/node",
                 'timeout':timeout,
-                'session': await get_endpoint_sessions(endpoint['uuid'])
+                'session': await get_endpoint_sessions(endpoint['uuid'], **kw)
             }
         try:
             ep_results = await async_request_multi(ep_requests)
@@ -580,7 +599,7 @@ async def run(server):
                 ep_requests[endpoint['uuid']] = {
                     'path': endpoint_path, 'data': None, 'timeout': 5.0,
                     'headers': await get_auth_http_headers('remote', token=endpoint['token']),
-                    'session': await get_endpoint_sessions(endpoint['uuid'])
+                    'session': await get_endpoint_sessions(endpoint['uuid'], **kw)
                     }
 
         trace.warning(f"cluster_quorum_check - running using {ep_requests}")
@@ -881,7 +900,7 @@ async def run(server):
                     'data': data,
                     'timeout': 2.0,
                     'headers': await get_auth_http_headers('remote', token=token),
-                    'session': await get_endpoint_sessions(epuuid)
+                    'session': await get_endpoint_sessions(epuuid, **kw)
                 }
             async_results = await async_request_multi(ep_requests, 'POST')
             # async_results response format
@@ -920,7 +939,7 @@ async def run(server):
                                 'data': state_set,
                                 'timeout': 2.0,
                                 'headers': await get_auth_http_headers('remote', token=token),
-                                'session': await get_endpoint_sessions(epuuid)
+                                'session': await get_endpoint_sessions(epuuid, **kw)
                             }
                         trace(f"marking {failed_endpoint} as in_sync=False on alive pyql state endpoints")
                         ep_state_results = await async_request_multi(ep_state_requests, 'POST')
@@ -987,7 +1006,7 @@ async def run(server):
                         'data': endpoint_response[endpoint],
                         'timeout': 2.0,
                         'headers': await get_auth_http_headers('remote', token=token, trace=trace),
-                        'session': await get_endpoint_sessions(epuuid)
+                        'session': await get_endpoint_sessions(epuuid, **kw)
                     }
                 
                 async_results = await async_request_multi(ep_commit_requests, 'POST')
@@ -1122,7 +1141,7 @@ async def run(server):
                     data=data,
                     token=endpoint['token'],
                     timeout=timeout,
-                    session=await get_endpoint_sessions(endpoint['uuid'])
+                    session=await get_endpoint_sessions(endpoint['uuid'], **kw)
                 )
                 if not rc == 200:
                     errors.append({endpoint['name']: trace.exception(f"non 200 rc encountered with {endpoint} {rc}")})
@@ -1602,7 +1621,7 @@ async def run(server):
                         method='POST',
                         data={'PYQL_UUID': cluster_id},
                         token=config['token'],
-                        session=await get_endpoint_sessions(config['database']['uuid'])
+                        session=await get_endpoint_sessions(config['database']['uuid'], **kw)
                     )
                     # auth setup - applys cluster service token in joining pyql node, and pulls key
                     result, rc = await probe(
@@ -1612,7 +1631,7 @@ async def run(server):
                             'PYQL_CLUSTER_SERVICE_TOKEN': await server.env['PYQL_CLUSTER_SERVICE_TOKEN']
                         },
                         token=config['token'],
-                        session=await get_endpoint_sessions(config['database']['uuid'])
+                        session=await get_endpoint_sessions(config['database']['uuid'], **kw)
                     )
                     trace.warning(f"completed auth setup for new pyql endpoint: result {result} {rc}")
             return {"message": trace.warning(f"join cluster {cluster_name} for endpoint {config['name']} completed successfully")}, 200
@@ -1860,7 +1879,7 @@ async def run(server):
                 method='POST',
                 token=endpoint['token'],
                 data=find_latest,
-                session=await get_endpoint_sessions(endpoint['uuid']),
+                session=await get_endpoint_sessions(endpoint['uuid'], **kw),
                 timeout=2.0,
                 trace=kw['trace']
             )
@@ -1886,7 +1905,7 @@ async def run(server):
                     'POST',
                     update_set_in_sync,
                     token=endpoint['token'],
-                    session=await get_endpoint_sessions(endpoint['uuid']),
+                    session=await get_endpoint_sessions(endpoint['uuid'], **kw),
                     timeout=2.0,
                     trace=kw['trace']
                 )
@@ -2009,7 +2028,7 @@ async def run(server):
             data=in_sync_table_copy, 
             token=out_of_sync_token,
             timeout=None, # liveness has already been checked  
-            session=await get_endpoint_sessions(out_of_sync_uuid), trace=kw['trace'])
+            session=await get_endpoint_sessions(out_of_sync_uuid), **kw)
         if rc == 400 and 'message' in response:
             if 'not found in database' in response['message']:
                 # create table & retry resync
@@ -2017,14 +2036,14 @@ async def run(server):
                 tb_config = table_config(cluster, table)
                 response, rc = await probe(
                     f'{out_of_sync_path}/create', 'POST', tb_config, 
-                    token=out_of_sync_token, session=await get_endpoint_sessions(out_of_sync_uuid),  
+                    token=out_of_sync_token, session=await get_endpoint_sessions(out_of_sync_uuid, **kw),  
                     trace=kw['trace'])
                 if not rc == 200:
                     response, rc = trace.error(f"failed to create table using {tb_config}"), 500
                 #Retry sync since new table creation
                 response, rc = await probe(
                     f'{out_of_sync_path}/sync', 'POST', in_sync_table_copy, 
-                    token=out_of_sync_token, session=await get_endpoint_sessions(out_of_sync_uuid),
+                    token=out_of_sync_token, session=await get_endpoint_sessions(out_of_sync_uuid, **kw),
                     trace=kw['trace'])
         # mark table endpoint as 'loaded'
         if not rc == 200:
@@ -2080,7 +2099,7 @@ async def run(server):
             in_sync_token = in_sync_endpoint['token']
 
             # check if endpoint is alive
-            r, rc = await probe(f'http://{path}/pyql/node', trace=kw['trace'], session=await get_endpoint_sessions(uuid))
+            r, rc = await probe(f'http://{path}/pyql/node', trace=kw['trace'], session=await get_endpoint_sessions(uuid, **kw))
             if not rc == 200 and not rc==404:
                 warning = f"endpoint {uuid} is not alive or reachable with path {path} - cannot issue sync right now"
                 sync_results[endpoint] = track(warning)
@@ -2113,7 +2132,7 @@ async def run(server):
                                         'where': {'uuid': endpoint, 'table_name': 'state'}
                                     },
                                     token=token,
-                                    session=await get_endpoint_sessions(uuid),
+                                    session=await get_endpoint_sessions(uuid, **kw),
                                     trace=kw['trace']
                                 )
                     except Exception as e:
@@ -2152,7 +2171,7 @@ async def run(server):
                         message, rc = await probe(
                             f'{endpoint_path}/{action}', 'POST', 
                             transaction[action], token=token, 
-                            session=await get_endpoint_sessions(uuid), trace=kw['trace'])
+                            session=await get_endpoint_sessions(uuid), **kw)
                         if rc == 200:
                             commited_logs.append(txn['uuid'])
                         else:
