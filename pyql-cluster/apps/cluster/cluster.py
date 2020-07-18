@@ -324,7 +324,7 @@ async def run(server):
         if not endpoint in server.sessions:
             server.sessions[endpoint] = session()
             return await server.sessions[endpoint].asend(None)
-        return await sessions[endpoint].asend(endpoint)
+        return await server.sessions[endpoint].asend(endpoint)
     server.get_endpoint_sessions = get_endpoint_sessions
 
     async def cleanup_sessions():
