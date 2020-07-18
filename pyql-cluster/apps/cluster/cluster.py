@@ -107,7 +107,7 @@ async def run(server):
     tables = []
     if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
         table_list = ['clusters', 'endpoints', 'tables', 'state', 'transactions', 'jobs', 'auth']
-        tables = [{table_name: await server.get_table_func('cluster', table_name)} for table_name in table_list]
+        tables = [{table_name: await server.get_table_config('cluster', table_name)} for table_name in table_list]
     
     join_job_type = "node" if os.environ['PYQL_CLUSTER_ACTION'] == 'init' or len(endpoints) == 1 else 'cluster'
 
@@ -1134,7 +1134,7 @@ async def run(server):
                     if path == '' or path == '/select': # table select
                         return await server.actions['select'](endpoint['db_name'], table, params=data, method=method)
                     if path == '/config': # table config pull
-                        return await server.get_table_func(endpoint['db_name'], table)
+                        return await server.get_table_config(endpoint['db_name'], table)
                     return await server.actions['select_key'](endpoint['db_name'], table, path[1:])
                 url = f"http://{endpoint['path']}/db/{endpoint['db_name']}/table/{table}{path}"
                 r, rc = await probe(
