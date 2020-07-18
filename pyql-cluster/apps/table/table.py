@@ -94,7 +94,7 @@ async def run(server):
         }
         return response
             
-    server.get_table_func = get_table_config
+    server.get_table_config = get_table_config
 
     @server.api_route('/db/{database}/table/{table}/create', methods=['POST'])
     async def database_table_create_api(database, table, config: dict, request: Request):
@@ -118,7 +118,7 @@ async def run(server):
             await server.db_check(database)
         if not table in server.data[database].tables:
             server.http_exception(400, log.error(f"{table} not found in database {database}"))
-        table_config, _ = await get_table_config(database, table)
+        table_config = await get_table_config(database, table)
         await server.data[database].run(f'drop table {table}')
         message, rc = await create_table(database, table_config)
         log.warning(f"table /sync create_table_func response {message} {rc}")
