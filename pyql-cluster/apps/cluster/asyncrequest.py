@@ -28,7 +28,7 @@ async def async_get_request(session: ClientSession, request: dict):
         #except Exception as e:
         #    return {request_id: {'content': str(repr(e)), 'status': 400}}
     #result = await asyncio.gather(get_request())
-    return await get_request()
+    return await asyncio.create_task(get_request())
     #return result[0]
 async def async_post_request(session: ClientSession, request: dict):
     """
@@ -53,7 +53,7 @@ async def async_post_request(session: ClientSession, request: dict):
                 json_body = await r.json()
             return {request_id: {'content': json_body, 'status': r.status}}
     #result = await asyncio.gather(post_request())
-    return await post_request()
+    return await asyncio.create_task(post_request())
     #return result[0]
 
 async def async_request_multi(urls, method='GET', loop=None, session=None):
