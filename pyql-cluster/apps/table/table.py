@@ -102,7 +102,7 @@ async def run(server):
 
     @server.is_authenticated('local')
     async def database_table_create(database, table, config, **kw):
-        return create_table_func(database, config)
+        return await create_table_func(database, config)
 
     @server.api_route('/db/{database}/table/{table}/sync', methods=['POST'])
     async def sync_table_func_api(database: str, table: str, data_to_sync: dict, request: Request):
@@ -120,7 +120,7 @@ async def run(server):
             server.http_exception(400, log.error(f"{table} not found in database {database}"))
         table_config, _ = await get_table_config(database, table)
         await server.data[database].run(f'drop table {table}')
-        message, rc = create_table_func(database, table_config)
+        message, rc = await create_table(database, table_config)
         log.warning(f"table /sync create_table_func response {message} {rc}")
         for row in data_to_sync['data']:
             log.warning(f"table sync insert row - {row}")
