@@ -18,18 +18,18 @@ async def async_get_request(session: ClientSession, request: dict):
         for request_id, config in request.items():
             #try:
             print(f"async_get_request with data:  {config}")
-            r = await session.get(
+            async with session.get(
                 config['path'],
                 headers=headers_default if not 'headers' in config else config['headers'],
                 timeout=2.0 if not 'timeout' in config else config['timeout']
-            )
-            async with r:
+            ) as r:
                 json_body = await r.json()
             return {request_id: {'content': json_body, 'status': r.status}}
         #except Exception as e:
         #    return {request_id: {'content': str(repr(e)), 'status': 400}}
-    result = await asyncio.gather(get_request())
-    return result[0]
+    #result = await asyncio.gather(get_request())
+    return await get_request()
+    #return result[0]
 async def async_post_request(session: ClientSession, request: dict):
     """
     Usage:
@@ -43,25 +43,20 @@ async def async_post_request(session: ClientSession, request: dict):
     """
     async def post_request():
         for request_id, config in request.items():
-            #try:
             print(f"async_post_request with data:  {config}")
-            r = await session.post(
+            async with session.post(
                 config['path'],
                 headers=headers_default if not 'headers' in config else config['headers'],
                 json=config['data'] if 'data' in config else None,
                 timeout=2.0 if not 'timeout' in config else config['timeout']
-            )
-            async with r:
+            ) as r:
                 json_body = await r.json()
             return {request_id: {'content': json_body, 'status': r.status}}
-            #except Exception as e:
-            #    return {request_id: {'content': str(repr(e)), 'status': 400}}
-    result = await asyncio.gather(post_request())
-    return result[0]
+    #result = await asyncio.gather(post_request())
+    return await post_request()
+    #return result[0]
 
 async def async_request_multi(urls, method='GET', loop=None, session=None):
-    if session ==None:
-        session = ClientSession(loop=loop)
     requests = {}
     if method == 'GET':
         for request in await asyncio.gather(*[async_get_request(session, {url: urls[url]}) for url in urls]):
