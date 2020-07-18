@@ -9,8 +9,6 @@ async def run(server):
     from random import randrange
     import json, os
     from apps.cluster import request_async
-
-    asyncio.set_event_loop(loop)
     log = server.log
 
     #used to store links to functions called by jobs

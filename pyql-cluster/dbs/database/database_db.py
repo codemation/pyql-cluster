@@ -4,14 +4,14 @@ async def run(server):
     from fastapi.testclient import TestClient
     from fastapi.websockets import WebSocket
     import uvloop, asyncio
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-   
-    event_loop = asyncio.get_event_loop()
-    server.event_loop = event_loop
+    
+    #asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    #event_loop = asyncio.get_event_loop()
+    #server.event_loop = event_loop
 
     log = server.log
 
-    print(f"databse_db event_loop: {event_loop}")
+    print(f"databse_db event_loop: {server.event_loop}")
 
     @server.api_route('/internal/db/attach')
     async def database_attach_api():
@@ -38,7 +38,7 @@ async def run(server):
         log.info("finished imports")
         server.data[db_name] = await data.Database.create(
             **config,
-            loop=event_loop 
+            loop=server.event_loop 
             )
         log.info("finished dbsetup")
         await setup.attach_tables(server)
