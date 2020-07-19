@@ -865,7 +865,7 @@ async def run(server):
         tables = await server.clusters.tables.select(
             '*',
             where={'cluster': cluster, 'name': table})
-        for tb in table:
+        for tb in tables:
             trace(f"get_table_info_get_tables {tb}")
             tb['endpoints'] = {}
             for sync in ['in_sync', 'out_of_sync']:
