@@ -31,6 +31,7 @@ async def run(server):
         return await db_table(database, table, params=params,  request=await server.process_request(request))
     @server.is_authenticated('local')
     async def db_table(database, table, **kw):
+        request = kw['request']
         if request.method == 'GET':
             return await db_table_get(database, table, **kw)
         if request.method == 'PUT' or request.method == 'POST':
