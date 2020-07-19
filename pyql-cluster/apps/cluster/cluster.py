@@ -347,7 +347,13 @@ async def run(server):
         trace = kw['trace']
         auth = 'PYQL_CLUSTER_SERVICE_TOKEN' if not auth == 'local' else 'PYQL_LOCAL_SERVICE_TOKEN'
         headers = await get_auth_http_headers(auth, **kw) if headers == None else headers
-        session = ClientSession() if not 'session' in kw else kw['session']
+        session, temp_session, temp_id = None, False, None
+
+        if not 'session' in kw:
+            temp_session, temp_id = True, str(uuid.uuid1())
+            session = await get_endpoint_sessions(temp_id)
+        else:
+            session = kw['session']
             
         url = f'{path}'
         try:
@@ -363,11 +369,14 @@ async def run(server):
             else:
                 request['probe']['data'] = data
                 result = await async_post_request(session, request, loop=server.event_loop)
+            result, status = result['probe']['content'], result['probe']['status']
         except Exception as e:
             error = f"Encountered exception when probing {path} - {repr(e)}"
-            return {"error": trace.error(error)}, 500
+            result, status = {"error": trace.error(error)}, 500
         trace(f"request: {request} - result: {result}")
-        return result['probe']['content'], result['probe']['status']
+        if temp_session:
+            await cleanup_session(temp_id)
+        return result, status
     server.probe = probe
     async def wait_on_jobs(pyql, cur_ind, job_list, waiting_on=None):
         """
