@@ -29,6 +29,8 @@ async def run(server):
                 p['join'] = params['join']
             if 'where' in params:
                 p['where'] = params['where']
+            if 'orderby' in params:
+                p['orderby'] = params['orderby']
             response = await server.data[database].tables[table].select(*select, **p)
         if response == None or isinstance(response, str):
             server.http_exception(500, f"response object returned {response}")
