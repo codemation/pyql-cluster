@@ -877,7 +877,7 @@ async def run(server):
                     tb['endpoints'][name]['path'] = f"http://{path}/db/{db}/table/{tb['name']}"
             trace(f"completed {tb}")
             return tb
-        server.http_exception(500, f"no tables in cluster {cluster} with name {table} - found: {tables}")
+        server.http_exception(500, trace(f"no tables in cluster {cluster} with name {table} - found: {tables}"))
     @server.trace
     async def post_request_tables(cluster, table, action, request_data, **kw):
         """
