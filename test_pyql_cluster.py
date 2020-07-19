@@ -330,7 +330,7 @@ class PyqlCluster(unittest.TestCase):
                     break
             time.sleep(10)
         for i in [30, 90]:
-            for job in ['tablesync_check', 'clusterJob_cleanup']:
+            for job in ['tablesync_check', 'cluster_job_cleanup']:
                 assert f'{job}_{i}' in jobs, f'{job}_{i} cron job is missing after cluster init - jobs {jobs}'
     #Cluster Expansion testing
     def test_03_cluster_expansion(self): 
