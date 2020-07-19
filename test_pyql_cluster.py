@@ -86,11 +86,27 @@ class cluster:
             for tb in tables['data']:
                 table = tb['name']
                 data_to_verify = {}
-                # for each table endpoint - verify data
+                config = None
+
                 table_endpoints, rc = self.probe(f"/cluster/{cluster['id']}/table/{table}/endpoints")
-                #print(f"table_endpoints - {table_endpoints}")
+
                 for endpoint in table_endpoints['in_sync']:
                     endpoint_info = table_endpoints['in_sync'][endpoint]
+
+                # pull config from table to verify primary_key to sort data on
+
+                    if config == None:
+                        config, rc = probe(
+                                f"http://{endpoint_info['path']}/db/{endpoint_info['db_name']}/table/{table}/config",
+                                auth={  
+                                    'method': 'token',
+                                    'auth': endpoint_info['token']
+                                },
+                                session=self.session
+                            )
+                        config = config[table]
+                        print(f"pulled config: {config} with primary key: {config['primary_key']}")
+
                     data_to_verify[endpoint], rc = probe(
                         f"http://{endpoint_info['path']}/db/{endpoint_info['db_name']}/table/{table}/select",
                         auth={  
@@ -110,7 +126,17 @@ class cluster:
                     for ep in data_to_verify:
                         if ep == endpoint:
                             continue
-                        for t1r, t2r, in zip(data_to_verify[endpoint], data_to_verify[ep]):
+                        #txns = sorted(txns, key=lambda txn: txn['timestamp'])
+                        for t1r, t2r, in zip(
+                            sorted(
+                                data_to_verify[endpoint],
+                                key=lambda row: row[config['primary_key']]
+                                ),
+                            sorted(
+                                data_to_verify[ep],
+                                key=lambda row: row[config['primary_key']]
+                                )
+                            ):
                             if not t1r == t2r:
                                 if not ep in verify[table][endpoint]['diff']:
                                     verify[table][endpoint]['diff'][ep] = []
@@ -281,7 +307,6 @@ except Exception as e:
     print("Error loading PyqlCluster for unittest")
 
 class PyqlCluster(unittest.TestCase):
-
 
     def test_00_init_cluster(self):
         test_cluster.step('test_init_cluster')
