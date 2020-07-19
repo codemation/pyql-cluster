@@ -333,6 +333,7 @@ async def run(server):
         try:
             if endpoint in server.sessions:
                 await server.sessions[endpoint].asend('finished')
+                del server.sessions[endpoint]
         except StopAsyncIteration:
             pass
         return
