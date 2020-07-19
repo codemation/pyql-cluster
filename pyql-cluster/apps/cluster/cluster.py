@@ -486,7 +486,8 @@ async def run(server):
 
     #TODO - Determine if I need to make pyql/ready authenticated 
     @server.api_route('/cluster/pyql/ready', methods=['POST', 'GET'])
-    async def cluster_ready(ready: dict = None, **kw):
+    async def cluster_ready(request: Request, ready: dict = None, **kw):
+        request = await server.process_request(request)
         if request.method == 'GET':
             quorum = await cluster_quorum_update()
             log.warning(f"readycheck - {quorum}")
