@@ -261,8 +261,7 @@ async def run(server):
         r, rc = await server.probe(
             f"http://{os.environ['PYQL_CLUSTER_SVC']}/auth/key/cluster",
             auth='remote',
-            token=await server.env['PYQL_CLUSTER_SERVICE_TOKEN'],
-            session=server.session
+            token=await server.env['PYQL_CLUSTER_SERVICE_TOKEN']
         )
         if not 'PYQL_CLUSTER_TOKEN_KEY' in r:
             warning = f"error pulling key {r} {rc}"
