@@ -332,6 +332,7 @@ async def run(server):
     async def cleanup_session(endpoint):
         try:
             if endpoint in server.sessions:
+                log.warning(f"removing session for endpoint {endpoint}")
                 await server.sessions[endpoint].asend('finished')
                 del server.sessions[endpoint]
         except StopAsyncIteration:
