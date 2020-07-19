@@ -239,7 +239,7 @@ async def run(server):
                 headers = dict(request.headers)
                 # pop header fields which should not be passed
                 for h in ['Content-Length']:
-                    headers.pop(h)
+                    headers.pop(h.lower())
                 if not 'unsafe' in headers:
                     headers['unsafe'] = node_id
                 else:
