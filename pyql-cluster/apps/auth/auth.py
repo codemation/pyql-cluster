@@ -266,10 +266,9 @@ async def run(server):
         if not 'PYQL_CLUSTER_TOKEN_KEY' in r:
             warning = f"error pulling key {r} {rc}"
             return {"error": log.error(warning)}, rc
-        set_key, rc = await set_token_key('cluster', r)
-        if not rc == 200:
-            log.warning(set_key)
-        return set_key, rc
+        set_key = await set_token_key('cluster', r)
+        log.warning(set_key)
+        return set_key
 
     @server.is_authenticated('pyql')
     async def cluster_service_token(tokentype, **kw):
