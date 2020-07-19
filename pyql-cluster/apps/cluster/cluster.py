@@ -555,7 +555,7 @@ async def run(server):
         except Exception as e:
             server.http_exception(
                 500, trace.exception(f"Unhandled Excepton found during get_alive_endpoints"))
-        for endpoint_id, response in ep_results.iter_items:
+        for endpoint_id, response in ep_results.items():
             if response['status'] == 408:
                 log.warning(f"observed timeout with endpoint {endpoint_id}, triggering cleanup of session")
                 await cleanup_session(endpoint_id)
