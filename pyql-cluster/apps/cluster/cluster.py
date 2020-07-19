@@ -1474,23 +1474,21 @@ async def run(server):
             db = server.data['cluster']
             new_endpoint_or_database = False
             jobs_to_run = []
-            bootstrap = False
+            is_pyql_bootstrapped = False
             pyql = None
 
             clusters = await server.clusters.clusters.select(
                     '*', where={'name': 'pyql'})
             for cluster in clusters:
                 if cluster['name'] == 'pyql':
-                     bootstrap, pyql = False, cluster['id']
+                     is_pyql_bootstrapped, pyql = True, cluster['id']
 
-            if not bootstrap and cluster_name == 'pyql':
+            if not is_pyql_bootstrapped and cluster_name == 'pyql':
                 await bootstrap_pyql_cluster(config, **kw)
             
             clusters = await server.clusters.clusters.select(
                 '*', where={'name': 'pyql'}
             )
-            if bootstrap:
-                pyql = clusters[0]['id']
             
 
             clusters = await server.clusters.clusters.select(
@@ -1610,14 +1608,13 @@ async def run(server):
                             await post_request_tables(pyql, 'state', 'insert', data, trace=kw['trace'])
             else:
                 # Not bootrapping cluster, not a new endpoint or databse this is pyql cluster
-                if not bootstrap and new_endpoint_or_database and cluster_name == 'pyql':
+                if is_pyql_bootstrapped and not new_endpoint_or_database and cluster_name == 'pyql':
                     if cluster_name == 'pyql':
                         await tablesync_mgr(**kw)
-                        return {"message": trace.info(f"re-join cluster {cluster_name} for endpoint {config['name']} completed successfully")}
             # Trigger quorum update using any new endpoints if cluster name == pyql
             if cluster_name == 'pyql':
                 await cluster_quorum_check()
-                if bootstrap:
+                if not is_pyql_bootstrapped:
                     await set_pyql_id({'PYQL_UUID': cluster_id})
                 else:
                 # pyql setup - sets pyql_uuid in env 
