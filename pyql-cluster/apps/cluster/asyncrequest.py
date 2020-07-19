@@ -26,7 +26,8 @@ async def async_get_request(session: ClientSession, request: dict, loop=None):
                 ) as r:
                     json_body, status = await r.json(), r.status
             except Exception as e:
-                json_body, status = repr(e), 408 if 'Timeout' in json_body else 500
+                json_body = repr(e)
+                status = 408 if 'Timeout' in json_body else 500
             return {request_id: {'content': json_body, 'status': r.status}}
     return await loop.create_task(get_request())
 async def async_post_request(session: ClientSession, request: dict, loop=None):
@@ -53,7 +54,8 @@ async def async_post_request(session: ClientSession, request: dict, loop=None):
                 ) as r:
                     json_body, status = await r.json(), r.status
             except Exception as e:
-                json_body, status = repr(e), 408 if 'Timeout' in json_body else 500
+                json_body = repr(e)
+                status = 408 if 'Timeout' in json_body else 500
             return {request_id: {'content': json_body, 'status': r.status}}
     return await loop.create_task(post_request())
 
