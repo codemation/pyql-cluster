@@ -329,12 +329,16 @@ async def run(server):
     # creating initial session for this nodeq
     await get_endpoint_sessions(node_id)
 
-    async def cleanup_sessions():
+    async def cleanup_session(endpoint):
         try:
-            for session in server.sessions:
-                await server.sessions[session].asend('finished')
+            if endpoint in server.sessions:
+                await server.sessions[endpoint].asend('finished')
         except StopAsyncIteration:
             pass
+        return
+    async def cleanup_sessions():
+        for endpoint in server.sessions:
+            await cleanup_session(endpoint)
         return
 
     @server.trace
@@ -362,6 +366,9 @@ async def run(server):
             error = f"Encountered exception when probing {path} - {repr(e)}"
             return {"error": trace.error(error)}, 500
         trace(f"request: {request} - result: {result}")
+        if result['probe']['status'] == 408:
+            log.warning(f"observed timeout with endpoint {endpoint_id}, triggering cleanup of session")
+            await cleanup_session(endpoint_id)
         return result['probe']['content'], result['probe']['status']
     server.probe = probe
     async def wait_on_jobs(pyql, cur_ind, job_list, waiting_on=None):
@@ -547,7 +554,11 @@ async def run(server):
             ep_results = await async_request_multi(ep_requests, loop=server.event_loop)
         except Exception as e:
             server.http_exception(
-                500, trace.exception(f"Excepton found during get_alive_endpoints"))
+                500, trace.exception(f"Unhandled Excepton found during get_alive_endpoints"))
+        for endpoint_id, response in ep_results.iter_items:
+            if response['status'] == 408:
+                log.warning(f"observed timeout with endpoint {endpoint_id}, triggering cleanup of session")
+                await cleanup_session(endpoint_id)
         trace.warning(f"get_alive_endpoints - {ep_results}")
         return ep_results
 

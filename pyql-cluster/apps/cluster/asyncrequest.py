@@ -17,20 +17,18 @@ async def async_get_request(session: ClientSession, request: dict, loop=None):
     asyncio.set_event_loop(loop)
     async def get_request():
         for request_id, config in request.items():
-            #try:
             print(f"async_get_request with data:  {config}")
-            async with session.get(
-                config['path'],
-                headers=headers_default if not 'headers' in config else config['headers'],
-                timeout=2.0 if not 'timeout' in config else config['timeout']
-            ) as r:
-                json_body = await r.json()
+            try:
+                async with session.get(
+                    config['path'],
+                    headers=headers_default if not 'headers' in config else config['headers'],
+                    timeout=2.0 if not 'timeout' in config else config['timeout']
+                ) as r:
+                    json_body, status = await r.json(), r.status
+            except Exception as e:
+                json_body, status = repr(e), 408 if 'Timeout' in json_body else 500
             return {request_id: {'content': json_body, 'status': r.status}}
-        #except Exception as e:
-        #    return {request_id: {'content': str(repr(e)), 'status': 400}}
-    #result = await asyncio.gather(get_request())
     return await loop.create_task(get_request())
-    #return result[0]
 async def async_post_request(session: ClientSession, request: dict, loop=None):
     """
     Usage:
@@ -46,17 +44,18 @@ async def async_post_request(session: ClientSession, request: dict, loop=None):
     async def post_request():
         for request_id, config in request.items():
             print(f"async_post_request with data:  {config}")
-            async with session.post(
-                config['path'],
-                headers=headers_default if not 'headers' in config else config['headers'],
-                json=config['data'] if 'data' in config else None,
-                timeout=2.0 if not 'timeout' in config else config['timeout']
-            ) as r:
-                json_body = await r.json()
+            try:
+                async with session.post(
+                    config['path'],
+                    headers=headers_default if not 'headers' in config else config['headers'],
+                    json=config['data'] if 'data' in config else None,
+                    timeout=2.0 if not 'timeout' in config else config['timeout']
+                ) as r:
+                    json_body, status = await r.json(), r.status
+            except Exception as e:
+                json_body, status = repr(e), 408 if 'Timeout' in json_body else 500
             return {request_id: {'content': json_body, 'status': r.status}}
-    #result = await asyncio.gather(post_request())
     return await loop.create_task(post_request())
-    #return result[0]
 
 async def async_request_multi(urls, method='GET', loop=None, session=None):
     asyncio.set_event_loop(loop)
