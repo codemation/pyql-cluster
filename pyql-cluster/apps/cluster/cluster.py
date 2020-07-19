@@ -1442,8 +1442,6 @@ async def run(server):
                 }
             }
             resp = await post_request_tables(pyql, 'transactions', 'delete', delete_txn, trace=kw['trace'])
-            if not rc == 200:
-                trace.error(f"something abnormal happened when commiting txnlog {txn}")
         return {"message": trace(f"successfully commited txns {txns}")}
 
 
