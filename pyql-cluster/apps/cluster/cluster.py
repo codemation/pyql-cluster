@@ -862,21 +862,22 @@ async def run(server):
     async def get_table_info(cluster, table, endpoints, **kw):
         trace = kw['trace']
 
-        tb = await server.clusters.tables.select(
+        tables = await server.clusters.tables.select(
             '*',
             where={'cluster': cluster, 'name': table})
-        tb = tb[0]
-        trace(f"get_table_info_get_tables {tb}")
-        tb['endpoints'] = {}
-        for sync in ['in_sync', 'out_of_sync']:
-            for endpoint in endpoints[sync]:
-                path = endpoints[sync][endpoint]['path']
-                db = endpoints[sync][endpoint]['db_name']
-                name = endpoints[sync][endpoint]['name']
-                tb['endpoints'][name] = endpoints[sync][endpoint]
-                tb['endpoints'][name]['path'] = f"http://{path}/db/{db}/table/{tb['name']}"
-        trace(f"completed {tb}")
-        return tb
+        for tb in table:
+            trace(f"get_table_info_get_tables {tb}")
+            tb['endpoints'] = {}
+            for sync in ['in_sync', 'out_of_sync']:
+                for endpoint in endpoints[sync]:
+                    path = endpoints[sync][endpoint]['path']
+                    db = endpoints[sync][endpoint]['db_name']
+                    name = endpoints[sync][endpoint]['name']
+                    tb['endpoints'][name] = endpoints[sync][endpoint]
+                    tb['endpoints'][name]['path'] = f"http://{path}/db/{db}/table/{tb['name']}"
+            trace(f"completed {tb}")
+            return tb
+        server.http_exception(500, f"no tables in cluster {cluster} with name {table} - found: {tables}")
     @server.trace
     async def post_request_tables(cluster, table, action, request_data, **kw):
         """
