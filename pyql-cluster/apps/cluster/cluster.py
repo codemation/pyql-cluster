@@ -1609,7 +1609,8 @@ async def run(server):
                             }
                             await post_request_tables(pyql, 'state', 'insert', data, trace=kw['trace'])
             else:
-                if not new_endpoint_or_database and cluster_name == 'pyql':
+                # Not bootrapping cluster, not a new endpoint or databse this is pyql cluster
+                if not bootstrap and new_endpoint_or_database and cluster_name == 'pyql':
                     if cluster_name == 'pyql':
                         await tablesync_mgr(**kw)
                         return {"message": trace.info(f"re-join cluster {cluster_name} for endpoint {config['name']} completed successfully")}
