@@ -367,9 +367,6 @@ async def run(server):
             error = f"Encountered exception when probing {path} - {repr(e)}"
             return {"error": trace.error(error)}, 500
         trace(f"request: {request} - result: {result}")
-        if result['probe']['status'] == 408:
-            log.warning(f"observed timeout with endpoint {endpoint_id}, triggering cleanup of session")
-            await cleanup_session(endpoint_id)
         return result['probe']['content'], result['probe']['status']
     server.probe = probe
     async def wait_on_jobs(pyql, cur_ind, job_list, waiting_on=None):
@@ -1479,26 +1476,21 @@ async def run(server):
             jobs_to_run = []
             bootstrap = False
             pyql = None
-            
-            #check if pyql is bootstrapped
 
-            async def check_bootstrap():
-                clusters = await server.clusters.clusters.select(
-                    '*', where={'name': 'pyql'}
-                )
-                for cluster in clusters:
-                    if cluster['name'] == 'pyql':
-                        return True, cluster['id']
-                return False, None
-            bootstrap, pyql = await check_bootstrap()
+            clusters = await server.clusters.clusters.select(
+                    '*', where={'name': 'pyql'})
+            for cluster in clusters:
+                if cluster['name'] == 'pyql':
+                     bootstrap, pyql = False, cluster['id']
 
-            if not bootstrap and cluster_name == 'pyql':
+            if bootstrap and cluster_name == 'pyql':
                 await bootstrap_pyql_cluster(config, **kw)
-                bootstrap = True
             
             clusters = await server.clusters.clusters.select(
                 '*', where={'name': 'pyql'}
             )
+            if bootstrap:
+                pyql = clusters[0]['id']
             
 
             clusters = await server.clusters.clusters.select(
@@ -1617,11 +1609,10 @@ async def run(server):
                             }
                             await post_request_tables(pyql, 'state', 'insert', data, trace=kw['trace'])
             else:
-                if not bootstrap and cluster_name == 'pyql':
-                    trace.warning(f"{os.environ['HOSTNAME']} was not bootstrapped - create tablesync job for table state")
+                if not new_endpoint_or_database and cluster_name == 'pyql':
                     if cluster_name == 'pyql':
                         await tablesync_mgr(**kw)
-                        return {"message": trace.info(f"re-join cluster {cluster_name} for endpoint {config['name']} completed successfully")}, 200
+                        return {"message": trace.info(f"re-join cluster {cluster_name} for endpoint {config['name']} completed successfully")}
             # Trigger quorum update using any new endpoints if cluster name == pyql
             if cluster_name == 'pyql':
                 await cluster_quorum_check()
