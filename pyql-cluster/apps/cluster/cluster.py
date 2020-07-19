@@ -1483,7 +1483,7 @@ async def run(server):
                 if cluster['name'] == 'pyql':
                      bootstrap, pyql = False, cluster['id']
 
-            if bootstrap and cluster_name == 'pyql':
+            if not bootstrap and cluster_name == 'pyql':
                 await bootstrap_pyql_cluster(config, **kw)
             
             clusters = await server.clusters.clusters.select(
