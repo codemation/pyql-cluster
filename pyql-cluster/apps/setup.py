@@ -10,7 +10,7 @@ async def run(server):
 
     class RequestStorage:
         def __init__(self, url, headers, method, json_body):
-            self.url = 
+            self.url = url
             self.headers = dict(headers)
             self.method = method
             self.json = json_body
