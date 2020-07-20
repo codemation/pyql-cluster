@@ -260,7 +260,7 @@ async def run(server):
                         "method": request.method, 
                         "headers": headers, 
                         "data": request.json, 
-                        "session": await get_endpoint_sessions(node['uuid'], **kw)}
+                        "session": await get_endpoint_sessions(node['uuid'])}
                     r, rc =  await probe(url, **request_options)
                     if rc == 200: 
                         return r, rc
@@ -1070,7 +1070,7 @@ async def run(server):
             sleep = 0.5
             for _ in range(9): # waits up to 9 X sleep value - if paused
                 trace.error(f"Table {table} is paused, Waiting {sleep} seconds before retrying - total wait time {total_sleep}")
-                time.sleep(sleep)
+                await asyncio.sleep(sleep)
                 table_endpoints = await get_table_endpoints(cluster, table, caller='post_request_tables', trace=kw['trace'])
                 tb = await get_table_info(cluster, table, table_endpoints, trace=kw['trace'])
                 #TODO - create a counter stat to track how often this occurs
@@ -1344,7 +1344,7 @@ async def run(server):
         }
         result = await post_request_tables(pyql, 'tables', 'update', pause_set, trace=kw['trace'])
         if 'delay_after_pause' in kw:
-            time.sleep(kw['delay_after_pause'])
+            await asyncio.sleep(kw['delay_after_pause'])
         trace.warning(f'cluster_table_pause {cluster} {table} pause {pause} result: {result}')
         return result
         
