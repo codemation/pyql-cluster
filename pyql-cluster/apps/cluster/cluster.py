@@ -216,7 +216,7 @@ async def run(server):
             if not 'quorum' in quorum or quorum['quorum']['in_quorum'] == False:
                 server.http_exception(
                     500,
-                    log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum - {quorum}")
+                    log.error(f"state_and_quorum_check - cluster pyql node {os.environ['HOSTNAME']} is not in quorum - {quorum}")
                 )
             # Quorum passed - check that state is in_sync
             node_quorum_state = await server.clusters.quorum.select(
@@ -239,7 +239,10 @@ async def run(server):
                 headers = dict(request.headers)
                 # pop header fields which should not be passed
                 for h in ['Content-Length']:
-                    headers.pop(h.lower())
+                    if h.lower() in headers:
+                        headers.pop(h.lower())
+                    if h in headers:
+                        headers.pop(h)
                 if not 'unsafe' in headers:
                     headers['unsafe'] = node_id
                 else:
@@ -1128,9 +1131,10 @@ async def run(server):
                     trace.warning(f"get_random_table_endpoint skipped pyql endpoint {endpoint_choice} as not in quorum")
                     if len(in_sync_endpoints) == 0 and table == 'jobs':
                         await pyql_reset_jobs_table(trace=trace)
-                        endpoints = await get_table_endpoints(cluster, table, caller='get_random_table_endpoint', trace=trace)['in_sync']
+                        endpoints = await get_table_endpoints(cluster, table, caller='get_random_table_endpoint', trace=trace)
+                        endpoints = endpoints['in_sync']
                         in_sync_endpoints = [ep for ep in endpoints]
-                    continue
+                    continueq
             yield endpoints[endpoint_choice]
         yield None
     #table_select(pyql, 'jobs', data=job_select, method='POST', **kw)    
@@ -2355,7 +2359,7 @@ async def run(server):
             result = await server.clusterjobs[job['action']](config=job_config, **kw)
         except Exception as e:
             error = trace.exception(f"exception while running job {job['name']}")
-            
+
         if result:
             await job_update(
                 job_type, job['id'], 'finished', 
