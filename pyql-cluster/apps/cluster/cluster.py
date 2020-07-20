@@ -2132,7 +2132,7 @@ async def run(server):
                         track(f"PYQL - Marking table endpoint as in_sync & loaded")
                         r = await table_endpoint(cluster, table, uuid, {'in_sync': True, 'state': 'loaded'}, trace=kw['trace'])
                         track(f'PYQL - marking table endpoint {uuid} - result: {r}')
-                        if cluster == pyql and table == 'state':
+                        if table == 'state':
                             # as sync endpoint is pyql - state, need to manually set in_sync True on itself
                             status, rc = await probe(
                                 f'{endpoint_path}/update',
@@ -2198,10 +2198,13 @@ async def run(server):
             if table_state == 'new':
                 track("table never loaded or has become stale, needs to be initialize")
                 # delete any txn logs which exist for endpoint
-                await post_request_tables(
-                    pyql, 'transactions', 
-                    'delete', 
-                    {'where': {'endpoint': uuid, 'table_name': table}}, **kw)
+                if cluster == pyql and table in pyql_sync_exclusions:
+                    pass
+                else:
+                    await post_request_tables(
+                        pyql, 'transactions', 
+                        'delete', 
+                        {'where': {'endpoint': uuid, 'table_name': table}}, **kw)
                 result, rc = await load_table()
                 track(f"load table results {result} {rc}")
                 if not rc == 200:
@@ -2209,22 +2212,27 @@ async def run(server):
                     continue
             else:
                 # Check for un-commited logs - otherwise full resync needs to occur.
-                track("table already loaded, checking for change logs")
-                count = await table_endpoint_logs(cluster, table, uuid, 'count', trace=kw['trace'])
-                if count:
-                    if count['availableTxns'] == 0:
-                        track("no change logs found for table, need to reload table - drop / load")
-                        # Need to reload table - drop / load
-                        result, rc = await load_table()
-                        if not rc == 200:
-                            sync_results[endpoint] = result
-                            continue
+                if cluster == pyql and table in pyql_sync_exclusions:
+                    result, rc = await load_table()
+                else:
+                    track("table already loaded, checking for change logs")
+                    count = await table_endpoint_logs(cluster, table, uuid, 'count', trace=kw['trace'])
+                    if count:
+                        if count['availableTxns'] == 0:
+                            track("no change logs found for table, need to reload table - drop / load")
+                            # Need to reload table - drop / load
+                            result, rc = await load_table()
+                            if not rc == 200:
+                                sync_results[endpoint] = result
+                                continue
                         
-            track("trying to sync from change logs")
-            await sync_cluster_table_logs()
+                    track("trying to sync from change logs")
+                    await sync_cluster_table_logs()
 
             if cluster == pyql and table in pyql_sync_exclusions:
-                pass
+                if table == 'state':
+                    track("completed sync of a pyql state table, completing job now to avoid back to back state syncs")
+                    break
             else:
                 track("completed initial pull of change logs & starting a cutover by pausing table")
                 r = await table_pause(cluster, table, 'start', trace=kw['trace'], delay_after_pause=4.0)
@@ -2236,8 +2244,9 @@ async def run(server):
                     await sync_cluster_table_logs()
                     track("finished post-cutover pull of change logs")
                 except Exception as e:
-                    trace.exception("sync_cluster_table_logs encountered an exception")
-                    track("exception encountered during pull of change logs, aborting cutover")
+                    trace.exception(
+                        track("sync_cluster_table_logs error during pull of change logs, aborting cutover")
+                    )
                     r = await table_pause(cluster, table, 'stop', trace=kw['trace'])
                     return {"error": track(f"exception encountered during pull of change logs")}
                 track("setting TB endpoint as in_sync=True, 'state': 'loaded'")
