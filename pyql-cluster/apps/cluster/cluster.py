@@ -2302,7 +2302,6 @@ async def run(server):
                 pyql, 'jobs', 
                 data={'select': ['id'], 'where': {'name': job['job']}},
                 method='POST',
-
                 **kw
                 )
             if not job_check:
@@ -2340,18 +2339,26 @@ async def run(server):
         trace = kw['trace']
         # try to pull job 
         job = await jobqueue(job_type, node_id, **kw)
-        trace(f"cluster_job_check_and_run pulled: {job}")
+        trace(f"pulled job: {job}")
         if not job or 'message' in job:
             server.http_exception(200, job)
         trace(f"job pulled {job['name']}")
         job_config = job['config']
-
-        await job_update(job_type, job['id'], 'running', job_info={"message": f"starting {job['name']}"}, **kw)
+        try:
+            await job_update(job_type, job['id'], 'running', job_info={"message": f"starting {job['name']}"}, **kw)
+        except Exception as e:
+            trace.exception(f"exception while marking job {job['name']} running")
 
         trace(f"running job with config {job_config}")
-        result = await server.clusterjobs[job['action']](config=job_config, **kw)
+        result, error = None, None
+        try:
+            result = await server.clusterjobs[job['action']](config=job_config, **kw)
+        except Exception as e:
+            error = trace.exception(f"exception while running job {job['name']}")
+
         
         if result:
+            job_update()
             await job_update(
                 job_type, job['id'], 'finished', 
                 job_info={
@@ -2359,13 +2366,13 @@ async def run(server):
                     "result": result
                     }, **kw)
         else:
-            error = trace(f"non - 200 result for job {job['name']} config: {job_config} with result: {result}")
+            error = trace(f"Error while running job - {error}")
             await job_update(job_type, job['id'], 'queued', job_info={"error": f"{error} - requeuing"}, **kw)
-            return result
+            return {"error": error}
         if 'nextJob' in job_config:
             await job_update(job_type, job_config['nextJob'], 'queued', job_info={"message": f"queued after {job['name']} completed"}, **kw)
         trace(f"finished {job['name']} with result: {result}")
-        return result
+        return {"result": result}
         
     await server.internal_job_add(join_cluster_job)
 
