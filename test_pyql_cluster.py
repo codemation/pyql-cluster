@@ -379,7 +379,7 @@ class PyqlCluster(unittest.TestCase):
                 if not state['in_sync'] == True or not state['state'] == 'loaded':
                     print(f"found state which was not in_sync=True & 'loaded {state}, retrying")
                     is_ok = False
-                    self.sync_job_check()
+                    test_cluster.sync_job_check()
                     break
             if is_ok:
                 break
