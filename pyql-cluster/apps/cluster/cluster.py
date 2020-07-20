@@ -2355,10 +2355,8 @@ async def run(server):
             result = await server.clusterjobs[job['action']](config=job_config, **kw)
         except Exception as e:
             error = trace.exception(f"exception while running job {job['name']}")
-
-        
+            
         if result:
-            job_update()
             await job_update(
                 job_type, job['id'], 'finished', 
                 job_info={
