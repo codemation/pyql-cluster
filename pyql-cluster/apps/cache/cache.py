@@ -55,7 +55,7 @@ async def run(server):
                             break
                     if tx == None:
                         trace.warning(f"txn_id {txn_id} is behind txns {txns[:ind]} - waiting {wait_time} to retry")
-                        time.sleep(wait_interval)
+                        await asyncio.sleep(wait_interval)
                         wait_time+=wait_interval 
                         # wait_interval scales up to txn_max_wait_interval_in_sec
                         wait_interval+=wait_interval 
