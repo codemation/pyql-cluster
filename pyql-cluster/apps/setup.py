@@ -9,7 +9,8 @@ async def run(server):
     server.http_exception = http_exception
 
     class RequestStorage:
-        def __init__(self, headers, method, json_body):
+        def __init__(self, url, headers, method, json_body):
+            self.url = 
             self.headers = dict(headers)
             self.method = method
             self.json = json_body
@@ -21,7 +22,12 @@ async def run(server):
         if 'content-length' in request.headers and request.headers['content-type'] == 'application/json':
             body = await request.body()
             json_body = json.loads(body) if len(body) > 0 else None
-        return RequestStorage(request.headers, request.method, json_body)
+        return RequestStorage(
+            request.url, 
+            request.headers, 
+            request.method, 
+            json_body
+            )
     server.process_request = process_request
 
     pass # apps start here
