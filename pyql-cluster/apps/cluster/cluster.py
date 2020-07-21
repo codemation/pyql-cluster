@@ -716,6 +716,8 @@ async def run(server):
         # Quorum was previously not ready & outOfQuorum 
         if pre_quorum['health'] == 'unhealthy' and in_quorum == True:
             health = 'healing'
+            await server.internal_job_add(join_cluster_job)
+            """
             job = {
                 'job': f"{node_id}_mark_state_out_of_sync",
                 'job_type': 'cluster',
@@ -736,6 +738,9 @@ async def run(server):
             }
             trace.warning(f"This node was unhealthy, but started healing - adding job {mark_state_out_of_sync_job} to internaljobs queue")
             await server.internal_job_add(mark_state_out_of_sync_job)
+            """
+            trace("re-joining cluster as this node was un-healthy & needs to heal")
+            
         if pre_quorum['health'] in ['healing', 'healthy'] and in_quorum == True: 
             if pre_quorum['ready'] == True:
                 health = 'healthy'
