@@ -1991,7 +1991,7 @@ async def run(server):
                     })
         for cluster in jobs:
             if cluster == pyql:
-                order = [   ]
+                order = ['clusters', 'auth', 'endpoints', 'databases', 'jobs', 'transactions', 'tables', 'state']
                 jobs_to_run_ordered = []
                 ready_jobs = []
                 while len(order) > 0:
