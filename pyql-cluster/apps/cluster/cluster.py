@@ -887,6 +887,9 @@ async def run(server):
             use details=True as arg to return tb['endpoints'] in response
         """
         trace = kw['trace']
+        _txn = {action: request_data}
+        trace(f"called for {_txn}")
+
         pyql_txn_exceptions = {'transactions', 'jobs', 'state', 'tables'}
         table_endpoints = await get_table_endpoints(cluster, table, caller='post_request_tables', trace=kw['trace'])
         pyql = await server.env['PYQL_UUID']
@@ -1564,10 +1567,14 @@ async def run(server):
                     if cluster_id == await server.env['PYQL_UUID']:
                         await post_request_tables(
                             pyql, 'state', 'update', 
-                            {'set': {'in_sync': False}, 
-                            'where': {
-                                'uuid': config['database']['uuid'],
-                                'cluster': cluster_id}}, trace=kw['trace'])
+                            {
+                                'set': {'in_sync': False}, 
+                                'where': {
+                                    'uuid': config['database']['uuid'],
+                                    'cluster': cluster_id
+                                    }
+                            }, 
+                            trace=kw['trace'])
             tables = await server.clusters.tables.select('name', where={'cluster': cluster_id})
             tables = [table['name'] for table in tables]
             # if tables not exist, add
@@ -1984,7 +1991,7 @@ async def run(server):
                     })
         for cluster in jobs:
             if cluster == pyql:
-                order = ['clusters', 'auth', 'endpoints', 'databases', 'jobs', 'transactions', 'tables', 'state']
+                order = [   ]
                 jobs_to_run_ordered = []
                 ready_jobs = []
                 while len(order) > 0:
