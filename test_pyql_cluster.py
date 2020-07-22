@@ -1,5 +1,19 @@
 import os, unittest, json, requests, time, random
 
+def pad(length, value, char=' '):
+    # Account for start & end '#'
+    length = length - 4
+    padding = length - len(str(value))
+    if padding % 2 == 0:
+        p1, p2 = int(padding / 2), int(padding / 2)
+    else:
+        p1, p2 = int((padding + 1) / 2), int((padding -1) / 2)
+    p1_air = ''.join(char for _ in range(p1))
+    p2_air = ''.join(char for _ in range(p2))
+
+    return f"#{p1_air} {value} {p2_air}#"
+
+
 class cluster:
     def __init__(self, **kw):
         self.steps = 0
@@ -82,9 +96,12 @@ class cluster:
                 }
             )
             verify = {}
+            diff = []
             #print(f"tables {tables}")
             for tb in tables['data']:
                 table = tb['name']
+                if table == 'jobs':
+                    continue
                 data_to_verify = {}
                 config = None
 
@@ -140,6 +157,36 @@ class cluster:
                             if not t1r == t2r:
                                 if not ep in verify[table][endpoint]['diff']:
                                     verify[table][endpoint]['diff'][ep] = []
+                                t_keys = list(t1r.keys())
+                                
+                                row_len_keys = len(str(t1r.keys())) + 4*len(t_keys)
+                                row_len_values = len(str(t1r.values())) + 4*len(t_keys)
+                                row_len = row_len_values if row_len_values >= row_len_keys else row_len_keys
+
+                                diff.append(''.join([' ' for _ in range(row_len)]))
+                                diff.append(''.join(['#' for _ in range(row_len)]))
+                                diff.append(pad(row_len, f"DIFF {endpoint} - Table: {table}"))
+                                diff.append(pad(row_len, f"Checking {ep} - Table: {table}"))
+                                diff.append(''.join(['#' for _ in range(row_len)]))
+                                t_key_len = {k: len(str(k)) for k in t_keys}
+                                t_val_len = {k: len(str(t1r[k])) for k in t_keys}
+                                t_len = {}
+                                for tk, tv in zip(t_key_len.items(), t_val_len.items()):
+                                    t_len[tk[0]] = tk[1] if tk[1] >= tv[1] else tv[1]
+                                
+                                header = ''
+                                for k in t_keys:
+                                    header = f"{header}{pad(t_len[k], k)}"
+                                diff.append(header)
+                                diff.append(''.join(['_' for _ in range(row_len)]))
+                                t_row1 = ''
+                                t_row2 = ''
+                                for col_t1, col_t2 in zip(t1r.items(), t2r.items()):
+                                    t_row1 = f'{t_row1}{pad(t_len[col_t1[0]], col_t1[1])}'
+                                    t_row2 = f'{t_row2}{pad(t_len[col_t1[0]], col_t2[1])}'
+                                diff.append(t_row1)
+                                diff.append(t_row2)
+
                                 verify[table][endpoint]['diff'][ep].append((t1r, t2r))
                                 # every subsequent row will not be equal from here
                                 break
@@ -149,6 +196,7 @@ class cluster:
                         verify[table][endpoint]['status'].append(True)
             
             verify_fail = []
+            diff_tables = []
             for table, endpoints in verify.items():
                 for endpoint, status in endpoints.items():
                     if not table == 'jobs':
@@ -160,7 +208,10 @@ class cluster:
                                 return # avoid asserting if this is not the max retry run
                         if False in status['status']:
                             verify_fail.append(f"{table} endpoint {endpoint} data did not match with {status['diff']}")
-            assert len(verify_fail) == 0, f"verification failed on endpoint(s) - {verify_fail}"
+            if not len(verify_fail) == 0:
+                print(verify_fail)
+                print('\n'.join(diff))
+            assert len(verify_fail) == 0, f"verification failed on endpoint(s)"
             print(f"verify completed for cluster {cluster['name']} - {verify}")
             #assert not False in status['status'], f"{table} endpoint {endpoint} data did not match with {status['diff']}"
 
@@ -252,7 +303,7 @@ class cluster:
         for node in stopped_nodes:
             self.step(f'restarting stopped node {node} to test recovery')
             self.docker_restart(node)
-        self.sync_job_check()
+            self.sync_job_check()
     def insync_and_state_check(self):
         """
         checks state of tables & querries sync_job_check until state is in_sync True
@@ -311,10 +362,14 @@ class PyqlCluster(unittest.TestCase):
     def test_00_init_cluster(self):
         test_cluster.step('test_init_cluster')
         test_cluster.init_cluster()
-
-    def test_01_auth(self):
-        # Test Basic auth by pulling token from /auth/token/cluster
         test_cluster.auth_setup()
+
+    def test_01_expand(self):
+        # Test Basic auth by pulling token from /auth/token/cluster
+        test_cluster.expand_cluster()
+        test_cluster.sync_job_check()
+        test_cluster.verify_data()
+        
 
     def test_02_token(self):
         # Using token - pull join token to be used by pyql cluster expansion /auth/token/join
@@ -326,26 +381,28 @@ class PyqlCluster(unittest.TestCase):
             jobs, rc = test_cluster.get_cluster_jobs()
             if rc == 200:
                 jobs = [ job['name'] for job in jobs['data'] ]
-                if 'tablesync_check' in jobs and 'clusterJob_cleanup' in jobs:
+                if 'tablesync_check' in jobs and 'cluster_job_cleanup' in jobs:
                     break
             time.sleep(10)
         for i in [30, 90]:
             for job in ['tablesync_check', 'cluster_job_cleanup']:
                 assert f'{job}_{i}' in jobs, f'{job}_{i} cron job is missing after cluster init - jobs {jobs}'
     #Cluster Expansion testing
-    def test_03_cluster_expansion(self): 
-        test_cluster.expand_cluster()
-        test_cluster.sync_job_check()
-        test_cluster.verify_data()
+    def test_03_cluster_expansion(self):
+        pass
+        #test_cluster.expand_cluster()
+        #test_cluster.sync_job_check()
+        #test_cluster.verify_data()
     def test_04_muliti_cluster_expansion(self): 
         for _ in range(4):
             test_cluster.expand_cluster()
-            test_cluster.sync_job_check()
+        test_cluster.sync_job_check()
         test_cluster.verify_data()
     
     # Cluster Recovery 
     def test_05_cluster_recovery(self):
         test_cluster.step(f"test_05_cluster_recovery - bring down random node to verify node removal & recovery upon restarting")
+        """
         node = test_cluster.nodes[random.randrange(len(test_cluster.nodes)) - 1]
         # prevent node 8090 from being stopped as there is not load balancer for other ports
         node = node + 1 if node == 8090 else node
@@ -366,6 +423,8 @@ class PyqlCluster(unittest.TestCase):
         test_cluster.step('test_05_cluster_recovery - restarting stopped node to test recovery')
         test_cluster.docker_restart(node)
         test_cluster.sync_job_check()
+        """
+        test_cluster.test_node_recovery(2)
 
     # Verify successful sync
     def test_06_verify_cluster_sync(self):
@@ -391,7 +450,8 @@ class PyqlCluster(unittest.TestCase):
 
     # Cluster Recovery 
     def test_07_multi_cluster_recovery(self):
-        test_cluster.test_node_recovery(2)
+        pass
+        #test_cluster.test_node_recovery(2)
 
     def test_08_multi_cluster_expand_recovery(self):
         test_cluster.step("starting test_08_multi_cluster_expand_recovery - expand")
@@ -399,7 +459,7 @@ class PyqlCluster(unittest.TestCase):
         for _ in range(2):
             for _ in range(2):
                 test_cluster.expand_cluster()
-                test_cluster.sync_job_check()
+            test_cluster.sync_job_check()
             test_cluster.verify_data()
         test_cluster.step("starting test_08_multi_cluster_expand_recovery - recovery(break/heal)")
         test_cluster.test_node_recovery(3)
