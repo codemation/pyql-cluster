@@ -220,7 +220,10 @@ async def run(server):
                 )
             # Quorum passed - check that state is in_sync
             node_quorum_state = await server.clusters.quorum.select(
-                'quorum.nodes', 'quorum.in_quorum', 'state.in_sync', 
+                'quorum.nodes', 
+                'quorum.in_quorum',
+                'quorum.health',
+                'state.in_sync', 
                 join={'state': {'quorum.node': 'state.uuid'}}, 
                 where={'state.table_name': 'state', 'quorum.node': f'{node_id}'}
                 )
@@ -230,11 +233,11 @@ async def run(server):
                     log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {quorum}")
                 )
             node_quorum_state = node_quorum_state[0]
-            if node_quorum_state['state.in_sync'] == True:
+            if node_quorum_state['state.in_sync'] == True and node_quorum_state['quorum.health'] == 'healthy':
                 return await func(*args, **kwargs)
             else:
                 pyql = await server.env['PYQL_UUID']
-                log.warning("state.in_sync is False for node but this node is in_quorum = True")
+                log.warning(f"node is inQuorum but not 'healthy' or state is out_of_sync: {node_quorum_state}")
                 pyql_nodes = await server.clusters.endpoints.select('uuid', 'path', where={'cluster': pyql})
                 headers = dict(request.headers)
                 # pop header fields which should not be passed
@@ -2461,9 +2464,9 @@ async def run(server):
         ready_and_quorum = True
         health = 'healthy'
     else:
-        await server.clusters.state.update(in_sync=False, where={'uuid': node_id}) 
+        #await server.clusters.state.update(in_sync=False, where={'uuid': node_id}) 
         ready_and_quorum = False
-        health = 'unhealthy'
+        health = 'healing'
     # Sets ready false for any node with may be restarting as resync is required before marked ready
 
     await server.clusters.quorum.insert(**{
