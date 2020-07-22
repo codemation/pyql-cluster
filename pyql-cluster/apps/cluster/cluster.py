@@ -249,28 +249,26 @@ async def run(server):
                     if h in headers:
                         headers.pop(h)
                 if not 'unsafe' in headers:
-                    headers['unsafe'] = node_id
+                    headers['unsafe'] = [node_id]
                 else:
-                    headers['unsafe'] = ','.join(headers['unsafe'].split(',') + [node_id])
+                    headers['unsafe'] = headers['unsafe'].split(',') + [node_id]
                 for node in pyql_nodes:
                     if node['uuid'] in headers['unsafe']:
                         continue
                     if not node['uuid'] in node_quorum_state['quorum.nodes']['nodes']:
                         log.warning(f"node {node} was not yet 'unsafe' but is not in_quorum - {node_quorum_state} -, marking unsafe and will try other, if any")
-                        headers['unsafe'] = ','.join(headers['unsafe'].split(',') + [node['uuid']])
+                        headers['unsafe'].append(node['uuid'])
                         continue
                     headers['Host'] = node['path']
                     url = request.url
+                    headers['unsafe'] = ','.join(headers['unsafe'])
                     request_options = {
                         "method": request.method, 
                         "headers": headers, 
                         "data": request.json, 
                         "session": await get_endpoint_sessions(node['uuid'])}
-                    r, rc =  await probe(url, **request_options)
-                    if rc == 200: 
-                        return r, rc
-                    log.error(f"{r} - {rc} - found when probing {url} {node} - options: {request_options} - marking unsafe and will try other, if any") 
-                    headers['unsafe'] = ','.join(headers['unsafe'].split(',') + [node['uuid']])
+                    response, rc =  await probe(url, **request_options)
+                    return response
                 # Out of available - in_quorum nodes to try
                 server.http_exception(500, log.error("No pyql nodes were available to service request"))
         state_quorum_safe_func.__name__ = '_'.join(str(uuid.uuid4()).split('-'))
