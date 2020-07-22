@@ -223,6 +223,7 @@ async def run(server):
                 'quorum.nodes', 
                 'quorum.in_quorum',
                 'quorum.health',
+                'quorum.ready',
                 'state.in_sync', 
                 join={'state': {'quorum.node': 'state.uuid'}}, 
                 where={'state.table_name': 'state', 'quorum.node': f'{node_id}'}
@@ -233,7 +234,8 @@ async def run(server):
                     log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {quorum}")
                 )
             node_quorum_state = node_quorum_state[0]
-            if node_quorum_state['state.in_sync'] == True and node_quorum_state['quorum.health'] == 'healthy':
+            ready_and_healthy = node_quorum_state['quorum.health'] == 'healthy' and node_quorum_state['quorum.ready'] == True
+            if node_quorum_state['state.in_sync'] == True and ready_and_healthy:
                 return await func(*args, **kwargs)
             else:
                 pyql = await server.env['PYQL_UUID']
@@ -1145,7 +1147,7 @@ async def run(server):
                         endpoints = await get_table_endpoints(cluster, table, caller='get_random_table_endpoint', trace=trace)
                         endpoints = endpoints['in_sync']
                         in_sync_endpoints = [ep for ep in endpoints]
-                    continueq
+                    continue
             yield endpoints[endpoint_choice]
         yield None
     #table_select(pyql, 'jobs', data=job_select, method='POST', **kw)    
@@ -2245,9 +2247,7 @@ async def run(server):
                     await sync_cluster_table_logs()
 
             if cluster == pyql and table in pyql_sync_exclusions:
-                if table == 'state':
-                    track("completed sync of a pyql state table, completing job now to avoid back to back state syncs")
-                    break
+                pass
             else:
                 track("completed initial pull of change logs & starting a cutover by pausing table")
                 r = await table_pause(cluster, table, 'start', trace=kw['trace'], delay_after_pause=4.0)
