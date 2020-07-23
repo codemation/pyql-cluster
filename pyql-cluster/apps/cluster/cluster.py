@@ -2102,6 +2102,7 @@ async def run(server):
         #pyql_sync_exclusions = {'transactions', 'jobs', 'state', 'tables'}
         pyql_sync_exclusions = {'transactions', 'jobs'}
         pyql = await server.env['PYQL_UUID']
+
         # get table endpoints
         table_endpoints = await get_table_endpoints(cluster, table, caller='cluster_table_sync_run', trace=kw['trace'])
         trace(f"table endpoints {table_endpoints}")
@@ -2120,6 +2121,19 @@ async def run(server):
             uuid, path, token, db, table_state = ep['uuid'], ep['path'], ep['token'], ep['db_name'], ep['state']
             cluster_id = ep['cluster']
             endpoint_path = f"http://{path}/db/{db}/table/{table}"
+
+            if cluster == pyql and table == 'transactions':
+                tables_not_insync = []
+                for table_state in await server.clusters.state.select('in_sync', 'table_name', where={"uuid": uuid})
+                    if table_state['table_name'] == 'transactions':
+                        continue
+                    if table_state['in_sync'] == False:
+                        tables_not_insync.append(table_state['table_name'])
+                if len(tables_not_insync) > 0:
+                    sync_results[endpoint] = trace(
+                         f"cannot sync endpoint {uuid} table transactions while {tables_not_insync} are out_of_sync"
+                        )
+                    continue
 
             # in_sync endpoint To sync against
             in_sync = list(table_endpoints['in_sync'].keys())[random.randrange(len([k for k in table_endpoints['in_sync']]))]
