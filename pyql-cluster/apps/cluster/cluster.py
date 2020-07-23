@@ -2124,7 +2124,7 @@ async def run(server):
 
             if cluster == pyql and table == 'transactions':
                 tables_not_insync = []
-                for table_state in await server.clusters.state.select('in_sync', 'table_name', where={"uuid": uuid})
+                for table_state in await server.clusters.state.select('in_sync', 'table_name', where={"uuid": uuid}):
                     if table_state['table_name'] == 'transactions':
                         continue
                     if table_state['in_sync'] == False:
