@@ -2122,13 +2122,13 @@ async def run(server):
             cluster_id = ep['cluster']
             endpoint_path = f"http://{path}/db/{db}/table/{table}"
 
-            if cluster == pyql and table == 'transactions':
+            if cluster == pyql and not table in ['state', 'tables']:
                 tables_not_insync = []
-                for table_state in await server.clusters.state.select('in_sync', 'table_name', where={"uuid": uuid}):
-                    if table_state['table_name'] == 'transactions':
+                for table_state in await server.clusters.state.select('uuid', 'table_name', 'in_sync'):
+                    if not table_state['table_name'] in ['state', 'tables']:
                         continue
                     if table_state['in_sync'] == False:
-                        tables_not_insync.append(table_state['table_name'])
+                        tables_not_insync.append(table_state)
                 if len(tables_not_insync) > 0:
                     sync_results[endpoint] = trace(
                          f"cannot sync endpoint {uuid} table transactions while {tables_not_insync} are out_of_sync"
