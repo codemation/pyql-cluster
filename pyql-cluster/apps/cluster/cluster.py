@@ -2000,7 +2000,7 @@ async def run(server):
                     })
         for cluster in jobs:
             if cluster == pyql:
-                order = ['state', 'tables', 'clusters', 'auth', 'endpoints', 'databases', 'jobs', , 'transactions']
+                order = ['state', 'tables', 'clusters', 'auth', 'endpoints', 'databases', 'jobs', 'transactions']
                 jobs_to_run_ordered = []
                 ready_jobs = []
                 while len(order) > 0:
