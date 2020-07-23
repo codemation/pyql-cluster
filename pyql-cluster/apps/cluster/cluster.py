@@ -2267,7 +2267,7 @@ async def run(server):
                 track("setting TB endpoint as in_sync=True, 'state': 'loaded'")
                 r = await table_endpoint(cluster, table, uuid, {'in_sync': True, 'state': 'loaded'}, trace=kw['trace'])
                 track(f"setting TB endpoint as in_sync=True, 'state': 'loaded' result: {r}")
-                if cluster == 'pyql' and table == 'state':
+                if cluster == pyql and table == 'state':
                     await sync_cluster_table_logs()
                 # Un-Pause
                 track("completing cutover by un-pausing table")
