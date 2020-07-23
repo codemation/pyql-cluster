@@ -1,6 +1,5 @@
 FROM joshjamison/python37:latest
 
-
 RUN apt-get install -y curl
 
 RUN git clone --single-branch --branch fastapi https://github.com/codemation/pyql-cluster.git
@@ -21,4 +20,4 @@ ENV PYQL_VOLUME_PATH=/mnt/pyql-cluster
 
 EXPOSE 8090
 
-CMD ["uvicorn", "--host", "0.0.0.0", "--port", "8090",  "server:app"]
+CMD ["uvicorn", "--host", "0.0.0.0", "--port", "8090", "--workers" , "5", "server:app"]
