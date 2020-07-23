@@ -898,7 +898,8 @@ async def run(server):
         _txn = {action: request_data}
         trace(f"called for {_txn}")
 
-        pyql_txn_exceptions = {'transactions', 'jobs', 'state', 'tables'}
+        #pyql_txn_exceptions = {'transactions', 'jobs', 'state', 'tables'}
+        pyql_txn_exceptions = {'transactions', 'jobs'}
         table_endpoints = await get_table_endpoints(cluster, table, caller='post_request_tables', trace=kw['trace'])
         pyql = await server.env['PYQL_UUID']
         fail_track = []
@@ -2098,7 +2099,8 @@ async def run(server):
                     f"missing or invalid configuration provided: cluster {cluster} table {config} job: {job} config: {config}"
                 )
             )
-        pyql_sync_exclusions = {'transactions', 'jobs', 'state', 'tables'}
+        #pyql_sync_exclusions = {'transactions', 'jobs', 'state', 'tables'}
+        pyql_sync_exclusions = {'transactions', 'jobs'}
         pyql = await server.env['PYQL_UUID']
         # get table endpoints
         table_endpoints = await get_table_endpoints(cluster, table, caller='cluster_table_sync_run', trace=kw['trace'])
