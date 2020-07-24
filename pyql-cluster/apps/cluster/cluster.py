@@ -2205,7 +2205,7 @@ async def run(server):
 
             async def load_table():
                 track("load_table starting - pausing table to get a consistent table_copy")
-                r = await table_pause(cluster, table, 'start', delay_after_pause=4.0, **Kw)
+                r = await table_pause(cluster, table, 'start', delay_after_pause=4.0, **kw)
                 if cluster == pyql and table in pyql_sync_exclusions: 
                     #need to blackout changes to these tables during entire copy as txn logs not generated
                     try:
