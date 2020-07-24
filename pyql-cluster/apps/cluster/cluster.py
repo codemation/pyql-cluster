@@ -1539,6 +1539,12 @@ async def run(server):
                     admin_id = await server.clusters.auth.select('id', where={'username': 'admin'})
                     kw['authentication'] = admin_id[0]['id']
                 await bootstrap_pyql_cluster(config, **kw)
+                
+                # after bootstrap - assign auth to service id 
+                service_id = await server.clusters.auth.select(
+                    'id', where={'parent': kw['authentication']})
+                kw['authentication'] = service_id[0]['id']
+
             
             clusters = await server.clusters.clusters.select(
                 '*', where={'name': 'pyql'}
