@@ -2469,7 +2469,7 @@ async def run(server):
     await asyncio.sleep(float(randrange(10)))
 
     # check for join_cluster_job 
-    job = await server.clusters.internaljob.select(
+    job = await server.clusters.internaljobs.select(
         '*',
         where={'name': join_cluster_job['job']}
         )
