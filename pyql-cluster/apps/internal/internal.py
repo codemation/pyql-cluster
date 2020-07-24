@@ -47,11 +47,17 @@ async def run(server):
 
     async def job_queue_action(job_id, action, **kw):
         log.warning(f"job_queue_action {job_id} - {action}")
-        if action == 'finished':
-            await server.clusters.internaljobs.delete(where={'id': job_id})
-        if action == 'queued':
-            await server.clusters.internaljobs.update(status='queued', where={'id': job_id})
-        return {"message": f"{action} on jobId {id} completed successfully"}
+        try:
+            if action == 'finished':
+                result = await server.clusters.internaljobs.delete(where={'id': job_id})
+                log.warning(f"finished result {result}")
+            if action == 'queued':
+                await server.clusters.internaljobs.update(status='queued', where={'id': job_id})
+            return {"message": f"{action} on {job_id} completed successfully"}
+        except Exception as e:
+            return {
+                "message": log.exception(f"error when performing {action} on job_id {job_id}")
+                }
     server.job_queue_action = job_queue_action
 
     @server.api_route('/internal/job')
