@@ -420,12 +420,15 @@ async def run(server):
             # ('access', str), # {"alllow": ['uuid1', 'uuid2', 'uuid3']}
             # ('created_by_endpoint', str),
             # ('create_date', str)
-            
+            service_id = await server.clusters.auth.select(
+                'id', 
+                where={'parent': kw['authentication']})
+            service_id = service_id[0]['id']
             return {
                 'id': str(uuid.uuid1()),
                 'name': 'pyql',
                 'owner': kw['authentication'],
-                'access': {'allow': [kw['authentication']]},
+                'access': {'allow': [kw['authentication'], service_id]},
                 'key': server.encode(
                     os.environ['PYQL_CLUSTER_INIT_ADMIN_PW'],
                     key=await server.env['PYQL_CLUSTER_TOKEN_KEY']
@@ -2461,8 +2464,17 @@ async def run(server):
         return {"result": result}
         
     server.job_check_and_run = job_check_and_run
-        
-    await server.internal_job_add(join_cluster_job)
+    
+    # random delay to prevent duplicate insertions with multiple workers 
+    await asyncio.sleep(float(randrange(10)))
+
+    # check for join_cluster_job 
+    job = await server.clusters.internaljob.select(
+        '*',
+        where={'name': join_cluster_job['job']}
+        )
+    if len(job) == 0:
+        await server.internal_job_add(join_cluster_job)
 
     if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
         #Job to trigger cluster_quorum()
