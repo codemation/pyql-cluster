@@ -44,11 +44,13 @@ async def run(server):
     @server.is_authenticated('local')
     async def internal_job_queue_action(id, action, **kw):
         return await job_queue_action(id, action, **kw)
-    async def job_queue_action(id, action, **kw):
+
+    async def job_queue_action(job_id, action, **kw):
+        log.warning(f"job_queue_action {job_id} - {action}")
         if action == 'finished':
-            await server.clusters.internaljobs.delete(where={'id': id})
+            await server.clusters.internaljobs.delete(where={'id': job_id})
         if action == 'queued':
-            await server.clusters.internaljobs.update(status='queued', where={'id': id})
+            await server.clusters.internaljobs.update(status='queued', where={'id': job_id})
         return {"message": f"{action} on jobId {id} completed successfully"}
     server.job_queue_action = job_queue_action
 
