@@ -420,15 +420,16 @@ async def run(server):
             # ('access', str), # {"alllow": ['uuid1', 'uuid2', 'uuid3']}
             # ('created_by_endpoint', str),
             # ('create_date', str)
+            admin_id = kw['authentication']
             service_id = await server.clusters.auth.select(
                 'id', 
-                where={'parent': kw['authentication']})
+                where={'parent': admin_id})
             service_id = service_id[0]['id']
             return {
                 'id': str(uuid.uuid1()),
                 'name': 'pyql',
-                'owner': kw['authentication'],
-                'access': {'allow': [kw['authentication'], service_id]},
+                'owner': service_id,
+                'access': {'allow': [admin_id, service_id]},
                 'key': server.encode(
                     os.environ['PYQL_CLUSTER_INIT_ADMIN_PW'],
                     key=await server.env['PYQL_CLUSTER_TOKEN_KEY']
