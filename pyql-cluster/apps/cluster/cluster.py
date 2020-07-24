@@ -1530,6 +1530,8 @@ async def run(server):
             for cluster in clusters:
                 if cluster['name'] == 'pyql':
                      is_pyql_bootstrapped, pyql = True, cluster['id']
+                     if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
+                         return {"message": "pyql cluster already initialized"}
 
             if not is_pyql_bootstrapped and cluster_name == 'pyql':
                 if not 'authentication' in kw:
@@ -2473,7 +2475,13 @@ async def run(server):
         '*',
         where={'name': join_cluster_job['job']}
         )
-    if len(job) == 0:
+
+    # check if pyql has been created yet
+    pyql = await server.clusters.clusters.select(
+        '*',
+        where={'name': "pyql"}
+    )
+    if len(job) == 0 and len(pyql) == 0:
         await server.internal_job_add(join_cluster_job)
 
     if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
