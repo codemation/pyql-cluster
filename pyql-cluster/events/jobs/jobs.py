@@ -47,21 +47,16 @@ async def run(server):
                         method=job['method'], 
                         data=job['data'], auth=auth
                         )
-            """
-            elif job['job_type'] == 'tablesync':
-                log(f"adding job {job} to tablesync queue")
-                message, rc = add_job_to_queue(f'/cluster/syncjobs/add', job
             
-            else:
-                message, rc =  f"{job['job']} is missing job_type field", 200
-            """
             if message:
                 try:
-                    await server.job_queue_action(job_id, 'finished')
+                    result = await server.job_queue_action(job_id, 'finished')
                     return message
                     #probe(f'{NODE_PATH}/internal/job/{job_id}/finished', 'POST', auth='local', session=session)
                 except Exception as e:
                     message = log.exception(f'encountered exception finishing job, need to cleanup {job_id} later')
+            else:
+                log.warning(f"{job['job']} completed with no message")
         except Exception as e:
             message = log.exception(f"{os.environ['HOSTNAME']} exception hanlding job {job} - add back to queue")
             #probe(f'{NODE_PATH}/internal/job/{job_id}/queued', 'POST', auth='local', session=session)
