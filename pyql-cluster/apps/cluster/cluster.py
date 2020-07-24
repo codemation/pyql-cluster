@@ -144,8 +144,8 @@ async def run(server):
             if user_id == cluster['owner'] or user_id in cluster['access']['allow']:
                 cluster_allowed = cluster['id']
                 break
-            if 'auth_children' in request.__dict__:
-                for child_id in request.auth_children:
+            if 'auth_children' in kwargs:
+                for child_id in kwargs['auth_children']:
                     if child_id == cluster['owner'] or child_id in cluster['access']['allow']:
                         cluster_allowed = cluster['id']
                         break
