@@ -1532,7 +1532,8 @@ async def run(server):
                 if cluster['name'] == 'pyql':
                      is_pyql_bootstrapped, pyql = True, cluster['id']
                      if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
-                         return {"message": "pyql cluster already initialized"}
+                         if config['database']['uuid'] == node_id:
+                            return {"message": "pyql cluster already initialized"}
 
             if not is_pyql_bootstrapped and cluster_name == 'pyql':
                 if not 'authentication' in kw:
