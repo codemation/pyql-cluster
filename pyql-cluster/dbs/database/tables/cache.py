@@ -2,7 +2,10 @@ async def db_attach(server):
     db = server.data['cluster']
     # cache table should reset each time an instance is started / restarted
     async def reset_cache():
-        await server.data['cluster'].run(f'drop table cache')
+        try:
+            await server.data['cluster'].run(f'drop table cache')
+        except Exception as e:
+            pass
         await db.create_table(
         'cache', [
             ('id', str, 'UNIQUE NOT NULL'), # uuid of cached txn

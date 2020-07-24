@@ -43,11 +43,14 @@ async def run(server):
         return await internal_job_queue_action(id, action,  request=await server.process_request(request))
     @server.is_authenticated('local')
     async def internal_job_queue_action(id, action, **kw):
+        return await job_queue_action(id, action, **kw)
+    async def job_queue_action(id, action, **kw):
         if action == 'finished':
             await server.clusters.internaljobs.delete(where={'id': id})
         if action == 'queued':
             await server.clusters.internaljobs.update(status='queued', where={'id': id})
         return {"message": f"{action} on jobId {id} completed successfully"}
+    server.job_queue_action = job_queue_action
 
     @server.api_route('/internal/job')
     async def internal_job_queue_pull_api(request: Request):
@@ -55,6 +58,8 @@ async def run(server):
 
     @server.is_authenticated('local')
     async def internal_job_queue_pull(**kw):
+        return await job_queue_pull(**kw)
+    async def job_queue_pull(**kw):
         jobs = await server.clusters.internaljobs.select('id', where={'status': 'queued'})
         if len(jobs) > 0:
             for job in jobs:
@@ -63,6 +68,8 @@ async def run(server):
                 if len(reserved) == 1:
                     return {'id': job['id'], 'config': reserved[0]['config']}
         return {"message": "no jobs in queue"}
+    
+    server.job_queue_pull = job_queue_pull
 
     @server.api_route('/internal/jobs')
     async def internal_list_job_queue(request: Request):
@@ -73,14 +80,18 @@ async def run(server):
 
     @server.api_route('/internal/db/check')
     async def internal_db_check_api(request: Request):
-        return await internal_db_check( request=await server.process_request(request))
+        return await internal_db_check_auth( request=await server.process_request(request))
 
     @server.is_authenticated('local')
+    async def internal_db_check_auth(**kw):
+        return await internal_db_check(**kw)
     async def internal_db_check(**kw):
         messages = []
         for database in server.data:
             messages.append(await db_check(database))
         return {"result": messages if len(messages) > 0 else "No databases attached", "jobs": server.jobs}
+    
+    server.db_check = internal_db_check
 
     @server.api_route('/internal/db/{database}/status')
     async def internal_db_status_api(database: str, request: Request):
