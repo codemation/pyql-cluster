@@ -1175,7 +1175,7 @@ async def run(server):
         method = request.method if not 'method' in kw else kw['method']
         if method in ['POST', 'PUT'] and data == None:
             server.http_exception(400, trace.error("expected json input for request"))
-        async for endpoint in get_random_table_endpoint(cluster, table, quorum):
+        async for endpoint in get_random_table_endpoint(cluster, table, quorum, **kw):
             if endpoint == None:
                 server.http_exception(
                     500, 
@@ -2090,7 +2090,7 @@ async def run(server):
         in_sync_table_copy = await table_select(cluster, table, method='GET', **kw)
 
         # This allows logs to generate for endpoint - following the copy
-        await table_endpoint(cluster, table, out_of_sync_uuid, {'state': 'loaded'}, trace=kw['trace'])
+        await table_endpoint(cluster, table, out_of_sync_uuid, {'state': 'loaded'}, **kw)
         if 'unPauseAfterCopy' in kw:
             # unpause to allow txn logs to generate while syncing
             r = await table_pause(cluster, table, 'stop', **kw)
@@ -2126,7 +2126,7 @@ async def run(server):
 
         # mark table endpoint as 'new'
         if not rc == 200:
-            await table_endpoint(cluster, table, out_of_sync_uuid, {'state': 'new'}, trace=kw['trace'])
+            await table_endpoint(cluster, table, out_of_sync_uuid, {'state': 'new'}, **kw)
         trace.warning(f"#SYNC table_copy results {response} {rc}")
         trace.warning(f"#SYNC initial table copy of {table} in cluster {cluster} completed, need to sync changes now")
         return response
@@ -2215,7 +2215,7 @@ async def run(server):
                         track(f"table_copy result: {tb_copy_result}")
                         
                         track(f"PYQL - Marking table endpoint as in_sync & loaded")
-                        r = await table_endpoint(cluster, table, uuid, {'in_sync': True, 'state': 'loaded'}, trace=kw['trace'])
+                        r = await table_endpoint(cluster, table, uuid, {'in_sync': True, 'state': 'loaded'}, **kw)
                         track(f'PYQL - marking table endpoint {uuid} - result: {r}')
                         if table == 'state':
                             # as sync endpoint is pyql - state, need to manually set in_sync True on itself
@@ -2324,7 +2324,7 @@ async def run(server):
                 pass
             else:
                 track("completed initial pull of change logs & starting a cutover by pausing table")
-                r = await table_pause(cluster, table, 'start', trace=kw['trace'], delay_after_pause=4.0, **kw)
+                r = await table_pause(cluster, table, 'start', delay_after_pause=4.0, **kw)
                 #message, rc = table_cutover(cluster_id, table, 'start')
                 track(f"cutover result: {r}")
                 
@@ -2339,7 +2339,7 @@ async def run(server):
                     r = await table_pause(cluster, table, 'stop', **kw)
                     return {"error": track(f"exception encountered during pull of change logs")}
                 track("setting TB endpoint as in_sync=True, 'state': 'loaded'")
-                r = await table_endpoint(cluster, table, uuid, {'in_sync': True, 'state': 'loaded'}, trace=kw['trace'])
+                r = await table_endpoint(cluster, table, uuid, {'in_sync': True, 'state': 'loaded'}, **kw)
                 track(f"setting TB endpoint as in_sync=True, 'state': 'loaded' result: {r}")
                 if cluster == pyql and table == 'state':
                     await sync_cluster_table_logs()
