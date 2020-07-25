@@ -81,23 +81,28 @@ async def run(server):
 
     endpoints = await server.clusters.endpoints.select('*') if 'endpoints' in server.data['cluster'].tables else []
 
-    uuid_check = await server.data['cluster'].tables['pyql'].select('uuid', where={'database': 'cluster'})
-    if len(uuid_check) > 0:
-        for _,v in uuid_check[0].items():
-            dbuuid = str(v)
-    else:
-        dbuuid = str(uuid.uuid1())
-        await server.data['cluster'].tables['pyql'].insert({
-            'uuid': dbuuid,
-            'database': 'cluster', 
-            'last_mod_time': time.time()
-        })
+    
+    while True:
+        uuid_check = await server.data['cluster'].tables['pyql'].select('uuid', where={'database': 'cluster'})
+        if len(uuid_check) > 0:
+            for _,v in uuid_check[0].items():
+                dbuuid = str(v)
+            break
+        else:
+            if await server.env['SETUP_ID'] == server.setup_id:
+                dbuuid = str(uuid.uuid1())
+                await server.data['cluster'].tables['pyql'].insert({
+                    'uuid': dbuuid,
+                    'database': 'cluster', 
+                    'last_mod_time': time.time()
+                })
+                await server.env.set_item('PYQL_ENDPOINT', dbuuid)
+                break
+            continue
     node_id = dbuuid
     
 
     os.environ['PYQL_ENDPOINT'] = dbuuid
-    await server.env.set_item('PYQL_ENDPOINT', dbuuid)
-
     os.environ['HOSTNAME'] = '-'.join(os.environ['PYQL_NODE'].split('.'))
 
     if not 'PYQL_CLUSTER_ACTION' in os.environ:
@@ -2489,97 +2494,82 @@ async def run(server):
         return {"result": result}
         
     server.job_check_and_run = job_check_and_run
-    
-    # random delay to prevent duplicate insertions with multiple workers 
-    await asyncio.sleep(float(randrange(10)))
 
-    # check for join_cluster_job 
-    job = await server.clusters.internaljobs.select(
-        '*',
-        where={'name': join_cluster_job['job']}
-        )
-
-    # check if pyql has been created yet
-    pyql = await server.clusters.clusters.select(
-        '*',
-        where={'name': "pyql"}
-    )
-    if len(job) == 0 and len(pyql) == 0:
+    if await server.env['SETUP_ID'] == server.setup_id:
         await server.internal_job_add(join_cluster_job)
 
-    if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
-        #Job to trigger cluster_quorum()
-        init_quorum = {
-            "job": "init_quorum",
-            "job_type": "cluster",
-            "method": "POST",
-            "action": 'cluster_quorum_update',
-            "path": "/pyql/quorum",
-            "config": {}
-        }
-        init_mark_ready_job = {
-            "job": "init_mark_ready",
-            "job_type": "cluster",
-            "method": "POST",
-            "path": "/cluster/pyql/ready",
-            "config": {'ready': True}
-        }
-        # Create Cron Jobs inside init node
-        cron_jobs = []
-        if not os.environ.get('PYQL_TYPE') == 'K8S':
-            await server.internal_job_add(init_quorum)
-            #server.internal_job_add(initMarkReadyJob)
-            cron_jobs.append({
-                'job': 'cluster_quorum_check',
-                'job_type': 'cron',
-                "action": 'cluster_quorum_check',
-                "config": {"interval": 15}
-            })
-        for i in [30,90]:
-            cron_jobs.append({
-                'job': f'tablesync_check_{i}',
-                'job_type': 'cron',
-                "action": 'tablesync_mgr',
-                "config": {"interval": i}
-            })
-            cron_jobs.append({
-                'job': f'cluster_job_cleanup_{i}',
-                'job_type': 'cron',
-                'action': 'jobmgr_cleanup',
-                'config': {'interval': i}
-            })
-        for job in cron_jobs:
-            new_cron_job = {
-                "job": f"add_cron_job_{job['job']}",
-                "job_type": 'cluster',
-                "action": "jobs_add",
-                "config": job,
+        if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
+            #Job to trigger cluster_quorum()
+            init_quorum = {
+                "job": "init_quorum",
+                "job_type": "cluster",
+                "method": "POST",
+                "action": 'cluster_quorum_update',
+                "path": "/pyql/quorum",
+                "config": {}
             }
-            log.warning(f"adding job {job['job']} to internaljobs queue")
-            await server.internal_job_add(new_cron_job)
+            init_mark_ready_job = {
+                "job": "init_mark_ready",
+                "job_type": "cluster",
+                "method": "POST",
+                "path": "/cluster/pyql/ready",
+                "config": {'ready': True}
+            }
+            # Create Cron Jobs inside init node
+            cron_jobs = []
+            if not os.environ.get('PYQL_TYPE') == 'K8S':
+                await server.internal_job_add(init_quorum)
+                #server.internal_job_add(initMarkReadyJob)
+                cron_jobs.append({
+                    'job': 'cluster_quorum_check',
+                    'job_type': 'cron',
+                    "action": 'cluster_quorum_check',
+                    "config": {"interval": 15}
+                })
+            for i in [30,90]:
+                cron_jobs.append({
+                    'job': f'tablesync_check_{i}',
+                    'job_type': 'cron',
+                    "action": 'tablesync_mgr',
+                    "config": {"interval": i}
+                })
+                cron_jobs.append({
+                    'job': f'cluster_job_cleanup_{i}',
+                    'job_type': 'cron',
+                    'action': 'jobmgr_cleanup',
+                    'config': {'interval': i}
+                })
+            for job in cron_jobs:
+                new_cron_job = {
+                    "job": f"add_cron_job_{job['job']}",
+                    "job_type": 'cluster',
+                    "action": "jobs_add",
+                    "config": job,
+                }
+                log.warning(f"adding job {job['job']} to internaljobs queue")
+                await server.internal_job_add(new_cron_job)
         
+        # Check for number of endpoints in pyql cluster, if == 1, mark ready=True
+        quorum = await server.clusters.quorum.select('*')
+        # clear existing quorum
+        for node in quorum:
+            await server.clusters.quorum.delete(where={'node': node['node']})
 
-    # Check for number of endpoints in pyql cluster, if == 1, mark ready=True
-    quorum = await server.clusters.quorum.select('*')
-    # clear existing quorum
-    for node in quorum:
-        await server.clusters.quorum.delete(where={'node': node['node']})
+        if len(endpoints) == 1 or os.environ['PYQL_CLUSTER_ACTION'] == 'init':
+            ready_and_quorum = True
+            health = 'healthy'
+        else:
+            #await server.clusters.state.update(in_sync=False, where={'uuid': node_id}) 
+            ready_and_quorum = False
+            health = 'healing'
+        # Sets ready false for any node with may be restarting as resync is required before marked ready
 
-    if len(endpoints) == 1 or os.environ['PYQL_CLUSTER_ACTION'] == 'init':
-        ready_and_quorum = True
-        health = 'healthy'
-    else:
-        #await server.clusters.state.update(in_sync=False, where={'uuid': node_id}) 
-        ready_and_quorum = False
-        health = 'healing'
-    # Sets ready false for any node with may be restarting as resync is required before marked ready
-
-    await server.clusters.quorum.insert(**{
-        'node': node_id,
-        'nodes': {'nodes': [node_id]},
-        'missing': {},
-        'in_quorum': ready_and_quorum,
-        'health': health,
-        'last_update_time': float(time.time()),
-        'ready': ready_and_quorum,
-    })
+        await server.clusters.quorum.insert(**{
+            'node': node_id,
+            'nodes': {'nodes': [node_id]},
+            'missing': {},
+            'in_quorum': ready_and_quorum,
+            'health': health,
+            'last_update_time': float(time.time()),
+            'ready': ready_and_quorum,
+        })

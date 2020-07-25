@@ -3,7 +3,7 @@ def run(server):
     import os
     from fastapi.testclient import TestClient
     from fastapi.websockets import WebSocket
-    import uvloop, asyncio
+    import uvloop, asyncio, random
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     event_loop = asyncio.get_event_loop()
     server.event_loop = event_loop

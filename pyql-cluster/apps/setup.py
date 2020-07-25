@@ -3,7 +3,20 @@ async def run(server):
 
     #### Create HTTPException Handler
     from fastapi import HTTPException, Request
-    import json
+    import json, uuid, asyncio, random
+
+    log = server.log
+
+    server.setup_id = str(uuid.uuid1())
+    await asyncio.sleep(random.randrange(5))
+    env_setup_id = await server.env['SETUP_ID']
+    log.warning(f"ENV SETUP ID: {env_setup_id}")
+    if await server.env['SETUP_ID'] == None:
+        await server.env.set_item('SETUP_ID', server.setup_id)
+
+    if await server.env['SETUP_ID'] == server.setup_id:
+        log.warning(f"SETUP_ID using {server.setup_id}")
+
     def http_exception(status, detail):
         raise HTTPException(status_code=status, detail=detail)
     server.http_exception = http_exception

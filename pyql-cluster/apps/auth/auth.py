@@ -144,29 +144,29 @@ async def run(server):
                 return {"message": log.warning(f"{key} updated successfully with {value}")}
         server.http_exception(400, log.error("invalid location or key - specified"))
 
-
-    # Create 'PYQL_LOCAL_TOKEN_KEY' if not existent yet.
-    PYQL_LOCAL_TOKEN_KEY = await server.env['PYQL_LOCAL_TOKEN_KEY']
-    if PYQL_LOCAL_TOKEN_KEY == None:
-        log.warning('creating PYQL_LOCAL_TOKEN_KEY')
-        r = await set_token_key(  
-            'local', 
-            {'PYQL_LOCAL_TOKEN_KEY': ''.join(random.choice(char_nums) for i in range(12))}
-            )
-        log.warning(f"finished creating PYQL_LOCAL_TOKEN_KEY {PYQL_LOCAL_TOKEN_KEY} - {r}")
-    else:
-        log.warning(f'PYQL_LOCAL_TOKEN_KEY already exists {PYQL_LOCAL_TOKEN_KEY}')
-    
-    if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
-        if not 'PYQL_CLUSTER_INIT_ADMIN_PW' in os.environ:
-            os.environ['PYQL_CLUSTER_INIT_ADMIN_PW'] = 'abcd1234'
-        #os.environ['PYQL_CLUSTER_INIT_ADMIN_PW']
-        PYQL_CLUSTER_TOKEN_KEY = await server.env['PYQL_CLUSTER_TOKEN_KEY']
-        if PYQL_CLUSTER_TOKEN_KEY == None:
-            await set_token_key(
-                'cluster', 
-                {'PYQL_CLUSTER_TOKEN_KEY': ''.join(random.choice(char_nums) for i in range(24))}
+    if await server.env['SETUP_ID'] == server.setup_id:
+        # Create 'PYQL_LOCAL_TOKEN_KEY' if not existent yet.
+        PYQL_LOCAL_TOKEN_KEY = await server.env['PYQL_LOCAL_TOKEN_KEY']
+        if PYQL_LOCAL_TOKEN_KEY == None:
+            log.warning('creating PYQL_LOCAL_TOKEN_KEY')
+            r = await set_token_key(  
+                'local', 
+                {'PYQL_LOCAL_TOKEN_KEY': ''.join(random.choice(char_nums) for i in range(12))}
                 )
+            log.warning(f"finished creating PYQL_LOCAL_TOKEN_KEY {PYQL_LOCAL_TOKEN_KEY} - {r}")
+        else:
+            log.warning(f'PYQL_LOCAL_TOKEN_KEY already exists {PYQL_LOCAL_TOKEN_KEY}')
+        
+        if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
+            if not 'PYQL_CLUSTER_INIT_ADMIN_PW' in os.environ:
+                os.environ['PYQL_CLUSTER_INIT_ADMIN_PW'] = 'abcd1234'
+            #os.environ['PYQL_CLUSTER_INIT_ADMIN_PW']
+            PYQL_CLUSTER_TOKEN_KEY = await server.env['PYQL_CLUSTER_TOKEN_KEY']
+            if PYQL_CLUSTER_TOKEN_KEY == None:
+                await set_token_key(
+                    'cluster', 
+                    {'PYQL_CLUSTER_TOKEN_KEY': ''.join(random.choice(char_nums) for i in range(24))}
+                    )
 
     async def create_auth_token(userid, expiration, location):
         secret = await server.env[f'PYQL_{location.upper()}_TOKEN_KEY']
@@ -179,54 +179,54 @@ async def run(server):
     server.create_auth_token = create_auth_token
     
 
-
-    if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
-        if await server.env['PYQL_CLUSTER_SERVICE_TOKEN'] == None:
-            #initializing cluster admin user
-            admin_id = str(uuid.uuid1())
-            log.warning(f'creating admin user with id {admin_id}')
-            await server.data['cluster'].tables['auth'].insert(
-                **{
-                    'id': admin_id,
-                    'username': 'admin',
-                    'type': 'admin',
-                    'password': encode_password(os.environ['PYQL_CLUSTER_INIT_ADMIN_PW']) # init pw
-                }
-            )
-            # initializing cluster service user 
-            # cluster service token is used for expanding pyql cluster or other joining endpoints
-            cluster_service_id = str(uuid.uuid1())
-            await server.data['cluster'].tables['auth'].insert(**{
-                'id': cluster_service_id,
-                'username': 'pyql',
-                'type': 'service',
-                'parent': admin_id
-            })
-            cluster_service_token = await create_auth_token(cluster_service_id, 'never', 'CLUSTER')
-            await server.env.set_item('PYQL_CLUSTER_SERVICE_TOKEN', str(cluster_service_token))
-            log.warning(f"PYQL_CLUSTER_SERVICE_TOKEN set to {str(cluster_service_token)}")
+    if await server.env['SETUP_ID'] == server.setup_id:
+        if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
+            if await server.env['PYQL_CLUSTER_SERVICE_TOKEN'] == None:
+                #initializing cluster admin user
+                admin_id = str(uuid.uuid1())
+                log.warning(f'creating admin user with id {admin_id}')
+                await server.data['cluster'].tables['auth'].insert(
+                    **{
+                        'id': admin_id,
+                        'username': 'admin',
+                        'type': 'admin',
+                        'password': encode_password(os.environ['PYQL_CLUSTER_INIT_ADMIN_PW']) # init pw
+                    }
+                )
+                # initializing cluster service user 
+                # cluster service token is used for expanding pyql cluster or other joining endpoints
+                cluster_service_id = str(uuid.uuid1())
+                await server.data['cluster'].tables['auth'].insert(**{
+                    'id': cluster_service_id,
+                    'username': 'pyql',
+                    'type': 'service',
+                    'parent': admin_id
+                })
+                cluster_service_token = await create_auth_token(cluster_service_id, 'never', 'CLUSTER')
+                await server.env.set_item('PYQL_CLUSTER_SERVICE_TOKEN', str(cluster_service_token))
+                log.warning(f"PYQL_CLUSTER_SERVICE_TOKEN set to {str(cluster_service_token)}")
 
         
-    # check for existing local pyql service user, create if not exists
-    pyql_service_user = await server.data['cluster'].tables['authlocal'].select('*', where={'username': 'pyql'})
+        # check for existing local pyql service user, create if not exists
+        pyql_service_user = await server.data['cluster'].tables['authlocal'].select('*', where={'username': 'pyql'})
 
-    if not len(pyql_service_user) > 0:
-        service_id = str(uuid.uuid1())
-        await server.data['cluster'].tables['authlocal'].insert(**{
-            'id': service_id,
-            'username': 'pyql',
-            'type': 'service'
-        })
-        log.warning(f"created new service account with id {service_id}")
-        service_token = await create_auth_token(service_id, 'never', 'LOCAL')
-        log.warning(f"created service account token {service_token}")
-    else:
-        log.warning(f"found existing service account")
-        service_token = await create_auth_token(
-            pyql_service_user[0]['id'], 
-            'never', 'LOCAL')
-    # Local Token
-    await server.env.set_item('PYQL_LOCAL_SERVICE_TOKEN', service_token)
+        if not len(pyql_service_user) > 0:
+            service_id = str(uuid.uuid1())
+            await server.data['cluster'].tables['authlocal'].insert(**{
+                'id': service_id,
+                'username': 'pyql',
+                'type': 'service'
+            })
+            log.warning(f"created new service account with id {service_id}")
+            service_token = await create_auth_token(service_id, 'never', 'LOCAL')
+            log.warning(f"created service account token {service_token}")
+        else:
+            log.warning(f"found existing service account")
+            service_token = await create_auth_token(
+                pyql_service_user[0]['id'], 
+                'never', 'LOCAL')
+        # Local Token
+        await server.env.set_item('PYQL_LOCAL_SERVICE_TOKEN', service_token)
 
     #### Endpoints for setting local & cluster token keys ###
 
