@@ -348,13 +348,19 @@ async def run(server):
     await get_endpoint_sessions(node_id)
 
     async def cleanup_session(endpoint):
-        try:
-            if endpoint in server.sessions:
-                log.warning(f"removing session for endpoint {endpoint}")
-                await server.sessions[endpoint]['session'].asend('finished')
-        except StopAsyncIteration:
+        #try:
+        if endpoint in server.sessions:
+            log.warning(f"removing session for endpoint {endpoint}")
+            for session in server.sessions[endpoint]:
+                try:
+                    await session['session'].asend('finished')
+                except StopAsyncIteration:
+                    pass
             del server.sessions[endpoint]
-        return
+        #except StopAsyncIteration:
+        #    await cleanup_session(endpoint)
+        #    del server.sessions[endpoint]
+        #return
     async def cleanup_sessions():
         for endpoint in server.sessions:
             await cleanup_session(endpoint)
