@@ -372,7 +372,7 @@ async def run(server):
         auth = 'PYQL_CLUSTER_SERVICE_TOKEN' if not auth == 'local' else 'PYQL_LOCAL_SERVICE_TOKEN'
         headers = await get_auth_http_headers(auth, **kw) if headers == None else headers
         session, temp_session, temp_id = None, False, None
-        loop = server.event_loop if not 'loop' in kw else kw['loop']
+        loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
 
         if not 'session' in kw:
             temp_session, temp_id = True, str(uuid.uuid1())
