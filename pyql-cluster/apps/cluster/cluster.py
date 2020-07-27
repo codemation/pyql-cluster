@@ -1467,7 +1467,7 @@ async def run(server):
             **kw
             )
         if not response:
-            return log.error("error pulling endpoint logs")), 500
+            return log.error("error pulling endpoint logs"), 500
         if action == 'count':
             log.warning(f"# count completed")
             return {"available_txns": len(response['data'])}, 200
