@@ -719,7 +719,7 @@ async def run(server):
                 for node in pre_quorum['missing']['nodes']:
                     # check if pre missing node is still missing
                     if node['uuid'] in missing_nodes: 
-                        if time.time() - node['time'] >= 45:
+                        if time.time() - node['time'] >= 360:
                             # create job to delete missing node
                             job = {
                                 'job': f"delete_missing_node_{node['uuid']}",
@@ -730,7 +730,7 @@ async def run(server):
                                     'endpoint': node['uuid']
                                 }
                             }
-                            trace(f"adding job to delete missing node: {node['uuid']} - missing for more than 180 s")
+                            trace(f"adding job to delete missing node: {node['uuid']} - missing for more than 360 s")
                             await jobs_add(job, **kw)
                         missing_nodes.pop(missing_nodes.index(node['uuid']))
                         missing_nodes_times.append(node)
