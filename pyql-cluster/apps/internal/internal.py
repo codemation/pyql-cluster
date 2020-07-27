@@ -99,7 +99,7 @@ async def run(server):
             messages.append(await db_check(database))
         return {"result": messages if len(messages) > 0 else "No databases attached", "jobs": server.jobs}
     
-    server.db_check = internal_db_check
+    server.internal_db_check = internal_db_check
 
     @server.api_route('/internal/db/{database}/status')
     async def internal_db_status_api(database: str, request: Request):
