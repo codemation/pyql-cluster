@@ -927,7 +927,7 @@ async def run(server):
         loop = server.event_loop if not 'loop' in kw else kw['loop']
 
         #pyql_txn_exceptions = {'transactions', 'jobs', 'state', 'tables'}
-        pyql_txn_exceptions = {'transactions', 'jobs', 'state', 'tables'}
+        pyql_txn_exceptions = {'transactions'}
         table_endpoints = await get_table_endpoints(cluster, table, caller='post_request_tables', **kw)
         pyql = await server.env['PYQL_UUID']
         fail_track = []
@@ -2169,7 +2169,7 @@ async def run(server):
                 )
             )
         #pyql_sync_exclusions = {'transactions', 'jobs', 'state', 'tables'}
-        pyql_sync_exclusions = {'transactions', 'jobs', 'state', 'tables'}
+        pyql_sync_exclusions = {'transactions'}
         pyql = await server.env['PYQL_UUID']
 
         # get table endpoints
