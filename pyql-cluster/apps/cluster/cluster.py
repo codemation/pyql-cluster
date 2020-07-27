@@ -738,16 +738,15 @@ async def run(server):
                 missing_nodes_times.append({'uuid': node, 'time': float(time.time())})
         else:
             # mark this endpoint state OutOfsync
-
-            # create an internal jobs to add to clusterJobQueue once quorum is re-establised
-            # 1 - mark this endpoints state table OutOfSync globally
+            await server.clusters.state.update(in_sync=False, where={'uuid': node_id})
+            await server.internal_job_add(join_cluster_job)
             health = 'unhealthy'
             quorum_to_update['ready'] = False
         # Quorum was previously not ready & outOfQuorum 
         if pre_quorum['health'] == 'unhealthy' and in_quorum == True:
             health = 'healing'
             await server.internal_job_add(join_cluster_job)
-            """
+            #"""
             job = {
                 'job': f"{node_id}_mark_state_out_of_sync",
                 'job_type': 'cluster',
@@ -760,15 +759,18 @@ async def run(server):
                         'where': {'uuid': node_id, 'table_name': 'state'}}
                     }
             }
+            """
             mark_state_out_of_sync_job = {
                 "job": f"add_job_{node_id}_mark_state_out_of_sync",
                 "job_type": 'cluster',
                 "action": "jobs_add",
                 "config": job,
             }
-            trace.warning(f"This node was unhealthy, but started healing - adding job {mark_state_out_of_sync_job} to internaljobs queue")
-            await server.internal_job_add(mark_state_out_of_sync_job)
             """
+            await jobs_add(job, **kw)
+            trace.warning(f"This node was unhealthy, but started healing - adding job {job} to queue")
+            #await server.internal_job_add(mark_state_out_of_sync_job)
+            #"""
             trace("re-joining cluster as this node was un-healthy & needs to heal")
             
         if pre_quorum['health'] in ['healing', 'healthy'] and in_quorum == True: 
@@ -791,7 +793,7 @@ async def run(server):
                                     'jobs', 
                                     'update', 
                                     {'set': {'config': update_job_config, 'status': 'queued'}, 'where': {'name': f'mark_ready_{node_id}'}},
-                                    trace=trace
+                                    **kw
                                     )
         quorum_to_update.update({
             'in_quorum': in_quorum, 
@@ -924,7 +926,7 @@ async def run(server):
         trace = kw['trace']
         _txn = {action: request_data}
         trace(f"called for {_txn}")
-        loop = server.event_loop if not 'loop' in kw else kw['loop']
+        loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
 
         #pyql_txn_exceptions = {'transactions', 'jobs', 'state', 'tables'}
         pyql_txn_exceptions = {'transactions'}
