@@ -1432,9 +1432,12 @@ async def run(server):
     async def cluster_table_endpoint_logs(cluster, table, endpoint, action, **kw):
         request = kw['request']
         if request.method == 'GET':
-            return await table_endpoint_logs(cluster, table, endpoint, action, **kw)
+            result, rc = await table_endpoint_logs(cluster, table, endpoint, action, **kw)
         if request.method == 'POST' and action == 'commit':
-            return await commit_table_endpoint_logs(cluster, table, endpoint, txns=data, **kw)
+            result, rc = await commit_table_endpoint_logs(cluster, table, endpoint, txns=data, **kw)
+        if not rc == 200:
+            server.http_exception(rc, result)
+        return {"message": result}
 
     @server.trace
     async def table_endpoint_logs(cluster, table, endpoint, action, **kw):
@@ -1464,13 +1467,13 @@ async def run(server):
             **kw
             )
         if not response:
-            server.http_exception(500, log.error("error pulling endpoint logs"))
+            return log.error("error pulling endpoint logs")), 500
         if action == 'count':
             log.warning(f"# count completed")
-            return {"availableTxns": len(response['data'])}
+            return {"available_txns": len(response['data'])}, 200
         elif action == 'getAll':
             log.warning(f"# getAll completed")
-            return response
+            return response, 200
         else:
             server.http_exception(
                 400,
@@ -1495,7 +1498,7 @@ async def run(server):
                 }
             }
             resp = await post_request_tables(pyql, 'transactions', 'delete', delete_txn, **kw)
-        return {"message": trace(f"successfully commited txns {txns}")}
+        return trace(f"successfully commited txns {txns}"), 200
 
 
     @server.api_route('/cluster/{cluster_name}/join', methods=['GET','POST'])
@@ -2126,6 +2129,7 @@ async def run(server):
                     **kw)
                 if not rc == 200:
                     response, rc = trace.error(f"failed to create table using {tb_config}"), 500
+                    return {"message": trace.error(response)}, rc
                 #Retry sync since new table creation
                 response, rc = await probe(
                     f'{out_of_sync_path}/sync', 
@@ -2134,13 +2138,16 @@ async def run(server):
                     token=out_of_sync_token, 
                     session=await get_endpoint_sessions(out_of_sync_uuid, **kw),
                     **kw)
+                if not rc == 200:
+                    return {"message": trace.error(response)}, rc
 
         # mark table endpoint as 'new'
         if not rc == 200:
             await table_endpoint(cluster, table, out_of_sync_uuid, {'state': 'new'}, **kw)
+            return {"message": trace.error(response)}, rc
         trace.warning(f"#SYNC table_copy results {response} {rc}")
         trace.warning(f"#SYNC initial table copy of {table} in cluster {cluster} completed, need to sync changes now")
-        return response
+        return response, rc
     
     @server.trace
     async def table_sync_run(cluster=None, table=None, config=None, job=None, **kw):
@@ -2209,7 +2216,7 @@ async def run(server):
                 f'http://{path}/pyql/node',
                 session=await get_endpoint_sessions(uuid, **kw), 
                 **kw)
-            if not rc == 200 and not rc==404:
+            if not rc == 200 and not rc == 404:
                 warning = f"endpoint {uuid} is not alive or reachable with path {path} - cannot issue sync right now"
                 sync_results[endpoint] = track(warning)
                 continue
@@ -2222,8 +2229,10 @@ async def run(server):
                     try:
                         track(f"cutover start result: {r}")
                         track(f"starting table_copy")
-                        tb_copy_result = await table_copy(cluster, table, endpoint_path, token, uuid, **kw)
-                        track(f"table_copy result: {tb_copy_result}")
+                        tb_copy_result, tb_copy_rc = await table_copy(cluster, table, endpoint_path, token, uuid, **kw)
+                        track(f"table_copy result: {tb_copy_result} rc {tb_copy_rc}")
+                        if not tb_copy_rc == 200:
+                            return tb_copy_result, tb_copy_rc
                         
                         track(f"PYQL - Marking table endpoint as in_sync & loaded")
                         r = await table_endpoint(cluster, table, uuid, {'in_sync': True, 'state': 'loaded'}, **kw)
@@ -2246,28 +2255,33 @@ async def run(server):
                     r = await table_pause(cluster, table, 'stop', **kw)
                     track(f'PYQL - end of cutover, resuming table result: {r}')
                 else: 
-                    tb_copy_result = await table_copy(cluster, table, endpoint_path, token, uuid, unPauseAfterCopy=True, **kw)
-                    if tb_copy_result:
-                        track(f"table_copy results: {tb_copy_result}")
-                    else:
+                    tb_copy_result, tb_copy_rc = await table_copy(cluster, table, endpoint_path, token, uuid, unPauseAfterCopy=True, **kw)
+                    if not tb_copy_rc == 200:
                         await table_pause(cluster, table, 'stop', **kw)
-                        return track(f"table create failed - error {tb_copy_result}"), 500
+                        return track(f"table create failed - error {tb_copy_result}"), tb_copy_rc
+                    # table_copy complete successfully
+                    track(f"table_copy results: {tb_copy_result}")
                 return track("load_table completed"), 200
             #
             async def sync_cluster_table_logs():
-                try_count = 0
                 track('starting sync_cluster_table_logs')
-                while True:
+                for attempt in range(2):
                     try:
-                        logs_to_sync = await table_endpoint_logs(cluster, table, uuid, 'getAll', trace=kw['trace'])
+                        logs_to_sync, logs_to_sync_rc = await table_endpoint_logs(
+                            cluster, 
+                            table, 
+                            uuid, 
+                            'getAll', 
+                           **kw
+                            )
                         break
                     except Exception as e:
-                        try_count+=1
-                        if try_count <= 2:
-                            track(f"Encountered exception trying to to pull tablelogs, retry # {try_count}")
-                            continue
-                        error = track(f"error when pulling logs - {repr(e)}")
-                        return {"error": trace.exception(error)}, 500
+                        result = trace.exception(
+                            track(f"Encountered exception trying to to pull tablelogs, retry # {i}")
+                            )
+                        if attempt == 1: 
+                            return result, 500
+                        continue
                 commited_logs = []
                 txns = sorted(logs_to_sync['data'], key=lambda txn: txn['timestamp'])
                 track(f"logs to process - count {len(txns)} - {[txn['txn'] for txn in txns]}")
@@ -2284,16 +2298,21 @@ async def run(server):
                         if rc == 200:
                             commited_logs.append(txn['uuid'])
                         else:
-                            track(f"#CRITICAL sync_cluster_table_logs - should not have happened, commiting logs for {uuid} {message} {rc}")
-                # confirm txns are applied & remove from txns table
-                #/cluster/{cluster}/tablelogs/{table}/{endpoint}/commit - POST
+                            track(f"Error txn {transaction} for {uuid} - error {message} - {rc}")
+                            track("will not apply more logs & continue updating commited logs")
+                            commit_result, commit_rc = await commit_table_endpoint_logs(
+                                cluster, table, uuid, {'txns': commited_logs}, **kw
+                            )
+                            return f"updated only {len(commited_logs)} out of {len(txns)}", 500
+
+                # Update transactions table 
+
                 if len(commited_logs) > 0:
-                    commit_result = await commit_table_endpoint_logs(
+                    commit_result, commit_rc = await commit_table_endpoint_logs(
                         cluster, table, uuid, {'txns': commited_logs}, **kw
                         )
                 message = f"sync_cluster_table_logs completed for {cluster} {table}"
-                track(message)
-                return {"message": message}, 200
+                return track(message), 200
             
             # 
             if table_state == 'new':
@@ -2307,66 +2326,85 @@ async def run(server):
                         'delete', 
                         {'where': {'endpoint': uuid, 'table_name': table}}, 
                         **kw)
-                result, rc = await load_table()
-                track(f"load table results {result} {rc}")
-                if not rc == 200:
-                    sync_results[endpoint] = result
+                load_table_result, load_table_rc = await load_table()
+                track(f"load table results {load_table_result} {load_table_rc}")
+                if not load_table_rc == 200:
+                    sync_results[endpoint] = load_table_result
                     continue
             else:
                 # Check for un-commited logs - otherwise full resync needs to occur.
                 if cluster == pyql and table in pyql_sync_exclusions:
-                    result, rc = await load_table()
+                    load_table_result, load_table_rc = await load_table()
                 else:
                     track("table already loaded, checking for change logs")
-                    count = await table_endpoint_logs(cluster, table, uuid, 'count', trace=kw['trace'])
-                    if count:
-                        if count['availableTxns'] == 0:
-                            track("no change logs found for table, need to reload table - drop / load")
-                            # Need to reload table - drop / load
-                            result, rc = await load_table()
-                            if not rc == 200:
-                                sync_results[endpoint] = result
-                                continue
-                        
-                    track("trying to sync from change logs")
-                    await sync_cluster_table_logs()
-
-            if cluster == pyql and table in pyql_sync_exclusions:
-                pass
-            else:
-                track("completed initial pull of change logs & starting a cutover by pausing table")
-                r = await table_pause(cluster, table, 'start', delay_after_pause=4.0, **kw)
-                #message, rc = table_cutover(cluster_id, table, 'start')
-                track(f"cutover result: {r}")
-                
-                try:
+                    count_result, count_rc = await table_endpoint_logs(cluster, table, uuid, 'count', **kw)
+                    log_count = count_result['available_txns']
+                    if not count_rc == 200:
+                        sync_results[endpoint] = track(f"error pulling logs {count_result}")
+                    if log_count == 0:
+                        track("no change logs found for table, need to reload table - drop / load")
+                        # Need to reload table - drop / load
+                        load_result, load_rc = await load_table()
+                        if not load_rc == 200:
+                            sync_results[endpoint] = track(
+                                f"error loading table after no txn logs were found {load_result}"
+                                )
+                            continue
+                    
+                    track(f"Attempting to sync from {log_count} change logs found")
+                    sync_result, sync_rc = await sync_cluster_table_logs()
+                    if not sync_rc == 200:
+                        sync_results[endpoint] = track(
+                            f"error syncing table after {log_count} txn logs were found {sync_result}"
+                        )
+                        continue
+            try:
+                if cluster == pyql and table in pyql_sync_exclusions:
+                    pass
+                else:
+                    track("completed initial pull of change logs & starting a cutover by pausing table")
+                    r = await table_pause(cluster, table, 'start', delay_after_pause=4.0, **kw)
+                    track(f"table_pause result: {r}")
+                    
+                    ## Post Cutover Log sync 
                     track("starting post-cutover pull of change logs")
-                    await sync_cluster_table_logs()
+                    sync_result, sync_rc = await sync_cluster_table_logs()
+                    if not sync_rc == 200:
+                        sync_results[endpoint] = track(
+                            f"error in post-cutover pull of change logs - {sync_result}"
+                        )
+                        await table_pause(cluster, table, 'stop', **kw)
+                        continue
                     track("finished post-cutover pull of change logs")
-                except Exception as e:
-                    trace.exception(
-                        track("sync_cluster_table_logs error during pull of change logs, aborting cutover")
-                    )
+                    
+                    # Update State Table for newly synced table endpoint
+
+                    track("setting TB endpoint as in_sync=True, 'state': 'loaded'")
+                    r = await table_endpoint(cluster, table, uuid, {'in_sync': True, 'state': 'loaded'}, **kw)
+                    track(f"setting TB endpoint as in_sync=True, 'state': 'loaded' result: {r}")
+                    if cluster == pyql and table == 'state':
+                        sync_result, sync_rc = await sync_cluster_table_logs()
+                        track(f"pyql state table completed secondary sync_cluster_table_logs with {sync_result} {sync_rc}")
+
+                    # Un-Pause Table 
+
+                    track("completing cutover by un-pausing table")
                     r = await table_pause(cluster, table, 'stop', **kw)
-                    return {"error": track(f"exception encountered during pull of change logs")}
-                track("setting TB endpoint as in_sync=True, 'state': 'loaded'")
-                r = await table_endpoint(cluster, table, uuid, {'in_sync': True, 'state': 'loaded'}, **kw)
-                track(f"setting TB endpoint as in_sync=True, 'state': 'loaded' result: {r}")
-                if cluster == pyql and table == 'state':
-                    await sync_cluster_table_logs()
-                # Un-Pause
-                track("completing cutover by un-pausing table")
-                r = await table_pause(cluster, table, 'stop', **kw)
-                track(f"completing cutover result: {r}")
-            sync_results[endpoint] = track(f"finished syncing {uuid} for table {table} in cluster {cluster}")
-            if cluster == pyql:
-                ready = True
-                for table_state in await server.clusters.state.select('in_sync', where={"uuid": uuid}):
-                    if table_state['in_sync'] == False:
-                        ready=False
-                # no tables for endpoint are in_sync false - mark endpoint ready = True
-                if ready:
-                    await update_cluster_ready(path=path, ready=True, **kw)
+                    track(f"completing cutover result: {r}")
+                sync_results[endpoint] = track(f"finished syncing {uuid} for table {table} in cluster {cluster}")
+                if cluster == pyql:
+                    ready = True
+                    for table_state in await server.clusters.state.select('in_sync', where={"uuid": uuid}):
+                        if table_state['in_sync'] == False:
+                            ready=False
+                    # no tables for endpoint are in_sync false - mark endpoint ready = True
+                    if ready:
+                        await update_cluster_ready(path=path, ready=True, **kw)
+            except Exception as e:
+                error = log.exception(f"Caught exception that should have been handled - {repr(e)}")
+                sync_results[endpoint] = error
+                await table_pause(cluster, table, 'stop', **kw)
+                continue
         message = trace(f"finished syncing cluster {cluster} table {table} - results: {sync_results}")
         return {"message": message, "results": sync_results}
     server.clusterjobs['table_sync_run'] = table_sync_run
