@@ -1615,8 +1615,12 @@ async def run(server):
                 #update endpoint latest path info - if different
                 trace.warning(f"endpoint with id {config['database']['uuid']} already exists in {cluster_name} {endpoints}")
                 update_set = {
-                    'set': {'path': config['path']},
-                    'where': {'uuid': config['database']['uuid']}
+                    'set': {
+                        'path': config['path'], 
+                        'token': config['token']},
+                    'where': {
+                        'uuid': config['database']['uuid']
+                        }
                 }
                 if len(endpoints) == 1 and cluster_name == 'pyql':
                     #Single node pyql cluster - path changed
