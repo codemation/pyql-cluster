@@ -8,14 +8,14 @@ async def run(server):
     log = server.log
 
     # Reset SETUP_ID
-    await server.env.set_item('SETUP_ID', None)
+    await server.env.set_item('SETUP_ID', 'UNSET')
     await asyncio.sleep(5)
 
     server.setup_id = str(uuid.uuid1())
     await asyncio.sleep(random.randrange(5))
     env_setup_id = await server.env['SETUP_ID']
     log.warning(f"ENV SETUP ID: {env_setup_id}")
-    if await server.env['SETUP_ID'] == None:
+    if await server.env['SETUP_ID'] in [None, 'UNSET']:
         await server.env.set_item('SETUP_ID', server.setup_id)
 
     if await server.env['SETUP_ID'] == server.setup_id:
