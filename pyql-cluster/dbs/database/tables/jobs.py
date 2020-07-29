@@ -1,6 +1,8 @@
 
 async def db_attach(server):
     db = server.data['cluster']
+    if 'jobs' in db.tables:
+        await db.run('drop table jobs')
     await db.create_table(
        'jobs', [
            ('id', str, 'UNIQUE NOT NULL'),
