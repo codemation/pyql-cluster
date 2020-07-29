@@ -2181,7 +2181,7 @@ async def run(server):
                 )
             )
         #pyql_sync_exclusions = {'transactions', 'jobs', 'state', 'tables'}
-        pyql_sync_exclusions = {'transactions', 'jobs}
+        pyql_sync_exclusions = {'transactions', 'jobs'}
         pyql = await server.env['PYQL_UUID']
 
         # get table endpoints
