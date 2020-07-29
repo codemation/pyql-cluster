@@ -275,14 +275,14 @@ def probe(path, method='GET', data=None, timeout=20.0, auth=None, **kw):
     except:
         return r.text, r.status_code
 
+#1 - Test Client Authentication & Token Generation
+try:
+    test_cluster = cluster(debug=True)
+except Exception as e:
+    print("Error loading PyqlCluster for unittest")
+
 
 class PyqlCluster(unittest.TestCase):
-    #1 - Test Client Authentication & Token Generation
-    try:
-        test_cluster = cluster(debug=True)
-    except Exception as e:
-        print("Error loading PyqlCluster for unittest")
-
     def test_00_init_cluster(self):
         test_cluster.step('test_init_cluster')
         test_cluster.init_cluster()
