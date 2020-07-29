@@ -7,6 +7,9 @@ async def run(server):
 
     log = server.log
 
+    # Reset SETUP_ID
+    await server.env.set_item('SETUP_ID', None)
+
     server.setup_id = str(uuid.uuid1())
     await asyncio.sleep(random.randrange(5))
     env_setup_id = await server.env['SETUP_ID']
