@@ -115,7 +115,7 @@ async def run(server):
         creates default running workers on app start
         """
         
-        for _ in range(4):
+        for _ in range(2):
             await add_worker(10)
 
     @server.on_event("shutdown")
