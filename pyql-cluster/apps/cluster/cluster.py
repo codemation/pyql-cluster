@@ -936,7 +936,7 @@ async def run(server):
 
         #pyql_txn_exceptions = {'transactions', 'jobs', 'state', 'tables'}
         pyql_txn_exceptions = {'transactions', 'jobs'}
-        table_endpoints = await get_table_endpoints(cluster, table, caller='post_request_tables', **kw)
+        table_endpoints = await get_table_endpoints(cluster, table, qcaller='post_request_tables', **kw)
         pyql = await server.env['PYQL_UUID']
         fail_track = []
         tb = await get_table_info(cluster, table, table_endpoints, trace=kw['trace'])
@@ -2071,7 +2071,8 @@ async def run(server):
                     })
         for cluster in jobs:
             if cluster == pyql:
-                order = ['jobs', 'state', 'tables', 'clusters', 'auth', 'endpoints', 'transactions']
+                #order = ['jobs', 'state', 'tables', 'clusters', 'auth', 'endpoints', 'transactions'] # 
+                order = ['state','tables','clusters', 'auth', 'endpoints', 'jobs', 'transactions'] # pre fastapi order
                 jobs_to_run_ordered = []
                 ready_jobs = []
                 while len(order) > 0:
