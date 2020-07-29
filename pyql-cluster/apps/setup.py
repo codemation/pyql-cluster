@@ -9,6 +9,7 @@ async def run(server):
 
     # Reset SETUP_ID
     await server.env.set_item('SETUP_ID', None)
+    await asyncio.sleep(5)
 
     server.setup_id = str(uuid.uuid1())
     await asyncio.sleep(random.randrange(5))
