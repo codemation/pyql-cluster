@@ -559,8 +559,14 @@ async def run(server):
         return await probe(f"http://{path}/cluster/pyql/ready", method='POST', data={'ready': ready}, **kw)
 
     server.clusterjobs['update_cluster_ready'] = update_cluster_ready
+
     @server.trace
     async def cluster_endpoint_delete(cluster=None, endpoint=None, config=None, **kw):
+        """
+        This function is important to be used when node(s) goes down as the order in which
+        a node comes up cannot always be guaranteed, so a node may come up with a different
+        ip address
+        """
         trace = kw['trace']
         pyql = await server.env['PYQL_UUID']
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
@@ -719,7 +725,7 @@ async def run(server):
                 for node in pre_quorum['missing']['nodes']:
                     # check if pre missing node is still missing
                     if node['uuid'] in missing_nodes: 
-                        if time.time() - node['time'] >= 360:
+                        if time.time() - node['time'] >= 30:
                             # create job to delete missing node
                             job = {
                                 'job': f"delete_missing_node_{node['uuid']}",
@@ -1072,7 +1078,7 @@ async def run(server):
                         'path': get_endpoint_url(path, action, commit=True, trace=trace),
                         'data': endpoint_response[endpoint],
                         'timeout': 2.0,
-                        'headers': await get_auth_http_headers('remote', token=token, trace=trace),
+                        'headers': await get_auth_http_headers('remote', token=token),
                         'session': await get_endpoint_sessions(epuuid, **kw)
                     }
                 
@@ -1172,7 +1178,7 @@ async def run(server):
                 if not endpoint_choice in quorum['quorum']['nodes']['nodes']:
                     trace.warning(f"get_random_table_endpoint skipped pyql endpoint {endpoint_choice} as not in quorum")
                     if len(in_sync_endpoints) == 0 and table == 'jobs':
-                        await pyql_reset_jobs_table(**kw)
+                        await pyql_reset_jobs_table(**kw)   
                         endpoints = await get_table_endpoints(cluster, table, caller='get_random_table_endpoint', **kw)
                         endpoints = endpoints['in_sync']
                         in_sync_endpoints = [ep for ep in endpoints]
