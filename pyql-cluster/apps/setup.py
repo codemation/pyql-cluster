@@ -9,10 +9,13 @@ async def run(server):
 
     # Reset SETUP_ID
     await server.env.set_item('SETUP_ID', 'UNSET')
-    await asyncio.sleep(5)
+    await asyncio.sleep(10)
 
     server.setup_id = str(uuid.uuid1())
-    await asyncio.sleep(random.randrange(5))
+    #random_sleep_count = random.randrange(20)
+    #log.warning(f"startup sleep {server.setup_id}, - sleeping for {random_sleep_count} seconds")
+    #await asyncio.sleep(random_sleep_count)
+
     env_setup_id = await server.env['SETUP_ID']
     log.warning(f"ENV SETUP ID: {env_setup_id}")
     if await server.env['SETUP_ID'] in [None, 'UNSET']:
@@ -48,12 +51,12 @@ async def run(server):
     server.process_request = process_request
 
     pass # apps start here
-    def check_db_table_exist(database,table):
+    async def check_db_table_exist(database,table):
         if not database in server.data:
-            server.db_check(database)
+            await server.db_check(database)
         if database in server.data:
             if not table in server.data[database].tables:
-                server.db_check(database)
+                await server.db_check(database)
             if table in server.data[database].tables:
                 return "OK", 200
             else:
@@ -61,7 +64,6 @@ async def run(server):
         else:
             return {'status': 404, 'message': f'database with name {database} not found'}, 404
     server.check_db_table_exist = check_db_table_exist
-    
 
 
     from apps.auth import auth

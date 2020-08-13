@@ -9,7 +9,7 @@ async def run(server):
     async def delete_func(database, table, params, **kw):
         return await delete(database, table, params, **kw)
     async def delete(database, table, params, **kw):
-        message, rc = server.check_db_table_exist(database, table)
+        message, rc = await server.check_db_table_exist(database, table)
         if rc == 200:
             table = server.data[database].tables[table]
             response = await table.delete(where=params['where'])

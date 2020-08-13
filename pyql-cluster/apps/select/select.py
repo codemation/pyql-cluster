@@ -11,7 +11,7 @@ async def run(server):
         request = kw['request']
         return await select(database, table, method=request.method, **kw)
     async def select(database,table, params=None, method='GET', **kw):
-        message, rc = server.check_db_table_exist(database,table)
+        message, rc = await server.check_db_table_exist(database,table)
         if not rc == 200:
             server.http_exception(
                 500, 

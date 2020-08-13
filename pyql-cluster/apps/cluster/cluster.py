@@ -1,14 +1,20 @@
 async def run(server):
-    from fastapi import Request
-    from pydantic import BaseModel
+
     import asyncio
-    from aiohttp import ClientSession
-    from apps.cluster.asyncrequest import async_request_multi, async_get_request, async_post_request
     from datetime import datetime
     import time, uuid, random
     from random import randrange
     import json, os
+    from collections import Counter
+
+    from fastapi import Request
+    from pydantic import BaseModel
+    from aiohttp import ClientSession
+
+    from apps.cluster.asyncrequest import async_request_multi, async_get_request, async_post_request
     from apps.cluster import request_async
+    from apps.cluster import tracer
+
     log = server.log
 
     #used to store links to functions called by jobs
@@ -17,56 +23,7 @@ async def run(server):
     # used for request session references
     server.sessions = {}
 
-    class Tracer:
-        def __init__(self, name, root=None):
-            self.name = name
-            self.root = root
-            self.start = time.time()
-        def get_callers(self, path=''):
-            if self.root == None:
-                return f"{self.name}{path}"
-            else:
-                path = f" --> {self.name}{path}"
-                return self.root.get_callers(path)
-        def get_root_caller_duration(self):
-            if self.root == None:
-                return time.time() - self.start
-            else:
-                return self.root.get_root_caller_duration()
-        def log(self, message):
-            root_duration = self.get_root_caller_duration()
-            local_duration = time.time() - self.start
-            return f"{self.get_callers()} - {root_duration:.3f} - {local_duration:.3f}s - {message}"
-
-        def debug(self, message):
-            log.debug(self.log(message))
-            return message
-        def error(self, message):
-            log.error(self.log(message))
-            return message
-        def warning(self, message):
-            log.warning(self.log(message))
-            return message
-        def info(self, message):
-            log.info(self.log(message))
-            return message
-        def exception(self, message):
-            log.exception(self.log(message))
-            return message
-        def __call__(self, message): 
-            log.warning(self.log(message))
-            return message
-
-    def trace(func):
-        def traced(*args, **kwargs):
-            func_name = f'{func}'.split(' ')[1].split('.')[-1]
-            if not 'trace' in kwargs:
-                kwargs['trace'] = Tracer(func_name)
-            else:
-                kwargs['trace'] = Tracer(func_name, kwargs['trace'])
-            return func(*args, **kwargs)
-        return traced
-    server.trace = trace
+    server.trace = tracer.get_tracer(log)
 
     class Cluster:
         """
@@ -81,7 +38,6 @@ async def run(server):
 
     endpoints = await server.clusters.endpoints.select('*') if 'endpoints' in server.data['cluster'].tables else []
 
-    
     while True:
         uuid_check = await server.data['cluster'].tables['pyql'].select('uuid', where={'database': 'cluster'})
         if len(uuid_check) > 0:
@@ -111,7 +67,7 @@ async def run(server):
     # Table created only if 'init' is passed into os.environ['PYQL_CLUSTER_ACTION']
     tables = []
     if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
-        table_list = ['clusters', 'endpoints', 'tables', 'state', 'transactions', 'jobs', 'auth']
+        table_list = ['clusters', 'endpoints', 'tables', 'state', 'transactions', 'jobs', 'auth', 'data_to_txn_cluster']
         tables = [{table_name: await server.get_table_config('cluster', table_name)} for table_name in table_list]
     
     join_job_type = "node" if os.environ['PYQL_CLUSTER_ACTION'] == 'init' or len(endpoints) == 1 else 'cluster'
@@ -133,6 +89,25 @@ async def run(server):
             "consistency": ['clusters', 'endpoints', 'auth'] # defines whether table modifications are cached before submission & txn time is reviewed
         }
     }
+    join_txn_cluster_job = {
+        "job": f"{os.environ['HOSTNAME']}{os.environ['PYQL_CLUSTER_ACTION']}_cluster",
+        "job_type": join_job_type,
+        "method": "POST",
+        "path": "/cluster/pyql_txns/join",
+        "data": {
+            "name": os.environ['HOSTNAME'],
+            "path": f"{os.environ['PYQL_NODE']}:{os.environ['PYQL_PORT']}",
+            "token": await server.env['PYQL_LOCAL_SERVICE_TOKEN'],
+            "database": {
+                'name': "transactions",
+                'uuid': f"{node_id}_txns"
+            },
+            "tables": ["txn_cluster_tables"],
+            "consistency": None # defines whether table modifications are cached before submission & txn time is reviewed
+        }
+    }
+
+
     if 'PYQL_CLUSTER_JOIN_TOKEN' in os.environ and os.environ['PYQL_CLUSTER_ACTION'] == 'join':
         join_cluster_job['join_token'] = os.environ['PYQL_CLUSTER_JOIN_TOKEN']
 
@@ -187,14 +162,6 @@ async def run(server):
             if not 'auth' in request.__dict__:
                 log.error("authentication is required or missing, this should have been handled by is_authenticated")
                 server.http_exception(500, "authentication is required or missing")
-            """
-            ('id', str, 'UNIQUE NOT NULL'),
-            ('name', str),
-            ('owner', str), # UUID of auth user who created cluster 
-            ('access', str), # {"alllow": ['uuid1', 'uuid2', 'uuid3']}
-            ('created_by_endpoint', str),
-            ('create_date', str)
-            """
             args = list(args)
             cluster_name = kwargs['cluster'] if 'cluster' in kwargs else args[0]
             kwargs['cluster'] = await get_clusterid_by_name_authorized(
@@ -214,6 +181,8 @@ async def run(server):
         """
         async def state_quorum_safe_func(*args, **kwargs):
             request = kwargs['request']
+
+            """ TODO - Delete as this performs duplicate query as node_quorum_state
             if not 'quorum' in kwargs:
                 quorum = await cluster_quorum()
                 kwargs['quorum'] = quorum
@@ -223,16 +192,23 @@ async def run(server):
                     500,
                     log.error(f"state_and_quorum_check - cluster pyql node {os.environ['HOSTNAME']} is not in quorum - {quorum}")
                 )
-            # Quorum passed - check that state is in_sync
-            node_quorum_state = await server.clusters.quorum.select(
+            """
+            pyql = server.env['PYQL_UUID']
+
+            # Check Quorum & State - check that state is in_sync
+            node_quorum_state = server.clusters.quorum.select(
                 'quorum.nodes', 
                 'quorum.in_quorum',
                 'quorum.health',
                 'quorum.ready',
                 'state.in_sync', 
                 join={'state': {'quorum.node': 'state.uuid'}}, 
-                where={'state.table_name': 'state', 'quorum.node': f'{node_id}'}
+                where={
+                    'state.table_name': 'state',
+                    'quorum.node': f'{node_id}'}
                 )
+            pyql, node_quorum_state = await asyncio.gather(pyql, node_quorum_state)
+
             if len(node_quorum_state) == 0 or node_quorum_state[0]['quorum.in_quorum'] == False:
                 server.http_exception(
                     500,
@@ -241,9 +217,10 @@ async def run(server):
             node_quorum_state = node_quorum_state[0]
             ready_and_healthy = node_quorum_state['quorum.health'] == 'healthy' and node_quorum_state['quorum.ready'] == True
             if node_quorum_state['state.in_sync'] == True and ready_and_healthy:
+                kwargs['pyql'] = pyql
                 return await func(*args, **kwargs)
             else:
-                pyql = await server.env['PYQL_UUID']
+                pyql = await server.env['PYQL_UUID'] if not 'pyql' in kwargs else kwargs['pyql']
                 log.warning(f"node is inQuorum but not 'healthy' or state is out_of_sync: {node_quorum_state}")
                 pyql_nodes = await server.clusters.endpoints.select('uuid', 'path', where={'cluster': pyql})
                 headers = dict(request.headers)
@@ -270,7 +247,7 @@ async def run(server):
                     request_options = {
                         "method": request.method, 
                         "headers": headers, 
-                        "data": request.json, 
+                        "data": request.json,
                         "session": await get_endpoint_sessions(node['uuid'])}
                     response, rc =  await probe(url, **request_options)
                     return response
@@ -416,7 +393,7 @@ async def run(server):
         result = await jobs_add(job_list[cur_ind], status='waiting')
         return result['job_id']
     @server.trace
-    async def bootstrap_pyql_cluster(config, **kw):
+    async def bootstrap_cluster(cluster_id, name, config, **kw):
         """
             runs if this node is targeted by /cluster/pyql/join and pyql cluster does not yet exist
         """
@@ -436,20 +413,23 @@ async def run(server):
                 'id', 
                 where={'parent': admin_id})
             service_id = service_id[0]['id']
+
             return {
-                'id': str(uuid.uuid1()),
-                'name': 'pyql',
+                'id': cluster_id,
+                'name': name,
                 'owner': service_id,
                 'access': {'allow': [admin_id, service_id]},
+                'type': 'data' if name == 'pyql' else 'log',
                 'key': server.encode(
                     os.environ['PYQL_CLUSTER_INIT_ADMIN_PW'],
                     key=await server.env['PYQL_CLUSTER_TOKEN_KEY']
-                    ),
+                    ) if name == 'pyql' else None,
                 'created_by_endpoint': config['name'],
                 'create_date': f'{datetime.now().date()}'
                 }
         def get_endpoints_data(cluster_id):
             return {
+                'id': str(uuid.uuid1()),
                 'uuid': config['database']['uuid'],
                 'db_name': config['database']['name'],
                 'path': config['path'],
@@ -475,7 +455,7 @@ async def run(server):
             }
         def get_state_data(table, cluster_id):
             return {
-                'name': f'{config["database"]["uuid"]}{table}',
+                'name': f'{config["database"]["uuid"]}_{table}',
                 'state': 'loaded',
                 'in_sync': True,
                 'table_name': table,
@@ -495,6 +475,7 @@ async def run(server):
             'insert', get_endpoints_data(clusterData['id']))
         # tables & state 
         for table in config['tables']:
+            print(table)
             for table_name, cfg in table.items():
                 r = await execute_request(
                     localhost,
@@ -568,16 +549,16 @@ async def run(server):
         ip address
         """
         trace = kw['trace']
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
         if not config == None:
             cluster, endpoint = config['cluster'], config['endpoint']
         trace.error(f"cluster_endpoint_delete called for cluster - {cluster}, endpoint - {endpoint}")
         delete_where = {'where': {'uuid': endpoint, 'cluster': cluster}}
         results = {}
-        results['state'] = await post_request_tables(pyql, 'state', 'delete', delete_where, **kw)
-        results['endpoints'] = await post_request_tables(pyql, 'endpoints', 'delete', delete_where, **kw)
-        results['transactions'] = await post_request_tables(
+        results['state'] = await cluster_table_change(pyql, 'state', 'delete', delete_where, **kw)
+        results['endpoints'] = await cluster_table_change(pyql, 'endpoints', 'delete', delete_where, **kw)
+        results['transactions'] = await cluster_table_change(
             pyql, 
             'transactions', 
             'delete', {'where': {'cluster': cluster, 'endpoint': endpoint}},
@@ -609,6 +590,7 @@ async def run(server):
             if response['status'] == 408:
                 log.warning(f"observed timeout with endpoint {endpoint_id}, triggering cleanup of session")
                 await cleanup_session(endpoint_id)
+        ep_results[node_id] = {'status': 200, 'content': "SELF"}
         trace.warning(f"get_alive_endpoints - {ep_results}")
         return ep_results
 
@@ -624,7 +606,7 @@ async def run(server):
     async def cluster_quorum_check(**kw):
         trace = kw['trace']
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         trace.warning(f"received cluster_quorum_check for cluster {pyql}")
         pyql_endpoints = await server.clusters.endpoints.select('*', where={'cluster': pyql})
         if len(pyql_endpoints) == 0:
@@ -689,11 +671,12 @@ async def run(server):
             return await cluster_quorum_update(trace=kw['trace'])
         return {'quorum': await server.clusters.quorum.select('*', where={'node': node_id})}
 
+
     @server.trace
     async def cluster_quorum_update(**kw):
         trace = kw['trace']
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         endpoints = await server.clusters.endpoints.select('*', where={'cluster': pyql})
         if len(endpoints) == 0:
             # may be a new node / still syncing
@@ -740,8 +723,6 @@ async def run(server):
                             await jobs_add(job, **kw)
                         missing_nodes.pop(missing_nodes.index(node['uuid']))
                         missing_nodes_times.append(node)
-            for node in missing_nodes:
-                missing_nodes_times.append({'uuid': node, 'time': float(time.time())})
         else:
             # mark this endpoint state OutOfsync
             await server.clusters.state.update(in_sync=False, where={'uuid': node_id})
@@ -751,7 +732,6 @@ async def run(server):
         # Quorum was previously not ready & outOfQuorum 
         if pre_quorum['health'] == 'unhealthy' and in_quorum == True:
             health = 'healing'
-            await server.internal_job_add(join_cluster_job)
             #"""
             job = {
                 'job': f"{node_id}_mark_state_out_of_sync",
@@ -762,21 +742,12 @@ async def run(server):
                     'table': 'state', 
                     'data': {
                         'set': {'in_sync': False},
-                        'where': {'uuid': node_id, 'table_name': 'state'}}
+                        'where': {'uuid': node_id, 'table_name': 'state'}
                     }
+                }
             }
-            """
-            mark_state_out_of_sync_job = {
-                "job": f"add_job_{node_id}_mark_state_out_of_sync",
-                "job_type": 'cluster',
-                "action": "jobs_add",
-                "config": job,
-            }
-            """
             await jobs_add(job, **kw)
             trace.warning(f"This node was unhealthy, but started healing - adding job {job} to queue")
-            #await server.internal_job_add(mark_state_out_of_sync_job)
-            #"""
             trace("re-joining cluster as this node was un-healthy & needs to heal")
             
         if pre_quorum['health'] in ['healing', 'healthy'] and in_quorum == True: 
@@ -785,7 +756,12 @@ async def run(server):
             else:
                 health = 'healing'
                 # check healing job
-                healing_job = await server.clusters.jobs.select('*', where={'name': f'mark_ready_{node_id}'})
+                healing_job = await server.clusters.jobs.select(
+                    '*', 
+                    where={
+                        'name': f'mark_ready_{node_id}'
+                        }
+                )
                 if len(healing_job) == 1:
                     trace(f"quorum is currently healing using job: {healing_job}")
                     update_job_config = healing_job[0]['config']
@@ -794,13 +770,21 @@ async def run(server):
                             if not update_job_config['path'] == endpoint['path']:
                                 trace("current healing job endpoint path is incorrect, updating job and requeing")
                                 update_job_config['path'] = endpoint['path']
-                                await post_request_tables(
+                                await cluster_table_change(
                                     pyql, 
                                     'jobs', 
                                     'update', 
-                                    {'set': {'config': update_job_config, 'status': 'queued'}, 'where': {'name': f'mark_ready_{node_id}'}},
+                                    {
+                                        'set': {
+                                            'config': update_job_config, 
+                                            'status': 'queued'
+                                        }, 
+                                        'where': {
+                                            'name': f'mark_ready_{node_id}'
+                                        }
+                                    },
                                     **kw
-                                    )
+                                )
         quorum_to_update.update({
             'in_quorum': in_quorum, 
             'health': health, 
@@ -863,21 +847,31 @@ async def run(server):
         """
         trace = kw['trace']
 
-        # pull cluster_name if None
-        if cluster_name == None:
-            cluster_name = await server.clusters.clusters.select(
-                'name', where={'id': cluster}
-            )
-            cluster_name = cluster_name[0]['name']
-
         table_endpoints = {'in_sync': {}, 'out_of_sync': {}}
 
-        endpoints = await server.clusters.endpoints.select(
+        cluster_name = server.clusters.clusters.select(
+            'name',
+            where={'id': cluster}
+        )
+
+        endpoints = server.clusters.endpoints.select(
             '*', 
-            join={'state': {'endpoints.uuid': 'state.uuid', 'endpoints.cluster': 'state.cluster'}}, 
-            where={'state.cluster': cluster, 'state.table_name': table}
-            )
-        
+            join={
+                'state': {
+                    'endpoints.uuid': 'state.uuid', 
+                    'endpoints.cluster': 'state.cluster'}
+            }, 
+            where={
+                'state.cluster': cluster, 
+                'state.table_name': table
+            }
+        )
+
+        cluster_name, endpoints = await asyncio.gather(
+            cluster_name,
+            endpoints,
+        )
+
         endpointsKeySplit = []
         for endpoint in endpoints:
             renamed = {}
@@ -924,8 +918,167 @@ async def run(server):
             trace(f"completed {tb}")
             return tb
         server.http_exception(500, trace(f"no tables in cluster {cluster} with name {table} - found: {tables}"))
+
     @server.trace
-    async def post_request_tables(cluster, table, action, request_data, **kw):
+    async def cluster_table_read(cluster, table, data, **kw):
+        """
+        # Reads
+        1. Check 'table shard cluster' associated with cluster
+        2. Flush changes, to target endpoint, if any
+        3. Read & Return 
+        """
+        trace = kw['trace']
+        _txn = {action: request_data}
+        trace(f"called for {_txn}")
+        loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
+
+
+    @server.trace
+    async def cluster_table_change(cluster, table, action, request_data, **kw):
+        """
+        called for table modifications 
+        action: insert, update, delete 
+        1. Check 'table shard cluster' associated with  cluster
+        2. Write txn to 'table shard cluster'
+        3. Return Success 
+
+        Requirements:
+        - Node processing request must be in_quorum
+        - Node triggering table_change  
+        """
+        trace = kw['trace']
+        _txn = {action: request_data}
+        trace(f"called for {_txn}")
+        loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
+
+        # Check 'table txn log cluster' associated with  cluster
+        txn_time = float(time.time())
+        txn_cluster = await server.clusters.data_to_txn_cluster.select(
+            'txn_cluster_id',
+            'txn_cluster_name',
+            where={'data_cluster_id': cluster}
+        )
+        txn_cluster_id = txn_cluster[0]['txn_cluster_id']
+        txn_cluster_name = txn_cluster[0]['txn_cluster_name']
+        txn = {
+            "timestamp": time.time(),
+            "txn": _txn
+        }
+        cluster_id_underscored = (
+            '_'.join(cluster.split('-'))
+        )
+
+        # Create Task to signal endpoints 
+        @server.trace
+        async def signal_table_endpoints(**kw):
+            trace = kw['trace']
+            trace("starting")
+            loop = asyncio.get_running_loop()
+            kw['loop'] = loop
+            table_endpoints = await get_table_endpoints(cluster, table, loop=loop)
+            endpoint_requests = {}
+            for endpoint in table_endpoints['in_sync']:
+                _endpoint = table_endpoints['in_sync'][endpoint]
+                path = _endpoint['path']
+                db = _endpoint['db_name']
+                token = _endpoint['token']
+                epuuid = _endpoint['uuid']
+                tx_table = '_'.join(f"txn_{cluster}_{table}".split('-'))
+                data = {
+                    "tx_cluster_path": (
+                        f"http://{os.environ['PYQL_CLUSTER_SVC']}/cluster/{txn_cluster_id}_log/table/{tx_table}/select"
+                    )
+                }
+
+                endpoint_requests[endpoint] = {
+                    'path': f"http://{path}/db/{db}/table/{table}/flush",
+                    'data': data,
+                    'timeout': 2.0,
+                    'headers': await get_auth_http_headers('remote', token=token),
+                    'session': await get_endpoint_sessions(epuuid, **kw)
+                }
+            async_results = await async_request_multi(endpoint_requests, 'POST', loop=loop)
+            trace(f"async_results: {async_results}")
+        # add task to txn worker queue 
+        server.txn_signals.append(
+            signal_table_endpoints # to be awaited by txn_signal workers 
+        )
+
+        # write to txn logs
+        result = await write_to_txn_logs(
+            txn_cluster_id,
+            f"txn_{cluster_id_underscored}_{table}",
+            txn,
+            **kw
+        )
+
+        return {"result": trace("finished")}
+        
+    @server.trace
+    async def write_to_txn_logs(log_cluster, log_table, txn, **kw):
+        trace = kw['trace']
+        loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
+
+        table_endpoints = await get_table_endpoints(
+            log_cluster, 
+            log_table, 
+            **kw
+        )
+        log_inserts = {}
+        for endpoint in table_endpoints['in_sync']:
+            log_endpoint = table_endpoints['in_sync'][endpoint]
+            token = log_endpoint['token']
+            db = log_endpoint['db_name']
+            path = log_endpoint['path']
+            ep_uuid = log_endpoint['uuid']
+            request_path = f"http://{path}/db/{db}/table/{log_table}/insert"
+            log_inserts[endpoint] = {
+                'path': request_path,
+                'data': txn,
+                'timeout': 2.0,
+                'headers': await get_auth_http_headers('remote', token=token),
+                'session': await get_endpoint_sessions(ep_uuid, **kw)
+            }
+        log_insert_results = await async_request_multi(
+            log_inserts, 
+            'POST', 
+            loop=loop
+        )
+        pass_fail = Counter({'pass': 0, 'fail': 0})
+        log_state_out_of_sync = []
+        for endpoint in log_insert_results:
+            if not log_insert_results[endpoint]['status'] == 200:
+                pass_fail['fail']+=1
+                if not table == f'{pyql}state':
+                    state_data = {
+                        "set": {
+                            "in_sync": False
+                        },
+                        "where": {
+                            "name": f"{endpoint}_{table}"
+                        }
+                    }
+                    log_state_out_of_sync.append(
+                        cluster_table_change(
+                                pyql,
+                                'state',
+                                'update',
+                                state_data,
+                                **kw
+                            )
+                    )
+            else:
+                pass_fail['pass']+=1
+
+        # mark failures out_of_sync if sucesses & failures exist
+        if pass_fail['fail'] > 0 and pass_fail['success'] > 0:
+            asyncio.gather(*log_state_out_of_sync, loop=loop)
+                
+        return {'results': log_insert_results}
+
+    @server.trace
+    async def post_request_tables_old(cluster, table, action, request_data, **kw):
         """
             use details=True as arg to return tb['endpoints'] in response
         """
@@ -933,11 +1086,15 @@ async def run(server):
         _txn = {action: request_data}
         trace(f"called for {_txn}")
         loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
+        update_txn_cluster = False if not 'update_txn_cluster' in kw else kw['update_txn_cluster']
+        ##########################
+        # Write txn to table logs
+        ##########################
 
         #pyql_txn_exceptions = {'transactions', 'jobs', 'state', 'tables'}
         pyql_txn_exceptions = {'transactions', 'jobs'}
-        table_endpoints = await get_table_endpoints(cluster, table, qcaller='post_request_tables', **kw)
-        pyql = await server.env['PYQL_UUID']
+        table_endpoints = await get_table_endpoints(cluster, table, **kw)
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         fail_track = []
         tb = await get_table_info(cluster, table, table_endpoints, trace=kw['trace'])
         async def process_request():
@@ -1137,16 +1294,16 @@ async def run(server):
         - The only in_sync i.e 'source of truth' for table is offline / outOfQuorum / path has changed
         """
         trace.warning(f"pyql_reset_jobs_table starting")
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         update_where = {'set': {'in_sync': False}, 'where': {'table_name': 'jobs', 'cluster': pyql}}
-        await post_request_tables(pyql, 'state', 'update', update_where, **kw)
+        await cluster_table_change(pyql, 'state', 'update', update_where, **kw)
         # delete all non-cron jobs in local jobs tb
         for jType in ['jobs', 'syncjobs']:
             delete_where = {'where': {'type': jType}}
             await server.clusters.jobs.delete(**delete_where)
          # set this nodes' jobs table in_sync=true
         update_where = {'set': {'in_sync': True}, 'where': {'uuid': node_id, 'table_name': 'jobs'}}
-        await post_request_tables(pyql, 'state', 'update', update_where, **kw)
+        await cluster_table_change(pyql, 'state', 'update', update_where, **kw)
         trace.warning(f"pyql_reset_jobs_table finished")
 
     @server.trace
@@ -1157,7 +1314,7 @@ async def run(server):
     @server.trace
     async def get_random_table_endpoint(cluster, table, quorum=None, **kw):
         trace = kw['trace']
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         endpoints = await get_table_endpoints(cluster, table, caller='get_random_table_endpoint', **kw)
         endpoints = endpoints['in_sync']
         in_sync_endpoints = [ep for ep in endpoints]
@@ -1191,7 +1348,12 @@ async def run(server):
         trace = kw['trace']
         request = kw['request'] if 'request' in kw else None
         errors = []
+
         method = request.method if not 'method' in kw else kw['method']
+
+        if not 'method' in kw:
+            kw['method'] = request.method
+        
         if method in ['POST', 'PUT'] and data == None:
             server.http_exception(400, trace.error("expected json input for request"))
         async for endpoint in get_random_table_endpoint(cluster, table, quorum, **kw):
@@ -1211,7 +1373,6 @@ async def run(server):
                 url = f"http://{endpoint['path']}/db/{endpoint['db_name']}/table/{table}{path}"
                 r, rc = await probe(
                     url,
-                    method=method,
                     data=data,
                     token=endpoint['token'],
                     timeout=timeout,
@@ -1242,6 +1403,132 @@ async def run(server):
         if request.method == 'GET':
             return await endpoint_probe(cluster, table, **kw)
         return table_insert(cluster, table, **kw)
+
+
+    @server.api_route('/cluster/{cluster}/table/{table}/create', methods=['POST'])
+    async def cluster_table_create_api(cluster: str, table: str, request: Request, config: dict):
+        return await cluster_table_create_auth(
+            cluster, 
+            table, 
+            request=await server.process_request(request),
+            config=config
+        )
+    @state_and_quorum_check
+    @server.is_authenticated('cluster')
+    @cluster_name_to_uuid
+    @server.trace
+    async def cluster_table_create_auth(cluster: str, table: str, config: dict, **kw):
+        return await cluster_table_create(
+            cluster,
+            table,
+            config, 
+            **kw
+        )
+    @server.trace
+    async def cluster_table_create(cluster: str, table: str, config: dict, **kw):
+        loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
+
+        # check existence of table 
+
+        tables = await server.clusters.tables.select(
+            'name',
+            where={
+                'cluster': cluster, 
+                'name': table
+            }
+        )
+
+        if len(tables) > 0:
+            return {"message": f"table already exists"}
+        
+        endpoints = await server.clusters.endpoints.select(
+            '*',
+            where={'cluster': cluster}
+        )
+
+        ep_requests = {}
+        for endpoint in endpoints:
+            db = endpoint['db_name']
+            path = endpoint['path']
+            epuuid = endpoint['uuid']
+            token = endpoint['token']
+
+            ep_requests[epuuid] = {
+                'path': f"http://{path}/db/{db}/table/{table}/create",
+                'data': config,
+                'timeout': 2.0,
+                'headers': await get_auth_http_headers('remote', token=token),
+                'session': await get_endpoint_sessions(epuuid, **kw)
+            }
+        async_results = await async_request_multi(ep_requests, 'POST', loop=loop)
+
+        # add tables to pyql tables
+
+        new_table = {
+            'id': str(uuid.uuid1()),
+            'name': table,
+            'cluster': cluster,
+            'config': config,
+            'is_paused': False
+        }
+
+        await cluster_table_change(pyql, 'tables', 'insert', new_table, **kw)
+
+        # update state table
+        update_state_tasks = []
+        for endpoint in async_results:
+            sync_state = 'loaded' if async_results[endpoint]['status'] == 200 else 'new'
+            state_data = {
+                'name': f"{endpoint}_{table}",
+                'state': load_state,
+                'in_sync': sync_state,
+                'table_name': table,
+                'cluster': cluster,
+                'uuid': endpoint # used for syncing logs
+            }
+            update_state_tasks.append(
+                cluster_table_change(pyql, 'state', 'insert', state_data, **kw)
+            )
+        await asyncio.gather(*update_state_tasks, loop=loop)
+
+        return {
+            "message": log.warning(f"cluster {cluster} table {table} created")
+            }
+    
+    @server.trace
+    async def cluster_txn_table_create(txn_cluster_id: str, table: str, **kw):
+        # New Table - need to create corresponding txn table
+        # ('timestamp', float, 'UNIQUE'),
+        # ('txn', str)
+        txn_cluster_id_underscored = (
+            '_'.join(txn_cluster_id.split('-'))
+        )
+        config = {
+            f'txn_{txn_cluster_id_underscored}_{table}': {
+                "columns": [
+                    {
+                        "name": "timestamp",
+                        "type": "float",
+                        "mods": "UNIQUE"
+                    },
+                    {
+                        "name": "txn",
+                        "type": "str",
+                        "mods": ""
+                    }
+                ],
+                "primary_key": "timestamp",
+                "foreign_keys": null,
+                "cache_enabled": True
+            }
+        }
+
+        return await cluster_table_create(
+            txn_cluster_id,
+            table,
+            config,
+            **kw
+        )
 
     @server.api_route('/cluster/{cluster}/table/{table}/select', methods=['GET','POST'])
     async def cluster_table_select_api(cluster: str, table: str, request: Request, data: dict = None):
@@ -1338,7 +1625,7 @@ async def run(server):
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
         if not config == None: # this was invoked by a job
             cluster, table, data = config['cluster'], config['table'], config['data']
-        return await post_request_tables(
+        return await cluster_table_change(
             cluster, table,'update', data, **kw)
     server.cluster_table_update = table_update
     server.clusterjobs['table_update'] = table_update
@@ -1355,7 +1642,7 @@ async def run(server):
         return await table_insert(cluster, table, data, **kw)
     @server.trace
     async def table_insert(cluster, table, data, **kw):
-        return await post_request_tables(cluster, table, 'insert',  data, **kw)
+        return await cluster_table_change(cluster, table, 'insert',  data, **kw)
     server.cluster_table_insert = table_insert
 
     @server.api_route('/cluster/{cluster}/table/{table}/delete', methods=['POST'])
@@ -1371,7 +1658,7 @@ async def run(server):
 
     @server.trace
     async def table_delete(cluster, table, data, **kw):
-        return await post_request_tables(cluster, table, 'delete', data, **kw)
+        return await cluster_table_change(cluster, table, 'delete', data, **kw)
 
     @server.api_route('/cluster/{cluster}/table/{table}/pause/{pause}', methods=['POST'])
     async def cluster_table_pause_api(cluster: str, table: str, pause: str, request: Request):
@@ -1386,13 +1673,13 @@ async def run(server):
     @server.trace
     async def table_pause(cluster, table, pause, **kw):
         trace=kw['trace']
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         pause = True if pause == 'start' else False
         pause_set = {
             'set': {'is_paused': pause},
             'where': {'cluster': cluster, 'name': table}
         }
-        result = await post_request_tables(pyql, 'tables', 'update', pause_set, **kw)
+        result = await cluster_table_change(pyql, 'tables', 'update', pause_set, **kw)
         if 'delay_after_pause' in kw:
             await asyncio.sleep(kw['delay_after_pause'])
         trace.warning(f'cluster_table_pause {cluster} {table} pause {pause} result: {result}')
@@ -1407,7 +1694,7 @@ async def run(server):
         last_mod_time: float(time.time())
         
         """
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         set_config = config
         valid_inputs = ['in_sync', 'state']
         for cfg in set_config:
@@ -1420,7 +1707,7 @@ async def run(server):
             'set': set_config,
             'where': {'cluster': cluster, 'table_name': table, 'uuid': endpoint}
         }
-        result = await post_request_tables(pyql, 'state', 'update', sync_set, **kw)
+        result = await cluster_table_change(pyql, 'state', 'update', sync_set, **kw)
         trace.warning(f'cluster_table_endpoint_sync {cluster} {table} endpoint {endpoint} result: {result}')
         return result
 
@@ -1453,7 +1740,7 @@ async def run(server):
         requires cluster uuid for cluster
         """
         trace=kw['trace']
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         cluster_table_endpoint_txns = {
             'select': None,
             'where': {
@@ -1495,7 +1782,7 @@ async def run(server):
             {'txns': ['uuid1', 'uuid2', 'uuid3']}
         """
         trace=kw['trace']
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         for txn in txns['txns']:
             delete_txn = {
                 'where': {
@@ -1505,11 +1792,397 @@ async def run(server):
                     'uuid': txn
                 }
             }
-            resp = await post_request_tables(pyql, 'transactions', 'delete', delete_txn, **kw)
+            resp = await cluster_table_change(pyql, 'transactions', 'delete', delete_txn, **kw)
         return trace(f"successfully commited txns {txns}"), 200
 
+    @server.trace
+    async def get_txn_cluster_to_join():
+        """
+        Requirements:
+        - limit of 3 pyql nodes per 1 txn cluster
+        - when limit is reached, create new txn cluster if expanding
+        """
+        data_and_txn_clusters = await server.data_to_txn_cluster.select('*')
+        data_and_txn_clusters_count = Counter()
+        for cluster_map in data_and_txn_clusters:
+            txn_cluster_id = cluster_map['txn_cluster_id']
+            if not txn_cluster_id in data_and_txn_clusters_count:
+                data_and_txn_clusters_count[txn_cluster_id] = 0
+            data_and_txn_clusters_count[txn_cluster_id] +=1
+        cluster_id = min(data_and_txn_clusters_count)
+        
+        for cluster_map in data_and_txn_clusters:
+            if cluster_map['txn_cluster_id'] == cluster_id:
+                return cluster_map
 
-    @server.api_route('/cluster/{cluster_name}/join', methods=['GET','POST'])
+    @server.trace
+    async def join_cluster_pyql_bootstrap(config, **kw):
+        trace = kw['trace']
+
+        pyql = str(uuid.uuid1())
+        pyql_txns_id = str(uuid.uuid1())
+
+        # Boostrap initial txn log cluster
+        txn_cluster_data = {
+            "name": os.environ['HOSTNAME'],
+            "path": f"{os.environ['PYQL_NODE']}:{os.environ['PYQL_PORT']}",
+            "token": await server.env['PYQL_LOCAL_SERVICE_TOKEN'],
+            "database": {
+                'name': "transactions",
+                'uuid': f"{node_id}_txns"
+            },
+            "tables": [
+                await server.get_table_config('transactions', 'txn_cluster_tables')
+            ],
+            "consistency": [] 
+        }
+
+        # Bootstrap pyql cluster
+        await bootstrap_cluster(pyql, 'pyql', config, **kw)
+
+
+        # For each table in bootstrap, create corresponding txn table
+        for table in config['tables']:
+            for table_name, _ in table.items():
+                await server.create_txn_cluster_table(pyql, table_name)
+                pyql_id_underscored = (
+                    '_'.join(pyql.split('-'))
+                )
+                txn_cluster_data['tables'].append(
+                    await server.get_table_config(
+                        'transactions', 
+                        f'txn_{pyql_id_underscored}_{table_name}'
+                    )
+                )
+        # Bootstrap txn cluster
+        await bootstrap_cluster(pyql_txns_id, f"{pyql_txns_id}_log", txn_cluster_data, **kw)
+        
+        # after bootstrap - assign auth to service id 
+
+        service_id = await server.clusters.auth.select(
+            'id', where={'parent': kw['authentication']})
+        kw['authentication'] = service_id[0]['id']
+
+        # Register Bootstrapped node in data_to_txn_cluster
+
+        await server.clusters.data_to_txn_cluster.insert(
+            **{
+                'data_cluster_id': pyql,
+                'txn_cluster_id': pyql_txns_id,
+                'txn_cluster_name': pyql_txns_id
+            }
+        )
+
+
+    @server.trace
+    async def pyql_create_txn_cluster(config, txn_clusters, **kw):
+        trace = kw['trace']
+
+        # need to create a new txn cluster
+        admin_id = await server.clusters.auth.select('id', where={'username': 'admin'})
+        service_id = kw['authentication']
+        new_txn_cluster = str(uuid.uuid1())
+        data = {
+            'id': new_txn_cluster,
+            'name': f"{new_txn_cluster}_log",
+            'owner': service_id,
+            'access': {'allow': [admin_id, service_id]},
+            'type': 'data' if name == 'pyql' else 'log',
+            'key': None,
+            'created_by_endpoint': config['name'],
+            'create_date': f'{datetime.now().date()}'
+            }
+        await cluster_table_change(pyql, 'clusters', 'insert', data, **kw)
+
+        # add new endpoint to new cluster
+
+        data = {
+            'id': str(uuid.uuid1()),
+            'uuid': config['database']['uuid'],
+            'db_name': 'transactions',
+            'path': config['path'],
+            'token': config['token'],
+            'cluster': cluster
+        }
+        await cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
+
+        # add two random existing endpoints to new cluster
+        for _ in range(2):
+            existing = random.choice(txn_clusters)
+            data = {
+                'id': str(uuid.uuid1()),
+                'uuid': existing['endpoints.uuid'],
+                'db_name': 'transactions',
+                'path': existing['endpoints.path'],
+                'token': existing['endpoints.token'],
+                'cluster': new_txn_cluster
+            }
+        await cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
+
+    @server.trace
+    async def pyql_join_txn_cluster(config: dict, **kw):
+        trace = kw['trace']
+
+        # check if can join any current txn cluster 
+        # or create new cluster - limit 3 pyql endpoints
+        # per txn cluster
+        txn_clusters = server.clusters.clusters.select(
+            'clusters.id',
+            'clusters.name',
+            'endpoints.uuid',
+            'endpoints.token',
+            'endpoints.path',
+            join={
+                'endpoints': {
+                    'clusters.id': 'endpoints.cluster'
+                }
+            },
+            where={
+                'clusters.type': 'log'
+            }
+        )
+        log_clusters_and_endpoints = {}
+        for cluster in txn_clusters:
+            if not cluster['cluster.id'] in log_clusters_and_endpoints:
+                log_clusters_and_endpoints[cluster['cluster.id']] = []
+            log_clusters_and_endpoints[cluster['cluster.id']].append(
+                cluster['endpoint.uuid']
+            )
+        joined_existing = False
+        for cluster in log_clusters_and_endpoints:
+            if len(log_clusters_and_endpoints[cluster]) < 3:
+                # this node can join this cluster
+                data = {
+                    'id': str(uuid.uuid()),
+                    'uuid': config['database']['uuid'],
+                    'db_name': 'transactions',
+                    'path': config['path'],
+                    'token': config['token'],
+                    'cluster': cluster
+                }
+                await cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
+                joined_existing = True
+        if not joined_existing:
+            await pyql_create_txn_cluster(
+                config,
+                txn_clusters,
+                **kw
+            )
+
+    @server.trace
+    async def join_cluster_create(cluster_name, config, **kw):
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
+        trace = kw['trace']
+
+        # Creating a New Cluster
+        cluster_id = str(uuid.uuid1())
+        data = {
+            'id': cluster_id,
+            'name': cluster_name,
+            'owner': kw['authentication'], # added via @server.is_autenticated
+            'access': {'allow': [kw['authentication']]},
+            'type': 'data',
+            'created_by_endpoint': config['name'],
+            'create_date': f'{datetime.now().date()}'
+            }
+        await cluster_table_change(pyql, 'clusters', 'insert', data, **kw)
+
+        # Adding new Cluster to data_to_txn_cluster
+        # ('data_cluster_id', str, 'UNIQUE'),
+        # ('txn_cluster_id', str)
+        txn_cluster = await get_txn_cluster_to_join()
+        new_cluster_to_txn_map = {
+            'data_cluster_id': cluster_id,
+            'txn_cluster_name': txn_cluster['name'],
+            'txn_cluster_id': txn_cluster['id'] # await get_txn_cluster_to_join()
+        }
+        await cluster_table_change(
+            pyql, 
+            'data_to_txn_cluster', 
+            'insert', 
+            new_cluster_to_txn_map, 
+            **kw
+        )
+    @server.trace
+    async def join_cluster_create_or_update_endpoint(cluster_id, config, **kw):
+        """
+        called by join_cluster to create new cluster endpoint
+        or update the config of an existing 
+        """
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
+        trace = kw['trace']
+
+        endpoints = await server.clusters.endpoints.select(
+            'uuid', 
+            where={'cluster': cluster_id}
+        )
+        new_endpoint_or_database = False
+        if not config['database']['uuid'] in [ endpoint['uuid'] for endpoint in endpoints ]:
+            #add endpoint
+            new_endpoint_or_database = True
+            data = {
+                'uuid': config['database']['uuid'],
+                'db_name': config['database']['name'],
+                'path': config['path'],
+                'token': config['token'],
+                'cluster': cluster_id
+            }
+            await cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
+
+        else:
+            #update endpoint latest path info - if different
+            trace.warning(
+                f"endpoint with id {config['database']['uuid']} already exists in cluster {cluster_id} endpoints {endpoints}"
+                )
+            update_set = {
+                'set': {
+                    'path': config['path'], 
+                    'token': config['token']},
+                'where': {
+                    'uuid': config['database']['uuid']
+                    }
+            }
+            if len(endpoints) == 1 and cluster_id == pyql:
+                #Single node pyql cluster - path changed
+                await server.clusters.endpoints.update(
+                    **update_set['set'],
+                    where=update_set['where']
+                )
+            else:
+                await cluster_table_change(pyql, 'endpoints', 'update', update_set, **kw)
+                if cluster_id == await server.env['PYQL_UUID']:
+                    await cluster_table_change(
+                        pyql, 'state', 'update', 
+                        {
+                            'set': {'in_sync': False}, 
+                            'where': {
+                                'uuid': config['database']['uuid'],
+                                'cluster': cluster_id
+                                }
+                        }, 
+                        **kw
+                    )
+    @server.trace
+    async def join_cluster_create_tables(cluster_id: str, config: dict, **kw) -> list:
+        """
+        creates new tables if not created already and returns
+        list of created tables
+        """
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
+        trace = kw['trace']
+
+        tables = await server.clusters.tables.select('name', where={'cluster': cluster_id})
+        tables = [table['name'] for table in tables]
+
+        txn_cluster_id = await server.clusters.data_to_txn_cluster.select(
+            'txn_cluster_id',
+            where={
+                'data_cluster_id': cluster_id
+            }
+        )
+        txn_cluster_id = txn_cluster_id[0]['txn_cluster_id']
+
+        # if tables not exist, add
+        new_tables = []
+        for table in config['tables']:
+            for table_name, tb_config in table.items():
+                if not table_name in tables:
+                    new_tables.append(table_name)
+                    #JobIfy - create as job so config
+                    data = {
+                        'id': str(uuid.uuid1()),
+                        'name': table_name,
+                        'cluster': cluster_id,
+                        'config': tb_config,
+                        'consistency': table_name in config['consistency'],
+                        'is_paused': False
+                    }
+                    await cluster_table_change(pyql, 'tables', 'insert', data, **kw)
+                    
+                    await cluster_txn_table_create(
+                        txn_cluster_id,
+                        table_name,
+                        **kw
+                    )
+        return new_tables
+    
+    @server.trace
+    async def join_cluster_update_state(cluster_id, new_tables, config, **kw):
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
+        trace = kw['trace']
+
+        tables = await server.clusters.tables.select('name', where={'cluster': cluster_id})
+        tables = [table['name'] for table in tables]
+        endpoints = await server.clusters.endpoints.select('*', where={'cluster': cluster_id})    
+        state = await server.clusters.state.select('name', where={'cluster': cluster_id})
+        state = [tbEp['name'] for tbEp in state]
+
+        for table in tables:
+            for endpoint in endpoints:
+                table_endpoint = f"{endpoint['uuid']}_{table}"
+                if not table_endpoint in state:
+                    # check if this table was added along with endpoint, and does not need to be created 
+                    load_state = 'loaded' if endpoint['uuid'] == config['database']['uuid'] else 'new'
+                    if not table in new_tables:
+                        #Table arleady existed in cluster, but not in endpoint with same table was added
+                        sync_state = False
+                        load_state = 'new'
+                    else:
+                        # New tables in a cluster are automatically marked in sync by endpoint which added
+                        sync_state = True
+                    # Get DB Name to update
+                    data = {
+                        'name': table_endpoint,
+                        'state': load_state,
+                        'in_sync': sync_state,
+                        'table_name': table,
+                        'cluster': cluster_id,
+                        'uuid': endpoint['uuid'], # used for syncing logs
+                        'last_mod_time': 0.0
+                    }
+                    await cluster_table_change(pyql, 'state', 'insert', data, **kw)
+    @server.trace
+    async def join_cluster_pyql_finish_setup(
+        cluster_id: str, 
+        is_pyql_bootstrapped: bool,
+        is_new_endpoint: bool,
+        config: dict, 
+        **kw):
+        """
+        used to perform final setup of a new or rejoining pyql node 
+        """
+        trace = kw['trace']
+
+        if is_pyql_bootstrapped and not is_new_endpoint:
+            # Not bootrapping cluster, not a new endpoint 
+                await tablesync_mgr(**kw)
+        # pyql setup - sets pyql_uuid in env 
+        await probe(
+            f"http://{config['path']}/pyql/setup",
+            method='POST',
+            data={'PYQL_UUID': cluster_id},
+            token=config['token'],
+            session=await get_endpoint_sessions(config['database']['uuid'], **kw),
+            **kw
+        )
+        # auth setup - applys cluster service token in joining pyql node, and pulls key
+        result, rc = await probe(
+            f"http://{config['path']}/auth/setup/cluster",
+            method='POST',
+            data={
+                'PYQL_CLUSTER_SERVICE_TOKEN': await server.env['PYQL_CLUSTER_SERVICE_TOKEN']
+            },
+            token=config['token'],
+            session=await get_endpoint_sessions(config['database']['uuid'], **kw),
+            **kw
+        )
+        trace.warning(f"completed auth setup for new pyql endpoint: result {result} {rc}")
+        # Trigger quorum update
+        await cluster_quorum_check()
+        return trace("completed")
+        
+
+    @server.api_route('/cluster/{cluster_name}/join', methods=['POST'])
     async def join_cluster_api(cluster_name: str, config: dict, request: Request):
         return await join_cluster_auth(cluster_name, config,  request=await server.process_request(request))
 
@@ -1523,215 +2196,82 @@ async def run(server):
         trace=kw['trace']
         kw['loop'] = asyncio.get_running_loop()
         request = kw['request'] if 'request' in kw else None
-        
-        required = {
-            "name": "endpoint-name",
-            "path": "path-to-endpoint",
-            "database": {
-                'name': "database-name",
-                'uuid': "uuid"
-            },
-            "tables": [
-                {"tb1": 'json.dumps(conf)'},
-                {"tb2": 'json.dumps(conf)'},
-                {"tb3": 'json.dumps(conf)'}
-            ],
-            "consistency": ['tb1', 'tb2'] # defines if table modifications are cached & txn time is reviewed before submission
-        }
-        if 'request' in kw and request.method=='GET':
-            return required
-        else:
-            trace.info(f"join cluster for {cluster_name} with kwargs {kw}")
-            if not 'consistency' in config:
-                config['consistency'] = []
-            db = server.data['cluster']
-            new_endpoint_or_database = False
-            jobs_to_run = []
-            is_pyql_bootstrapped = False
-            pyql = None
+    
+        db = server.data['cluster']
+        new_endpoint_or_database = False
+        is_pyql_bootstrapped = False
+        pyql = None
 
-            clusters = await server.clusters.clusters.select(
-                    '*', where={'name': 'pyql'})
-            for cluster in clusters:
-                if cluster['name'] == 'pyql':
-                     is_pyql_bootstrapped, pyql = True, cluster['id']
-                     if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
-                         if config['database']['uuid'] == node_id:
-                            return {"message": "pyql cluster already initialized"}
 
-            if not is_pyql_bootstrapped and cluster_name == 'pyql':
-                if not 'authentication' in kw:
-                    admin_id = await server.clusters.auth.select('id', where={'username': 'admin'})
-                    kw['authentication'] = admin_id[0]['id']
-                await bootstrap_pyql_cluster(config, **kw)
-                
-                # after bootstrap - assign auth to service id 
-                service_id = await server.clusters.auth.select(
-                    'id', where={'parent': kw['authentication']})
-                kw['authentication'] = service_id[0]['id']
 
-            
-            clusters = await server.clusters.clusters.select(
-                '*', where={'name': 'pyql'}
+        trace.info(f"join cluster for {cluster_name} with kwargs {kw}")
+
+        # check if pyql is bootstrapped 
+        clusters = await server.clusters.clusters.select(
+                '*', where={'name': 'pyql'})
+        for cluster in clusters:
+            if cluster['name'] == 'pyql':
+                is_pyql_bootstrapped, pyql = True, cluster['id']
+
+        if is_pyql_bootstrapped and os.environ['PYQL_CLUSTER_ACTION'] == 'init':
+            if config['database']['uuid'] == node_id:
+                return {"message": trace("pyql cluster already initialized")}
+
+        if not 'authentication' in kw:
+            admin_id = await server.clusters.auth.select('id', where={'username': 'admin'})
+            kw['authentication'] = admin_id[0]['id']
+
+        if not is_pyql_bootstrapped and cluster_name == 'pyql':
+            await join_cluster_pyql_bootstrap(
+                config, **kw
             )
-            
+            service_id = await server.clusters.auth.select(
+                'id', 
+                where={'parent': kw['authentication']})
+            service_id = service_id[0]['id']
+            kw['authentication'] = service_id
 
-            clusters = await server.clusters.clusters.select(
-                '*', where={'owner': kw['authentication']})
-            if not cluster_name in [cluster['name'] for cluster in clusters]:
-                #Cluster does not exist, need to create
-                # ('id', str, 'UNIQUE NOT NULL'),
-                # ('name', str),
-                # ('owner', str), # UUID of auth user who created cluster 
-                # ('access', str), # {"alllow": ['uuid1', 'uuid2', 'uuid3']}
-                # ('created_by_endpoint', str),
-                # ('create_date', str)
-
-                data = {
-                    'id': str(uuid.uuid1()),
-                    'name': cluster_name,
-                    'owner': kw['authentication'], # added via @server.is_autenticated
-                    'access': {'allow': [kw['authentication']]},
-                    'created_by_endpoint': config['name'],
-                    'create_date': f'{datetime.now().date()}'
-                    }
-                await post_request_tables(pyql, 'clusters', 'insert', data, **kw)
-            cluster_id = await server.clusters.clusters.select(
-                '*', where={
-                        'owner': kw['authentication'], 
-                        'name': cluster_name
-                    })
-            cluster_id = cluster_id[0]['id']
-            
-            #check for existing endpoint in cluster: cluster_id 
-            endpoints = await server.clusters.endpoints.select('uuid', where={'cluster': cluster_id})
-            if not config['database']['uuid'] in [endpoint['uuid'] for endpoint in endpoints]:
-                #add endpoint
-                new_endpoint_or_database = True
-                data = {
-                    'uuid': config['database']['uuid'],
-                    'db_name': config['database']['name'],
-                    'path': config['path'],
-                    'token': config['token'],
-                    'cluster': cluster_id
-                }
-                await post_request_tables(pyql, 'endpoints', 'insert', data, **kw)
-
-            else:
-                #update endpoint latest path info - if different
-                trace.warning(f"endpoint with id {config['database']['uuid']} already exists in {cluster_name} {endpoints}")
-                update_set = {
-                    'set': {
-                        'path': config['path'], 
-                        'token': config['token']},
-                    'where': {
-                        'uuid': config['database']['uuid']
-                        }
-                }
-                if len(endpoints) == 1 and cluster_name == 'pyql':
-                    #Single node pyql cluster - path changed
-                    await server.clusters.endpoints.update(
-                        **update_set['set'],
-                        where=update_set['where']
-                    )
-                else:
-                    await post_request_tables(pyql, 'endpoints', 'update', update_set, **kw)
-                    if cluster_id == await server.env['PYQL_UUID']:
-                        await post_request_tables(
-                            pyql, 'state', 'update', 
-                            {
-                                'set': {'in_sync': False}, 
-                                'where': {
-                                    'uuid': config['database']['uuid'],
-                                    'cluster': cluster_id
-                                    }
-                            }, 
-                            **kw)
-            tables = await server.clusters.tables.select('name', where={'cluster': cluster_id})
-            tables = [table['name'] for table in tables]
-            # if tables not exist, add
-            newTables = []
-            for table in config['tables']:
-                for table_name, tb_config in table.items():
-                    if not table_name in tables:
-                        newTables.append(table_name)
-                        #JobIfy - create as job so config
-                        data = {
-                            'id': str(uuid.uuid1()),
-                            'name': table_name,
-                            'cluster': cluster_id,
-                            'config': tb_config,
-                            'consistency': table_name in config['consistency'],
-                            'is_paused': False
-                        }
-                        await post_request_tables(pyql, 'tables', 'insert', data, **kw)
-            # If new endpoint was added - update endpoints in each table 
-            # so tables can be created in each endpoint for new / exsting tables
-            if new_endpoint_or_database == True:
-                jobs_to_run = [] # Resetting as all cluster tables need a job to sync on new_endpoint_or_database
-                tables = await server.clusters.tables.select('name', where={'cluster': cluster_id})
-                tables = [table['name'] for table in tables]
-                endpoints = await server.clusters.endpoints.select('*', where={'cluster': cluster_id})    
-                state = await server.clusters.state.select('name', where={'cluster': cluster_id})
-                state = [tbEp['name'] for tbEp in state]
-
-                for table in tables:
-                    for endpoint in endpoints:
-                        tableEndpoint = f"{endpoint['uuid']}{table}"
-                        if not tableEndpoint in state:
-                            # check if this table was added along with endpoint, and does not need to be created 
-                            load_state = 'loaded' if endpoint['uuid'] == config['database']['uuid'] else 'new'
-                            if not table in newTables:
-                                #Table arleady existed in cluster, but not in endpoint with same table was added
-                                sync_state = False
-                                load_state = 'new'
-                            else:
-                                # New tables in a cluster are automatically marked in sync by endpoint which added
-                                sync_state = True
-                            # Get DB Name to update
-                            data = {
-                                'name': tableEndpoint,
-                                'state': load_state,
-                                'in_sync': sync_state,
-                                'table_name': table,
-                                'cluster': cluster_id,
-                                'uuid': endpoint['uuid'], # used for syncing logs
-                                'last_mod_time': 0.0
-                            }
-                            await post_request_tables(pyql, 'state', 'insert', data, **kw)
-            else:
-                # Not bootrapping cluster, not a new endpoint or databse this is pyql cluster
-                if is_pyql_bootstrapped and not new_endpoint_or_database and cluster_name == 'pyql':
-                    if cluster_name == 'pyql':
-                        await tablesync_mgr(**kw)
-            # Trigger quorum update using any new endpoints if cluster name == pyql
+        else: 
+            """Pyql Cluster was already Bootstrapped"""
             if cluster_name == 'pyql':
-                await cluster_quorum_check()
-                if not is_pyql_bootstrapped:
-                    await set_pyql_id({'PYQL_UUID': cluster_id})
-                else:
-                # pyql setup - sets pyql_uuid in env 
-                    await probe(
-                        f"http://{config['path']}/pyql/setup",
-                        method='POST',
-                        data={'PYQL_UUID': cluster_id},
-                        token=config['token'],
-                        session=await get_endpoint_sessions(config['database']['uuid'], **kw),
-                        **kw
-                    )
-                    # auth setup - applys cluster service token in joining pyql node, and pulls key
-                    result, rc = await probe(
-                        f"http://{config['path']}/auth/setup/cluster",
-                        method='POST',
-                        data={
-                            'PYQL_CLUSTER_SERVICE_TOKEN': await server.env['PYQL_CLUSTER_SERVICE_TOKEN']
-                        },
-                        token=config['token'],
-                        session=await get_endpoint_sessions(config['database']['uuid'], **kw),
-                        **kw
-                    )
-                    trace.warning(f"completed auth setup for new pyql endpoint: result {result} {rc}")
-            return {"message": trace.warning(f"join cluster {cluster_name} for endpoint {config['name']} completed successfully")}, 200
+                await pyql_join_txn_cluster(config, **kw)
+ 
+        clusters = await server.clusters.clusters.select(
+            '*', where={'owner': kw['authentication']})
+
+        for cluster in clusters:
+            if cluster['name'] == 'pyql':
+                await server.env.set_item('PYQL_UUID', cluster['id'])
+
+        if not cluster_name in [cluster['name'] for cluster in clusters]:
+            await join_cluster_create(cluster_name, config, **kw)
+            
+        cluster_id = await server.clusters.clusters.select(
+            '*', where={
+                    'owner': kw['authentication'], 
+                    'name': cluster_name
+                })
+        cluster_id = cluster_id[0]['id']
+
+        #check for existing endpoint in cluster: cluster_id 
+        new_endpoint_or_database = await join_cluster_create_or_update_endpoint(
+            cluster_id, config, **kw
+        )
+
+        # check for exiting tables in cluster 
+        new_tables = await join_cluster_create_tables(cluster_id, config, **kw)
+        if new_endpoint_or_database == True:
+            await join_cluster_update_state(cluster_id, new_tables, config, **kw)
+
+        if cluster_name == 'pyql':
+            await join_cluster_pyql_finish_setup(
+                cluster_id,
+                is_pyql_bootstrapped,
+                new_endpoint_or_database,
+                config,
+                **kw,
+            )
+        return {"message": trace.warning(f"join cluster {cluster_name} for endpoint {config['name']} completed successfully")}, 200
     server.join_cluster = join_cluster
 
     @server.trace
@@ -1754,7 +2294,7 @@ async def run(server):
         """ 
         trace=kw['trace']
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         jobs = await table_select(pyql, 'jobs', method='GET', **kw)
         jobs = jobs['data']
         for job in jobs:
@@ -1779,7 +2319,7 @@ async def run(server):
             else:
                 if job['status'] == 'queued':
                     # add start_time to check if job is stuck
-                    await post_request_tables(
+                    await cluster_table_change(
                         pyql, 'jobs', 'update', 
                         {'set': {
                             'start_time': time.time()}, 
@@ -1810,6 +2350,51 @@ async def run(server):
     async def cluster_jobqueue(job_type, **kw):
         return await jobqueue(job_type, **kw)
     
+
+    @server.trace
+    async def jobqueue_reserve_job(job, **kw):
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
+        trace = kw['trace']
+        reservation = str(uuid.uuid1())
+        job_update = {
+            'set': {
+                'node': node_id,
+                'reservation': reservation,
+            }, 
+            'where': {
+                'id': job['id'], 
+                'node': None
+            }
+        }
+        result = await cluster_table_change(pyql, 'jobs', 'update', job_update, **kw)
+        if not result:
+            trace.error(f"failed to reserve job {job} for node {node} with reservation {reservation}")
+            return {"message": trace("no jobs to process at this time")}
+
+        # verify if job was reserved by node and pull config
+        job_select = {
+            'select': ['*'],
+            'where': {
+                'id': job['id']
+            }
+        }
+        while True:
+            job_check = await table_select(pyql, 'jobs', data=job_select, method='POST', **kw)
+            if len(job_check) == 0:
+                return {"message": trace(f"failed to reserve job {job['id']}, no longer exists")}
+            trace(f"job_check: {job_check}")
+            job_check = job_check['data'][0]
+            if job_check['node'] == None:
+                # wait until 'node' is assigned
+                await asyncio.sleep(0.05)
+                continue
+            if job_check['node'] == node_id:
+                if not job_check['reservation'] == reservation:
+                    return {
+                        "message": f"{job['id']} was reserved by another worker"
+                        }
+                return job_check
+
     @server.trace
     async def jobqueue(job_type, node=None, **kw):
         """
@@ -1817,75 +2402,57 @@ async def run(server):
             job_type = 'job|syncjob|cron'
         """
         trace = kw['trace']
-        #request = kw['request'] TODO - Decide if I can delete
         queue = f'{job_type}s' if not job_type == 'cron' else job_type
 
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         if pyql == None:
             return {"message": "cluster is still bootstrapping, try again later"}
 
+
         node = node_id
-        for _ in range(2):
-            job_select = {
-                'select': ['id', 'name', 'type', 'next_run_time', 'node'], 
-                'where':{
-                    'status': 'queued',
-                    'type': queue
-                }
+
+        job_select = {
+            'select': ['id', 'name', 'type', 'next_run_time', 'node'], 
+            'where':{
+                'status': 'queued',
+                'type': queue
             }
-            if not job_type == 'cron':
-                job_select['where']['node'] = None
-            trace("starting to pull list of jobs")
-            job_list = await table_select(pyql, 'jobs', data=job_select, method='POST', **kw)
-            if not job_list:
-                return {"message": trace("unable to pull jobs at this time")}
-            trace(f"finished pulling list of jobs - job_list {job_list} ")
-            job_list = job_list['data']
-            for i, job in enumerate(job_list):
-                if not job['next_run_time'] == None:
-                    #Removes queued job from list if next_run_time is still in future 
-                    if not float(job['next_run_time']) < float(time.time()):
-                        job_list.pop(i)
-                    if not job['node'] == None:
-                        if time.time() - float(job['next_run_time']) > 120.0:
-                            trace(f"found stuck job assigned to node {job['node']} - begin re_queue job")
-                            trace.error(f"job # {job['id']} may be stuck / inconsistent, updating to requeue")
-                            await re_queue_job(job, trace=kw['trace'])
-                            trace(f"found stuck job assigned to node {job['node']} - finished re_queue job")
-                            #job_update = {'set': {'node': None}, 'where': {'id': job['id']}}
-                            #await post_request_tables(pyql, 'jobs', 'update', job_update)
+        }
+        if not job_type == 'cron':
+            job_select['where']['node'] = None
+        trace("starting to pull list of jobs")
+        job_list = await table_select(pyql, 'jobs', data=job_select, method='POST', **kw)
+        if not job_list:
+            return {"message": trace("unable to pull jobs at this time")}
+        trace(f"finished pulling list of jobs - job_list {job_list} ")
+        job_list = job_list['data']
+        for i, job in enumerate(job_list):
+            if not job['next_run_time'] == None:
+                #Removes queued job from list if next_run_time is still in future 
+                if not float(job['next_run_time']) < float(time.time()):
+                    job_list.pop(i)
+                if not job['node'] == None:
+                    if time.time() - float(job['next_run_time']) > 120.0:
+                        trace.error(f"found stuck job {job['id']} assigned to node {job['node']} - begin re_queue job")
+                        await re_queue_job(job, trace=kw['trace'])
+                        trace(f"found stuck job assigned to node {job['node']} - finished re_queue job")
 
-            if len(job_list) == 0:
-                return {"message": trace("no jobs to process at this time")}
-            if job_type == 'cron':
-                job_list = sorted(job_list, key=lambda job: job['next_run_time'])
-                job = job_list[0]
-            else:
-                latest = 3 if len(job_list) >= 3 else len(job_list)
-                job_index = randrange(latest-1) if latest -1 > 0 else 0
-                job = job_list[job_index]
-            
-            job_select['where']['id'] = job['id']
-
-            trace.warning(f"Attempt to reserve job {job} if no other node has taken ")
-
-            job_update = {'set': {'node': node}, 'where': {'id': job['id'], 'node': None}}
-            result = await post_request_tables(pyql, 'jobs', 'update', job_update, **kw)
-            if not result:
-                trace.error(f"failed to reserve job {job} for node {node}")
-                return {"message": trace("no jobs to process at this time")}
-
-            # verify if job was reserved by node and pull config
-            job_select['where']['node'] = node
-            job_select['select'] = ['*']
-            job_check = await table_select(pyql, 'jobs', data=job_select, method='POST', **kw)
-            if len(job_check['data']) == 0:
-                continue
-            trace.warning(f"cluster_jobqueue - pulled job {job_check['data'][0]} for node {node}")
-            return job_check['data'][0]
-        trace.warning(f"failed to reserve job {job} after 2 attempts for node {node}")
-        return {"message": trace("no jobs to process at this time")}
+        if len(job_list) == 0:
+            return {"message": trace("no jobs to process at this time")}
+        if job_type == 'cron':
+            job_list = sorted(job_list, key=lambda job: job['next_run_time'])
+            job = job_list[0]
+        else:
+            latest = 3 if len(job_list) >= 3 else len(job_list)
+            job_index = randrange(latest-1) if latest -1 > 0 else 0
+            job = job_list[job_index]
         
+        job_select['where']['id'] = job['id']
+
+        trace.warning(f"Attempt to reserve job {job} if no other node has taken ")
+
+        # reserve job
+        return await jobqueue_reserve_job(job, **kw)
 
     @server.api_route('/cluster/job/{job_type}/{job_id}/{status}', methods=['POST'])
     async def cluster_job_update_api(job_type: str, job_id: str, status: str, request: Request, job_info: dict = None):
@@ -1898,7 +2465,7 @@ async def run(server):
         return await job_update(job_type, job_id, status, **kw)
 
     async def job_update(job_type, job_id, status, job_info={}, **kw):
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
         trace=kw['trace']
         if status == 'finished':
@@ -1916,8 +2483,8 @@ async def run(server):
                 else:
                     update_from['set']['next_run_time'] = str(time.time() + 25.0)
                     trace.error(f"error pulling cron job {job_id} - proceeding to mark finished")
-                return await post_request_tables(pyql, 'jobs', 'update', update_from, **kw) 
-            return await post_request_tables(pyql, 'jobs', 'delete', update_from, **kw)
+                return await cluster_table_change(pyql, 'jobs', 'update', update_from, **kw) 
+            return await cluster_table_change(pyql, 'jobs', 'delete', update_from, **kw)
         if status == 'running' or status == 'queued':
             update_set = {'last_error': {}, 'status': status}
             for k,v in job_info.items():
@@ -1931,7 +2498,7 @@ async def run(server):
                 update_where['set']['start_time'] = None
             else:
                 update_where['set']['start_time'] = str(time.time())
-            return await post_request_tables(pyql, 'jobs', 'update', update_where, **kw)
+            return await cluster_table_change(pyql, 'jobs', 'update', update_where, **kw)
 
     @server.api_route('/cluster/{cluster}/table/{table}/recovery', methods=['POST'])
     async def cluster_table_sync_recovery(cluster: str, table: str, reqeust: Request): 
@@ -1952,7 +2519,7 @@ async def run(server):
         trace = kw['trace']
         request = kw['request']
         #need to check quorum as all endpoints are currently in_sync = False for table
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         """
         if cluster == pyql:
             quorum_check, rc = cluster_quorum(trace=kw['trace'])
@@ -2012,7 +2579,7 @@ async def run(server):
                     **kw
                 )
         else:
-            await post_request_tables(pyql, 'state', 'update', update_set_in_sync, **kw)
+            await cluster_table_change(pyql, 'state', 'update', update_set_in_sync, **kw)
             #cluster_table_update(pyql, 'state', update_set_in_sync)
         trace.warning(f"table_sync_recovery completed selecting an endpoint as in_sync -  {latest['endpoint']} - need to requeue job and resync remaining nodes")
         return {"message": trace("table_sync_recovery completed")}
@@ -2033,7 +2600,7 @@ async def run(server):
         """
         trace=kw['trace']
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         jobs_to_create = {}
         jobs = {}
         tables = await server.clusters.tables.select('name', 'cluster')
@@ -2113,7 +2680,7 @@ async def run(server):
     @server.trace
     async def table_copy(cluster, table, out_of_sync_path, out_of_sync_token, out_of_sync_uuid, **kw):
         trace=kw['trace']
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         in_sync_table_copy = await table_select(cluster, table, method='GET', **kw)
 
         # This allows logs to generate for endpoint - following the copy
@@ -2183,7 +2750,7 @@ async def run(server):
             )
         #pyql_sync_exclusions = {'transactions', 'jobs', 'state', 'tables'}
         pyql_sync_exclusions = {'transactions', 'jobs'}
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
 
         # get table endpoints
         table_endpoints = await get_table_endpoints(cluster, table, caller='cluster_table_sync_run', **kw)
@@ -2334,7 +2901,7 @@ async def run(server):
                 if cluster == pyql and table in pyql_sync_exclusions:
                     pass
                 else:
-                    await post_request_tables(
+                    await cluster_table_change(
                         pyql, 'transactions', 
                         'delete', 
                         {'where': {'endpoint': uuid, 'table_name': table}}, 
@@ -2445,7 +3012,7 @@ async def run(server):
         cluster_jobs_add('syncjobs', jobconfig, status='WAITING')
 
         """
-        pyql = await server.env['PYQL_UUID']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
         trace=kw['trace']
         trace(f"called with config: {config} - {kw}")
@@ -2487,7 +3054,7 @@ async def run(server):
                     'job_id': job['job']
                 }
 
-        response = await post_request_tables(pyql, 'jobs', 'insert', job_insert, **kw)
+        response = await cluster_table_change(pyql, 'jobs', 'insert', job_insert, **kw)
         trace.warning(f"cluster {job_type} add for job {job} finished - {response}")
         return {
             "message": f"job {job} added to jobs queue - {response}",
@@ -2557,6 +3124,7 @@ async def run(server):
 
         if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
             #Job to trigger cluster_quorum()
+            """
             init_quorum = {
                 "job": "init_quorum",
                 "job_type": "cluster",
@@ -2565,6 +3133,7 @@ async def run(server):
                 "path": "/pyql/quorum",
                 "config": {}
             }
+            """
             init_mark_ready_job = {
                 "job": "init_mark_ready",
                 "job_type": "cluster",
@@ -2575,7 +3144,7 @@ async def run(server):
             # Create Cron Jobs inside init node
             cron_jobs = []
             if not os.environ.get('PYQL_TYPE') == 'K8S':
-                await server.internal_job_add(init_quorum)
+                #await server.internal_job_add(init_quorum)
                 #server.internal_job_add(initMarkReadyJob)
                 cron_jobs.append({
                     'job': 'cluster_quorum_check',

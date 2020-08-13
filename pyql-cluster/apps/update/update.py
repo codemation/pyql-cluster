@@ -9,7 +9,7 @@ async def run(server):
     async def db_update(database, table, params=None, **kw):
         return await update_func(database, table, params, **kw)
     async def update_func(database, table, params=None, **kw):
-        message, rc = server.check_db_table_exist(database,table)
+        message, rc = await server.check_db_table_exist(database,table)
         if not rc == 200:
             server.http_exception(rc, message)
         #200

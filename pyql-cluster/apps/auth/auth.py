@@ -3,8 +3,6 @@ async def run(server):
     from fastapi import Request
     import os, uuid, time, json, base64, jwt, string, random, socket
     import uvloop, asyncio
-    #asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    #asyncio.set_event_loop(loop)
     
     hostname = socket.getfqdn()
     char_nums = string.ascii_letters + ''.join([str(i) for i in range(10)])
@@ -76,8 +74,7 @@ async def run(server):
                         decoded_token = decode(token, key)
                         if decoded_token == None:
                             server.http_exception(401, debug(log.error(f"token authentication failed")))
-                        #request.authentication= decoded_token['id']
-                        #setattr(request, 'authentication', decoded_token['id'])
+
                         kwargs['authentication'] = decoded_token['id']
                         request.auth = decoded_token['id']
                         if isinstance(decoded_token['expiration'], dict) and 'join' in decoded_token['expiration']:
@@ -300,7 +297,7 @@ async def run(server):
         @server.trace
         async def user_register(authtype, user_info, **kw):
             trace = kw['trace']
-            pyql = await server.env['PYQL_UUID']
+            pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
             user_info['type'] = authtype
             required_fields = set()
             # 3 types 'user', 'admin', 'service'

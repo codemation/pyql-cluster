@@ -12,7 +12,7 @@ async def run(server):
         return await insert(database, table, params, **kw)
 
     async def insert(database, table, params, **kw):
-        message, rc = server.check_db_table_exist(database,table)
+        message, rc = await server.check_db_table_exist(database,table)
         if rc == 200:
             table = server.data[database].tables[table]
             for k,v in params.items(): 
