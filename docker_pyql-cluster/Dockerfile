@@ -20,4 +20,4 @@ ENV PYQL_VOLUME_PATH=/mnt/pyql-cluster
 
 EXPOSE 8090
 
-CMD ["uvicorn", "--host", "0.0.0.0", "--port", "8090", "--workers" , "3", "server:app"]
+CMD ["uvicorn", "--host", "0.0.0.0", "--port", "8090", "server:app"]
