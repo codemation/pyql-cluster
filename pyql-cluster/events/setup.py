@@ -4,7 +4,18 @@ async def run(server):
     from fastapi.testclient import TestClient
 
     log = server.log
+    
+    # generic tasks which are not time-sensitive
     server.tasks = []
+
+    # txn_signals are added when a cluster_table_change is called
+    # and signal table_endpoints that there are new txns to /flush
+    server.txn_signals = []
+
+    # tasks are added when /db/<database>/table/<table>/flush is called 
+    # which attempts to sync the table with the latest txns in 
+    server.flush_tasks = []
+
     server.clients = {}
 
     # websocket client factory
@@ -33,29 +44,46 @@ async def run(server):
 
     # Workers monitoring for tasks in server.taskss
 
-    async def worker(client, interval):
+    async def worker(client, interval, queue):
         """
         waits for new work in queue & sleeps
         """
+
+        if queue == 'tasks':
+            queue = 'tasks'
+        if queue == 'txns':
+            queue = 'txn_signals'
+        if queue == 'flush':
+            queue = 'flush_tasks'
         loop = asyncio.get_running_loop()
         log.warning(f"worker {client} started within loop {loop} - {loop is server.event_loop}")
         try:
             while True:
-                if len(server.tasks) == 0:
-                    log.warning(f"worker {client} found no tasks to run, sleeping {interval}")
+                if len(server.__dict__[queue]) == 0:
+                    #log.warning(f"worker {client} found no tasks to run, sleeping {interval}")
                     await asyncio.sleep(interval)
                     continue
 
                 # Pulls job off top of stack to reserve 
-                job = server.tasks.pop(0)
+                job = server.__dict__[queue].pop(0)
+                cron = True
+                restart = False
                 if job == 'finished':
                     return
                 try:
+                    """
+                    if 'coroutine' in str(type(job)):
+                        cron = False
+                        result = await job
+                    else:
+                    """
                     result = await job()
                 except Exception as e:
-                    log.exception(f"worker encountered exception when running {job}")
-                server.tasks.append(job)
-                log.warning(f"worker finished job: {result}")
+                    result = log.exception(f"worker encountered exception when running {job}")
+                    restart = True
+                if queue == 'tasks' or restart:
+                    server.__dict__[queue].append(job)
+                log.warning(f"{queue} worker finished job: {result} - queue: {server.__dict__[queue]}")
                 await asyncio.sleep(interval)
         except Exception as e:
             log.exception(f"unandled exception or application is shutting down, worker {client} exiting")
@@ -68,10 +96,10 @@ async def run(server):
     async def run_worker(websocket: WebSocket):
         await websocket.accept()
         config = await websocket.receive_json()
-        client, interval = config['client'], config['interval']
+        client, interval, queue = config['client'], config['interval'], config['queue']
         await websocket.send_json({"message": f"started worker {client} with config {config}"})
         try: 
-            await worker(client, interval)
+            await worker(client, interval, queue)
         except Exception as e:
             print(repr(e))
         finally:
@@ -79,7 +107,7 @@ async def run(server):
             await cleanup_client(config['client'])
             await websocket.close()
 
-    async def add_worker(interval: int):
+    async def add_worker(interval: int, queue: str):
         import time
         start = time.time()
         client_id = str(uuid.uuid1())
@@ -87,12 +115,13 @@ async def run(server):
         websocket = await get_client_by_id(client_id, "/worker")
         try:
             # send work to websocket server
-            websocket.send_json({"interval": interval, 'client': client_id})
+            websocket.send_json({"interval": interval, 'client': client_id, 'queue': queue})
             
             # waits for ack of work received
             result =  websocket.receive_json()
             log.warning(f"started worker: {result} after {time.time()-start} seconds")
-        except Exception:
+        except Exception as e:
+            log.exception("Exceptoin during add_worker")
             await cleanup_client(client_id)
         return result
 
@@ -114,9 +143,12 @@ async def run(server):
         """
         creates default running workers on app start
         """
-        
+        await add_worker(0.005, 'txns')
+        await add_worker(0.005, 'flush')
         for _ in range(2):
-            await add_worker(10)
+            await add_worker(10, 'tasks')
+            
+            
 
     @server.on_event("shutdown")
     async def close_sessions():
@@ -124,8 +156,13 @@ async def run(server):
         on app shutdown, closes workers & exits open websocket context
         """
         server.tasks = []
+        server.txn_signals = []
+        server.flush_tasks = []
+
         for client in server.clients:
             server.tasks.append('finished')
+            server.txn_signals.append('finished')
+            server.flush_tasks.append('finished')
             await cleanup_client(client)
 
 
