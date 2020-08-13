@@ -4,3 +4,6 @@ async def run(server):
     server.actions = dict()
     from dbs.database import database_db
     await database_db.run(server)
+    from dbs.transactions import transactions_db
+    await transactions_db.run(server)
+            
