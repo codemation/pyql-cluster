@@ -73,9 +73,9 @@ async def run(server):
             for job in jobs:
                 await server.clusters.internaljobs.update(status='running', where={'id': job['id'], 'status': 'queued'})
                 reserved = await server.clusters.internaljobs.select('*', where={'id': job['id'], 'status': 'running'})
+                log.warning(f"job_queue_pull reserved job: {reserved}")
                 if len(reserved) == 1:
                     reserved_config = reserved[0]['config']
-                    log.warning(f"job_queue_pull reserved job: {reserved}")
                     return {'id': job['id'], 'config': reserved_config}
         return {"message": "no jobs in queue"}
     
