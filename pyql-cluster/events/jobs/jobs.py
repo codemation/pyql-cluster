@@ -7,7 +7,7 @@ async def run(server):
 
     if os.environ.get('PYQL_TYPE') in ['K8S', 'DOCKER']:
         import socket
-             = socket.gethostbyname(socket.getfqdn())
+        NODE_IP = socket.gethostbyname(socket.getfqdn())
 
     CLUSTER_SVC_NAME = f'http://{os.environ["PYQL_CLUSTER_SVC"]}'
     NODE_PATH = f'http://{NODE_IP}:{os.environ["PYQL_PORT"]}'
