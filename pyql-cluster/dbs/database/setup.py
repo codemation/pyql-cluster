@@ -46,3 +46,6 @@ async def attach_tables(server):
     from dbs.database.tables import pyql
     await pyql.db_attach(server)
             
+    from dbs.database.tables import data_to_txn_cluster
+    await data_to_txn_cluster.db_attach(server)
+            

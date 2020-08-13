@@ -11,7 +11,8 @@ async def db_attach(server):
            ('missing', str), 
            ('last_update_time', float)
        ],
-       'node'
+       'node',
+       cache_enabled=True
     )
     return # Enter db.create_table statement here
             

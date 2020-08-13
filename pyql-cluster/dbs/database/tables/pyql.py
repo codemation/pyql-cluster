@@ -14,9 +14,11 @@ async def db_attach(server):
                 ('database', str),
                 ('table_name', str),
                 ('last_txn_uuid', str), 
-                ('last_mod_time', float)
+                ('last_txn_time', float),
+                ('lock_id', str)
             ],
-            'table_name'
+            'table_name',
+            cache_enabled=True
             )
             db_uuid = uuid.uuid1()
             insert_coros = []
@@ -26,7 +28,7 @@ async def db_attach(server):
                         'uuid': db_uuid,
                         'database': database,
                         'table_name': tb,
-                        'last_mod_time': time.time()
+                        'last_txn_time': time.time()
                         })
                 )
             await asyncio.gather(*insert_coros)

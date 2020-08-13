@@ -9,14 +9,16 @@ async def db_attach(server):
            ('name', str, 'UNIQUE NOT NULL'),
            ('type', str, 'NOT NULL'), #tablesync - cluster
            ('status', str), # QUEUED, RUNNING, WAITING
-           ('node', str),
+           ('node', str),   # Node which is driving job
+           ('reservation', str), # Which Worker is running Job
            ('action', str), # What action is called by job
            ('config', str), # What config is used by action
            ('start_time', str),
            ('next_run_time', str),
            ('last_error', str)
        ],
-       'id'
+       'id',
+       cache_enabled=True
     )
     return # Enter db.create_table statement here
             

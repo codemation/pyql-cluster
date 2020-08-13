@@ -11,7 +11,8 @@ async def db_attach(server):
            ('type', str),
            ('password', str),
        ],
-       'id'
+       'id',
+       cache_enabled=True
     )
     return # Enter db.create_table statement here
             

@@ -11,7 +11,8 @@ async def db_attach(server):
            ('timestamp', float),
            ('txn', str)
        ],
-       'uuid'
+       'uuid',
+       cache_enabled=True
     )
     return # Enter db.create_table statement here
             

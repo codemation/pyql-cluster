@@ -11,7 +11,8 @@ async def db_attach(server):
             ('uuid', str), # used for syncing logs 
             ('last_mod_time', float)
        ],
-       'name'
+       'name',
+       cache_enabled=True
     )
     return # Enter db.create_table statement here
             

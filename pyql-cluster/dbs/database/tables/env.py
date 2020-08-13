@@ -6,6 +6,7 @@ async def db_attach(server):
            ('env', str, 'UNIQUE NOT NULL'), 
            ('val', str)
        ],
-       'env'
+       'env',
+       cache_enabled=True
     )
     server.env = db.tables['env']

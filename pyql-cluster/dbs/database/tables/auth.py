@@ -10,6 +10,7 @@ async def db_attach(server):
            ('password', str),
            ('parent', str) # uuid of parent, if service account or sub user account
         ],
-        'id'
+        'id',
+        cache_enabled=True
     )
     return # Enter db.create_table statement here

@@ -25,7 +25,8 @@ async def db_attach(server):
             ('consistency', bool),
             ('is_paused', bool)
        ],
-        'id'
+        'id',
+        cache_enabled=True
     )
     return # Enter db.create_table statement here
             

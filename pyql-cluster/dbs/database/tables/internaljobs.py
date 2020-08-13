@@ -9,5 +9,6 @@ async def db_attach(server):
            ('status', str), 
            ('config', str)
        ],
-       'id'
+       'id',
+       cache_enabled=True
     )

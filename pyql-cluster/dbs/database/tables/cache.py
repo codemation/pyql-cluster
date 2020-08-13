@@ -14,7 +14,8 @@ async def db_attach(server):
             ('timestamp', float), # time of txn 
             ('txn', str) # boxy of txn
         ],
-        'id'
+        'id',
+        cache_enabled=True
         )
     server.reset_cache = reset_cache
     await server.reset_cache()
