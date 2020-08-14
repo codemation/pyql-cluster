@@ -145,8 +145,8 @@ async def run(server):
         """
         await add_worker(0.005, 'txns')
         await add_worker(0.005, 'flush')
-        #for _ in range(2):
-        await add_worker(10, 'tasks')
+        for _ in range(2):
+            await add_worker(10, 'tasks')
             
             
 
