@@ -2,19 +2,20 @@ async def run(server):
     import asyncio, uuid, uvloop
     from fastapi.websockets import WebSocket
     from fastapi.testclient import TestClient
+    from collections import deque
 
     log = server.log
     
     # generic tasks which are not time-sensitive
-    server.tasks = []
+    server.tasks = deque()
 
     # txn_signals are added when a cluster_table_change is called
-    # and signal table_endpoints that there are new txns to /flush
-    server.txn_signals = []
+    # to signal table_endpoints that there are new txns to /flush
+    server.txn_signals = deque()
 
     # tasks are added when /db/<database>/table/<table>/flush is called 
     # which attempts to sync the table with the latest txns in 
-    server.flush_tasks = []
+    server.flush = deque()
 
     server.clients = {}
 
@@ -47,14 +48,12 @@ async def run(server):
     async def worker(client, interval, queue):
         """
         waits for new work in queue & sleeps
+        queue:
+            'tasks'
+            'flush_tasks'
+            'txn_signals'
+            'flush'
         """
-
-        if queue == 'tasks':
-            queue = 'tasks'
-        if queue == 'txns':
-            queue = 'txn_signals'
-        if queue == 'flush':
-            queue = 'flush_tasks'
         loop = asyncio.get_running_loop()
         log.warning(f"worker {client} started within loop {loop} - {loop is server.event_loop}")
         try:
@@ -63,20 +62,13 @@ async def run(server):
                     #log.warning(f"worker {client} found no tasks to run, sleeping {interval}")
                     await asyncio.sleep(interval)
                     continue
-
                 # Pulls job off top of stack to reserve 
-                job = server.__dict__[queue].pop(0)
+                job = server.__dict__[queue].popleft()
                 cron = True
                 restart = False
                 if job == 'finished':
                     return
                 try:
-                    """
-                    if 'coroutine' in str(type(job)):
-                        cron = False
-                        result = await job
-                    else:
-                    """
                     result = await job()
                 except Exception as e:
                     result = log.exception(f"worker encountered exception when running {job}")
@@ -143,10 +135,10 @@ async def run(server):
         """
         creates default running workers on app start
         """
-        await add_worker(0.005, 'txns')
-        await add_worker(0.005, 'flush')
         for _ in range(2):
-            await add_worker(10, 'tasks')
+            await add_worker(0.001, 'flush')
+            await add_worker(0.001, 'txn_signals')
+            await add_worker(5, 'tasks')
             
             
 
@@ -155,16 +147,16 @@ async def run(server):
         """
         on app shutdown, closes workers & exits open websocket context
         """
-        server.tasks = []
-        server.txn_signals = []
-        server.flush_tasks = []
-
+        for queue in [
+            'tasks', 
+            'txn_signals',
+            'flush'
+            ]:
+            server.__dict__[queue] = deque()
+            for client in server.clients:
+                server.__dict__[queue].append('finished')
         for client in server.clients:
-            server.tasks.append('finished')
-            server.txn_signals.append('finished')
-            server.flush_tasks.append('finished')
             await cleanup_client(client)
-
 
     print("running events")
 
