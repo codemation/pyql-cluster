@@ -2025,7 +2025,7 @@ async def run(server):
             if not cluster['clusters.id'] in log_clusters_and_endpoints:
                 log_clusters_and_endpoints[cluster['clusters.id']] = []
             log_clusters_and_endpoints[cluster['clusters.id']].append(
-                cluster['endpoint.uuid']
+                cluster['endpoints.uuid']
             )
         joined_existing = False
         for cluster in log_clusters_and_endpoints:
