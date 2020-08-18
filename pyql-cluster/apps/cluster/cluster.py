@@ -2315,6 +2315,7 @@ async def run(server):
             """Pyql Cluster was already Bootstrapped"""
             if cluster_name == 'pyql':
                 await pyql_join_txn_cluster(config, **kw)
+                await asyncio.sleep(3)
  
         clusters = await server.clusters.clusters.select(
             '*', where={'owner': kw['authentication']})
@@ -2325,6 +2326,7 @@ async def run(server):
 
         if not cluster_name in [cluster['name'] for cluster in clusters]:
             await join_cluster_create(cluster_name, config, **kw)
+            await asyncio.sleep(3)
             
         cluster_id = await server.clusters.clusters.select(
             '*', where={
@@ -2337,11 +2339,15 @@ async def run(server):
         new_endpoint_or_database = await join_cluster_create_or_update_endpoint(
             cluster_id, config, **kw
         )
+        await asyncio.sleep(3)
 
         # check for exiting tables in cluster 
         new_tables = await join_cluster_create_tables(cluster_id, config, **kw)
+        await asyncio.sleep(3)
+
         if new_endpoint_or_database == True:
             await join_cluster_update_state(cluster_id, new_tables, config, **kw)
+            await asyncio.sleep(3)
 
         if cluster_name == 'pyql':
             await join_cluster_pyql_finish_setup(
