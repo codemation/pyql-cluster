@@ -2850,7 +2850,7 @@ async def run(server):
         new_or_stale_endpoints.update(table_endpoints['stale'])
 
         # verify endpoints are alive
-        check_alive_endpoints = get_alive_endpoints(
+        check_alive_endpoints = await get_alive_endpoints(
             new_or_stale_endpoints,
             **kw
         )
@@ -2907,7 +2907,7 @@ async def run(server):
         tx_table = '_'.join(f"txn_{cluster}_{table}".split('-'))
 
         # create limited use token
-        limited_use_token = server.create_auth_token(
+        limited_use_token = await server.create_auth_token(
             cluster, # id
             time.time() + 30,
             'cluster',
