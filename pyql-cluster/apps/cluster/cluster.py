@@ -2860,7 +2860,7 @@ async def run(server):
         )
         alive_endpoints = []
         for endpoint in check_alive_endpoints:
-            if not alive_endpoints[endpoint]['status'] == 200:
+            if not check_alive_endpoints[endpoint]['status'] == 200:
                 continue
             alive_endpoints.append(endpoint)
 
