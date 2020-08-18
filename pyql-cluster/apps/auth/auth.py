@@ -72,10 +72,13 @@ async def run(server):
                     if 'Token' in auth:
                         token = auth.split(' ')[1].rstrip()
                         decoded_token = decode(token, key)
+                        log.warning(f"decoded token: {decoded_token}")
                         if decoded_token == None:
                             server.http_exception(401, debug(log.error(f"token authentication failed")))
 
                         kwargs['authentication'] = decoded_token['id']
+                        if 'cluster_allowed' in decoded_token:
+                            kwargs.update(decoded_token)
                         request.auth = decoded_token['id']
                         if isinstance(decoded_token['expiration'], dict) and 'join' in decoded_token['expiration']:
                             # Join tokens should only be used to join an endpoint to a cluster
@@ -87,6 +90,10 @@ async def run(server):
                                 warning = f"token valid but expired for user with id {decoded_token['id']}"
                                 server.http_exception(401, debug(log.warning(warning)))
                         log.warning(f"token auth successful for {kwargs['authentication']} using type {token_type} key {key}")
+                        log.warning(f"check_auth - kwargs: {kwargs}")
+                        # limited use token - issued for flush operations
+                        if 'cluster_allowed' in kwargs and 'table_allowed' in kwargs:
+                            return await f(*args, **kwargs)
 
                     # Basic Authentication Handling
                     if 'Basic' in auth:
@@ -97,7 +104,7 @@ async def run(server):
                                 400,
                                 "Basic authentication did not contain user pw separated by ':' Use: echo user:password | base64")
                         username, password = creds.split(':')
-                        response, rc = await validate_user_pw(username, password) # TODO - Blocking - need to make async
+                        response, rc = await validate_user_pw(username, password)
                         if not rc == 200:
                             error = f"auth failed from {check_auth.__name__} for {f} - username {username}"
                             server.http_exception(401, debug(log.error(error)))
@@ -163,13 +170,15 @@ async def run(server):
                 await set_token_key(
                     'cluster', 
                     {'PYQL_CLUSTER_TOKEN_KEY': ''.join(random.choice(char_nums) for i in range(24))}
-                    )
+                )
 
-    async def create_auth_token(userid, expiration, location):
+    async def create_auth_token(userid, expiration, location, extra_data=None):
         secret = await server.env[f'PYQL_{location.upper()}_TOKEN_KEY']
         data = {'id': userid, 'expiration': expiration}
         if expiration == 'join':
             data['create_time'] = time.time()
+        if not extra_data == None:
+            data.update(extra_data)
         token = encode(secret, **data)
         log.warning(f"create_auth_token created token {token} using {secret} from {location}")
         return token
