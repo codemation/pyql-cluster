@@ -1125,18 +1125,20 @@ async def run(server):
             'POST', 
             loop=loop
         )
+        trace(f"log_insert_results: {log_insert_results}")
+
         pass_fail = Counter({'pass': 0, 'fail': 0})
         log_state_out_of_sync = []
         for endpoint in log_insert_results:
             if not log_insert_results[endpoint]['status'] == 200:
                 pass_fail['fail']+=1
-                if not log_table == f'{pyql}state':
+                if not log_table == f'txn_{pyql}_state':
                     state_data = {
                         "set": {
                             "in_sync": False
                         },
                         "where": {
-                            "name": f"{endpoint}_{table}"
+                            "name": f"{endpoint}_{log_table}"
                         }
                     }
                     log_state_out_of_sync.append(
