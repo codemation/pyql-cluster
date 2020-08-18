@@ -11,7 +11,7 @@ async def db_attach(server):
             ('token', str),
             ('cluster', str)
         ],
-        'uuid',
+        'id',
         cache_enabled=True
     )
     return # Enter db.create_table statement here
