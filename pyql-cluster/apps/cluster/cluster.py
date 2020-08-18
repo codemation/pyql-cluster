@@ -2005,7 +2005,7 @@ async def run(server):
         # check if can join any current txn cluster 
         # or create new cluster - limit 3 pyql endpoints
         # per txn cluster
-        txn_clusters = server.clusters.clusters.select(
+        txn_clusters = await server.clusters.clusters.select(
             'clusters.id',
             'clusters.name',
             'endpoints.uuid',
