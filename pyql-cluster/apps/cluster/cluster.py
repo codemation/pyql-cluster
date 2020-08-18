@@ -2836,6 +2836,12 @@ async def run(server):
         trace=kw['trace']
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
         sync_results = {}
+        if cluster == None or table == None or job == None:
+            cluster, table, job = (
+                config['cluster'],
+                config['table'],
+                config['job']
+            )
 
         # get list of table endpoints that are not 'loaded'
         table_endpoints = await get_table_endpoints(cluster, table, **kw)
