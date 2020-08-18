@@ -6,6 +6,8 @@ async def run(server):
     import uuid
     log = server.log
 
+    server.flush_table_tasks = {}
+
     # table_locks are used by specific methods which cannot safely run in parelell 
 
     async def get_table_lock(table: str, lock_id: str):
@@ -180,12 +182,17 @@ async def run(server):
     async def table_flush_auth(database: str, table: str,  flush_path: dict, **kw):
         async def table_flush_task():
             return await table_flush(database, table, flush_path, **kw)
-        server.flush_tasks.append(
-            table_flush_task # awaited via flush workers
+        #server.flush_table_tasks[table] = table_flush_task
+        #log.warning(f"created / refreshed flush table task for {database} {table}")
+        #if not table in server.flush_tasks:
+        #    server.flush_tasks.append(table)
+        #    log.warning(f"created a new flush task for {database} {table}")
+        server.flush.append(
+            table_flush_task # awaited via flush workers 
         )
-        return log.warning(f"added a flush task for {database} {table}")
+        return log.warning(f"added a flush op for {database} {table}")
 
-    async def table_flush(database: str, table: str,  flush_path: dict, **kw):
+    async def table_flush(database: str, table: str, flush_path: dict, **kw):
         # acquire table lock 
         lock_id = str(uuid.uuid1())
         log.warning(f"trying to acquire lock using lock_id: {lock_id}")
@@ -197,6 +204,7 @@ async def run(server):
                 # Using flush_path - pull txns newer than the latest txn
                 new_txns, rc  = await server.probe(
                     flush_path["tx_cluster_path"],
+                    token=flush_path['token'],
                     method='POST',
                     data={
                         "select": ["timestamp", "txn"],
@@ -205,6 +213,9 @@ async def run(server):
                         ]
                     }
                 )
+                if not 'data' in new_txns:
+                    log.error(f"ERROR encountered in table_flush - {new_txns} - releasing lock")
+                    continue
                 new_txns = new_txns['data']
                 # update latest txn
                 update_last_txn_time = None
