@@ -389,7 +389,6 @@ async def run(server):
                     'where': {'parent': kw['authentication'], 'type': 'service'}
                     },
                 method='POST',
-                quorum=kw['quorum'],
                 request=request,
                 trace=trace
             )
