@@ -2001,6 +2001,7 @@ async def run(server):
     @server.trace
     async def pyql_join_txn_cluster(config: dict, **kw):
         trace = kw['trace']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
 
         # check if can join any current txn cluster 
         # or create new cluster - limit 3 pyql endpoints
