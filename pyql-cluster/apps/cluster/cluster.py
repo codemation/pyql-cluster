@@ -232,7 +232,6 @@ async def run(server):
             ready_and_healthy = node_quorum_state['quorum.health'] == 'healthy' and node_quorum_state['quorum.ready'] == True
             if node_quorum_state['state.in_sync'] == True and ready_and_healthy:
                 kwargs['pyql'] = pyql
-                kwargs['quorum'] = node_quorum_state
                 return await func(*args, **kwargs)
             else:
                 pyql = await server.env['PYQL_UUID'] if not 'pyql' in kwargs else kwargs['pyql']
