@@ -2838,6 +2838,8 @@ async def run(server):
         - existing endpoint re-joins cluster (from instance restart) if endpoint is 'stale'
         """
         trace=kw['trace']
+        pyql = await server.env['PYQL_UUID']
+
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
         loop = kw['loop']
         sync_results = {}
