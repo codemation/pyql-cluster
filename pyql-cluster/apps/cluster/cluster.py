@@ -1126,7 +1126,7 @@ async def run(server):
         for endpoint in log_insert_results:
             if not log_insert_results[endpoint]['status'] == 200:
                 pass_fail['fail']+=1
-                if not table == f'{pyql}state':
+                if not log_table == f'{pyql}state':
                     state_data = {
                         "set": {
                             "in_sync": False
