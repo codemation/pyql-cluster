@@ -2101,6 +2101,7 @@ async def run(server):
             #add endpoint
             new_endpoint_or_database = True
             data = {
+                'id': str(uuid.uuid1()),
                 'uuid': config['database']['uuid'],
                 'db_name': config['database']['name'],
                 'path': config['path'],
@@ -2142,6 +2143,8 @@ async def run(server):
                         }, 
                         **kw
                     )
+        trace.warning(f"completed - new_endpoint_or_database: {new_endpoint_or_database}")
+        return new_endpoint_or_database
     @server.trace
     async def join_cluster_create_tables(cluster_id: str, config: dict, **kw) -> list:
         """
