@@ -585,6 +585,9 @@ async def run(server):
     async def get_alive_endpoints(endpoints, timeout=2.0, **kw):
         trace = kw['trace']
         loop = server.event_loop if not 'loop' in kw else kw['loop']
+
+        trace(f"starting - checking endpoints: {endpoints}")
+
         ep_requests = {}
         for endpoint in endpoints:
             if endpoint['uuid'] == node_id:
