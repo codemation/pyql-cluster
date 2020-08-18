@@ -589,7 +589,8 @@ async def run(server):
         trace(f"starting - checking endpoints: {endpoints}")
 
         ep_requests = {}
-        for endpoint in endpoints:
+        for _endpoint in endpoints:
+            endpoint = _endpoint if isinstance(endpoints, list) else endpoints[_endpoint]
             if endpoint['uuid'] == node_id:
                 # no need to check own /pyql/node 
                 continue 
