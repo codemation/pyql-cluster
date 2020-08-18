@@ -2022,9 +2022,9 @@ async def run(server):
         )
         log_clusters_and_endpoints = {}
         for cluster in txn_clusters:
-            if not cluster['cluster.id'] in log_clusters_and_endpoints:
-                log_clusters_and_endpoints[cluster['cluster.id']] = []
-            log_clusters_and_endpoints[cluster['cluster.id']].append(
+            if not cluster['clusters.id'] in log_clusters_and_endpoints:
+                log_clusters_and_endpoints[cluster['clusters.id']] = []
+            log_clusters_and_endpoints[cluster['clusters.id']].append(
                 cluster['endpoint.uuid']
             )
         joined_existing = False
