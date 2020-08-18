@@ -2032,7 +2032,7 @@ async def run(server):
             if len(log_clusters_and_endpoints[cluster]) < 3:
                 # this node can join this cluster
                 data = {
-                    'id': str(uuid.uuid()),
+                    'id': str(uuid.uuid1()),
                     'uuid': config['database']['uuid'],
                     'db_name': 'transactions',
                     'path': config['path'],
