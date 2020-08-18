@@ -2868,7 +2868,8 @@ async def run(server):
         if len(table_endpoints['new']) > 0:
             table_config = None
             create_requests = {} 
-            for new_endpoint in table_endpoints['new']:
+            for _new_endpoint in table_endpoints['new']:
+                new_endpoint = table_endpoints['new'][_new_endpoint]
                 if not new_endpoint in alive_endpoints:
                     continue
                 
