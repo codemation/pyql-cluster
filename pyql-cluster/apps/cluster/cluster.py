@@ -2839,6 +2839,7 @@ async def run(server):
         """
         trace=kw['trace']
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
+        loop = kw['loop']
         sync_results = {}
         if cluster == None or table == None or job == None:
             cluster, table, job = (
@@ -2869,9 +2870,9 @@ async def run(server):
             table_config = None
             create_requests = {} 
             for _new_endpoint in table_endpoints['new']:
-                new_endpoint = table_endpoints['new'][_new_endpoint]
-                if not new_endpoint in alive_endpoints:
+                if not _new_endpoint in alive_endpoints:
                     continue
+                new_endpoint = table_endpoints['new'][_new_endpoint]
                 
                 # avoid pulling table config twice
                 table_config = await cluster_table_config(
@@ -2933,9 +2934,10 @@ async def run(server):
         # create signal endpoint config
 
         flush_requests = {}
-        for endpoint in new_or_stale_endpoints:
-            if not endpoint in alive_endpoints:
+        for _endpoint in new_or_stale_endpoints:
+            if not _endpoint in alive_endpoints:
                 continue
+            endpoint = new_or_stale_endpoints[_endpoint]
                 # trigger table creation on new_endpoint
             db = endpoint['db_name']
             path = endpoint['path']
