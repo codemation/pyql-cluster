@@ -2957,7 +2957,7 @@ async def run(server):
         # mark table endpoint loaded
         state_updates = []
         for endpoint in flush_results:
-            if not flush_results['status'] == 200:
+            if not flush_results[endpoint]['status'] == 200:
                 continue
             state_updates.append(
                 cluster_table_change(
