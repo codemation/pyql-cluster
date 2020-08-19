@@ -677,17 +677,21 @@ async def run(server):
     server.clusterjobs['cluster_quorum_check'] = cluster_quorum_check
         
     @server.api_route('/pyql/quorum', methods=['GET', 'POST'])
-    async def cluster_quorum_query(request: Request):
-        return await cluster_quorum_query( request=await server.process_request(request))
+    async def cluster_quorum_query_api(request: Request):
+        return await cluster_quorum_query_auth(request=await server.process_request(request))
     @server.is_authenticated('local')
     @server.trace
-    async def cluster_quorum_query(check=False, get=False, **kw):
+    async def cluster_quorum_query_auth(check=False, get=False, **kw):
         trace=kw['trace']
         request = kw['request'] if 'request' in kw else None
         if request and request.method == 'POST':
             return await cluster_quorum_update(trace=kw['trace'])
-        return {'quorum': await server.clusters.quorum.select('*', where={'node': node_id})}
-
+        return await cluster_quorum_query()
+    @server.trace
+    async def cluster_quorum_query(check=False, get=False, **kw):
+        return {'quorum': await server.clusters.quorum.select(
+            '*', where={'node': node_id})
+            }
 
     @server.trace
     async def cluster_quorum_update(**kw):
@@ -2504,7 +2508,7 @@ async def run(server):
         endpoints = await server.clusters.endpoints.select(
             '*'
         )
-        
+
         if not len(endpoints) == 0:
             return {"message": "cluster is bootstrapped, but still syncing"}
 
