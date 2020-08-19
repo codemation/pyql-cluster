@@ -2509,7 +2509,7 @@ async def run(server):
             '*'
         )
 
-        if not len(endpoints) == 0:
+        if len(endpoints) == 0:
             return {"message": "cluster is bootstrapped, but still syncing"}
 
         quorum = await cluster_quorum_query()
