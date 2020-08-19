@@ -683,9 +683,8 @@ async def run(server):
     @server.trace
     async def cluster_quorum_query(check=False, get=False, **kw):
         trace=kw['trace']
-        request = kw['request']
-        if request.method == 'POST':
-            #return cluster_quorum(check, get)
+        request = kw['request'] if 'request' in kw else None
+        if request and request.method == 'POST':
             return await cluster_quorum_update(trace=kw['trace'])
         return {'quorum': await server.clusters.quorum.select('*', where={'node': node_id})}
 
@@ -897,7 +896,6 @@ async def run(server):
             endpoints_key_split.append(renamed)
 
         for endpoint in endpoints_key_split:
-            sync = 'in_sync' if endpoint['in_sync'] == True else 'out_of_sync'
             state = endpoint['state']
             table_endpoints[state][endpoint['uuid']] = endpoint
         table_endpoints['cluster_name'] = cluster_name
@@ -2503,6 +2501,14 @@ async def run(server):
         if pyql == None:
             return {"message": "cluster is still bootstrapping, try again later"}
 
+        endpoints = await server.clusters.endpoints.select(
+            '*'
+        )
+        
+        if not len(endpoints) == 0:
+            return {"message": "cluster is bootstrapped, but still syncing"}
+
+        quorum = await cluster_quorum_query()
 
         node = node_id
 
@@ -2516,7 +2522,8 @@ async def run(server):
         if not job_type == 'cron':
             job_select['where']['node'] = None
         trace("starting to pull list of jobs")
-        job_list = await table_select(pyql, 'jobs', data=job_select, method='POST', **kw)
+        job_list = await table_select(
+            pyql, 'jobs', data=job_select, method='POST', quorum=quorum, **kw)
         if not job_list:
             return {"message": trace("unable to pull jobs at this time")}
         trace(f"finished pulling list of jobs - job_list {job_list} ")
