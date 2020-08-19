@@ -687,11 +687,12 @@ async def run(server):
         if request and request.method == 'POST':
             return await cluster_quorum_update(trace=kw['trace'])
         return await cluster_quorum_query()
+
     @server.trace
     async def cluster_quorum_query(check=False, get=False, **kw):
-        return {'quorum': await server.clusters.quorum.select(
+        quorum = await server.clusters.quorum.select(
             '*', where={'node': node_id})
-            }
+        return {'quorum': quorum[0]}
 
     @server.trace
     async def cluster_quorum_update(**kw):
