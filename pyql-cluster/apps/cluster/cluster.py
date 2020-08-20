@@ -1683,7 +1683,7 @@ async def run(server):
         token = endpoint_info['token']
 
         # pull table copy & last_txn_time
-        table_copy = await probe(
+        table_copy, rc = await probe(
             f"{path}/copy",
             method='GET',
             token=token,
@@ -2868,7 +2868,7 @@ async def run(server):
                 response, rc = await probe(
                     f'{out_of_sync_path}/sync', 
                     'POST', 
-                    in_sync_table_copy, 
+                    data=in_sync_table_copy, 
                     token=out_of_sync_token, 
                     session=await get_endpoint_sessions(out_of_sync_uuid, **kw),
                     **kw)
