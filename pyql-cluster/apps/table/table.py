@@ -146,7 +146,7 @@ async def run(server):
                 'table_name': table,
             }
         )
-        last_txn_time = last_txn_time[0]
+        last_txn_time = last_txn_time[0]['last_txn_time']
         table_copy = await server.data[database].tables[table].select('*')
         return {
             'last_txn_time': last_txn_time, 
