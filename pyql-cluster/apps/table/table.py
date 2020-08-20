@@ -130,6 +130,29 @@ async def run(server):
     async def db_table_key_delete(database, table, key, val):
         return await server.actions['delete'](database, table, {'where': {key: val}})
 
+
+    @server.api_route('/db/{database}/table/{table}/copy')
+    async def db_get_table_copy_api(database: str, table: str, request: Request):
+        return await db_get_table_copy_auth(database, table,  request=await server.process_request(request))
+
+    @server.is_authenticated('local')
+    async def db_get_table_copy_auth(database,table, **kw):
+        return await get_table_copy(database, table, **kw)
+
+    async def get_table_copy(database, table, **kw):
+        last_txn_time = await server.database[database].tables['pyql'].select(
+            'last_txn_time',
+            where={
+                'table_name': table,
+            }
+        )
+        last_txn_time = last_txn_time[0]
+        table_copy = await server.database[database].tables[table].select('*')
+        return {
+            'last_txn_time': last_txn_time, 
+            'table_copy': table_copy
+            }
+
     @server.api_route('/db/{database}/table/{table}/config')
     async def db_get_table_config_api(database: str, table: str, request: Request):
         return await db_get_table_config(database, table,  request=await server.process_request(request))
@@ -182,11 +205,6 @@ async def run(server):
     async def table_flush_auth(database: str, table: str,  flush_path: dict, **kw):
         async def table_flush_task():
             return await table_flush(database, table, flush_path, **kw)
-        #server.flush_table_tasks[table] = table_flush_task
-        #log.warning(f"created / refreshed flush table task for {database} {table}")
-        #if not table in server.flush_tasks:
-        #    server.flush_tasks.append(table)
-        #    log.warning(f"created a new flush task for {database} {table}")
         server.flush.append(
             table_flush_task # awaited via flush workers 
         )
@@ -259,11 +277,14 @@ async def run(server):
         #    log.warning(f"table sync insert row - {row}")
         #    await server.data[database].tables[table].insert(**row)
         rows_to_insert = [
-            asyncio.create_task(
-                server.data[database].tables[table].insert(**row)
-                ) for row in  data_to_sync['data']
+            server.data[database].tables[table].insert(**row)
+            for row in data_to_sync['table_copy']
             ]
         await asyncio.gather(*rows_to_insert)
+        await server.data[database].tables['pyql'].update(
+            last_txn_time=data_to_sync['last_txn_time'],
+            where={"table_name": table}
+        )
         return {"message": log.warning(f"{database} {table} sync successful")}
 
     @server.api_route('/db/{database}/table/{table}/{key}', methods=['GET', 'POST', 'DELETE'])
@@ -293,7 +314,7 @@ async def run(server):
                         400, 
                         log.error(
                             f"""missing new table config {'"columns": [{"name": "<name>", "type": "<type>", "mods": "<mods>"}, ..]'}"""
-                            )
+                        )
                     )
                 
                 for col in tb_config["columns"]:
@@ -302,7 +323,7 @@ async def run(server):
                             400,
                             log.error(
                                 f"""invalid type {col['type']} provided in column {col['name']}. use: {convert}"""
-                                )
+                            )
                         )
                     columns.append((col['name'], convert[col['type']], col['mods']))
                 col_names = [c[0] for c in columns]
@@ -310,7 +331,7 @@ async def run(server):
                    server.http_exception(
                        400,
                        log.error(f'missing new table config "primary_key": <column_name>')
-                       )
+                    )
                 if not tb_config["primary_key"] in col_names:
                     error = f'provided primary_key {tb_config["primary_key"]} is not a column with "columns": {col_names}'
                     server.http_exception(400, log.error(error))
