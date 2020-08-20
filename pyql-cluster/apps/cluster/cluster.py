@@ -1678,7 +1678,7 @@ async def run(server):
         endpoint_choice = random.choice(
             [e for e in endpoints['loaded']]
         )
-        endpoint_info = endpoints_info['endpoints'][endpoint_choice]
+        endpoint_info = endpoints_info['endpoints'][f"{endpoint_choice}_{table}"]
         path = endpoint_info['path']
         token = endpoint_info['token']
 
