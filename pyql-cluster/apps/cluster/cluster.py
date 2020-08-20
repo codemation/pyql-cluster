@@ -1655,6 +1655,47 @@ async def run(server):
 
     @server.api_route('/cluster/{cluster}/table/{table}/config', methods=['GET'])
     async def cluster_table_config_api(cluster: str, table: str, request: Request):
+        return await cluster_table_copy_auth(cluster, table,  request=await server.process_request(request))
+
+    @state_and_quorum_check
+    @server.is_authenticated('cluster')
+    @cluster_name_to_uuid
+    @server.trace
+    async def cluster_table_copy_auth(cluster, table, **kw):
+        return await cluster_table_copy(cluster, table, **kw)
+
+    @server.trace
+    async def cluster_table_copy(cluster, table, **kw):
+        """
+        returns a select('*') of a loaded table & the tables 
+        last_txn_time
+        """
+        trace = kw['trace']
+        
+        endpoints = await get_table_endpoints(cluster, table, **kw)
+        
+        endpoints_info = await get_table_info(cluster, table, endpoints, **kw)
+        endpoint_choice = random.choice(
+            [e for e in endpoints_info]
+        )
+        endpoint_info = endpoints_info[endpoint_choice]
+        path = endpoint_info['path']
+        token = endpoint_info['token']
+
+        # pull table copy & last_txn_time
+        table_copy = await probe(
+            f"{path}/copy",
+            method='GET',
+            token=token,
+            session=await get_endpoint_sessions(
+                endpoint['uuid'], 
+                **kw
+            )
+        )
+        return table_copy
+                
+    @server.api_route('/cluster/{cluster}/table/{table}/config', methods=['GET'])
+    async def cluster_table_config_api(cluster: str, table: str, request: Request):
         return await cluster_table_config_auth(cluster, table,  request=await server.process_request(request))
 
     @state_and_quorum_check
@@ -2915,6 +2956,41 @@ async def run(server):
             )
             trace(f"{cluster} {table} {job} create_table_results: {create_table_results}")
 
+            # for each created table, need to send a /db/database/table/sync 
+            # which includes copy of latest table & last_txn_time
+            table_copy = None
+
+            sync_requests = {} 
+            for _new_endpoint in table_endpoints['new']:
+                if not _new_endpoint in alive_endpoints:
+                    continue
+                new_endpoint = table_endpoints['new'][_new_endpoint]
+                
+                # avoid pulling table config twice
+                if table_copy == None:
+                    table_copy = await cluster_table_copy(
+                        cluster, 
+                        table, 
+                        **kw
+                    )
+                    # trigger table creation on new_endpoint
+                db = new_endpoint['db_name']
+                path = new_endpoint['path']
+                epuuid = new_endpoint['uuid']
+                token = new_endpoint['token']
+
+                sync_requests[epuuid] = {
+                    'path': f"http://{path}/db/{db}/table/{table}/sync",
+                    'data': table_copy,
+                    'timeout': 2.0,
+                    'headers': await get_auth_http_headers('remote', token=token),
+                    'session': await get_endpoint_sessions(epuuid, **kw)
+                }
+            sync_table_results = await async_request_multi(
+                sync_requests, 
+                'POST', 
+                loop=loop
+            )
         # trigger flush ( first sync for new ) on stale & new endpoints
         # for all endpoints trigger /flush
 
@@ -2981,8 +3057,12 @@ async def run(server):
                     'state',
                     'update',
                     {
-                        'set': {'state': 'loaded'},
-                        'where': {'name': f"{endpoint}{table}"}
+                        'set': {
+                            'state': 'loaded'
+                            },
+                        'where': {
+                            'name': f"{endpoint}_{table}"
+                            }
                     }
                 )
             )
