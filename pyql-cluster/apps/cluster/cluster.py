@@ -889,7 +889,7 @@ async def run(server):
         # Run Coros
         cluster_name, endpoints = await asyncio.gather(
             cluster_name,
-            endpoints,
+            endpoints
         )
 
         # process {"<table>.<column>": <value>} into {"<column>": <value>} 
@@ -3063,10 +3063,11 @@ async def run(server):
                         'where': {
                             'name': f"{endpoint}_{table}"
                             }
-                    }
+                    },
+                    loop=loop
                 )
             )
-        state_update_results = await asyncio.gather(*state_updates)
+        state_update_results = await asyncio.gather(*state_updates, loop=loop)
         trace(f"{cluster} {table} {job} state_update_results: {state_update_results}")
 
         return {"state_update_results": state_update_results, "flush_results": flush_results}
