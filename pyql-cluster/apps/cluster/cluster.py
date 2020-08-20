@@ -1676,7 +1676,7 @@ async def run(server):
         
         endpoints_info = await get_table_info(cluster, table, endpoints, **kw)
         endpoint_choice = random.choice(
-            [e for e in endpoints_info['endpoints']]
+            [e for e in endpoints['loaded']]
         )
         endpoint_info = endpoints_info['endpoints'][endpoint_choice]
         path = endpoint_info['path']
