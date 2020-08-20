@@ -1688,7 +1688,7 @@ async def run(server):
             method='GET',
             token=token,
             session=await get_endpoint_sessions(
-                endpoint['uuid'], 
+                endpoint_info['uuid'], 
                 **kw
             )
         )
