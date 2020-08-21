@@ -3076,7 +3076,7 @@ async def run(server):
             sync_changes_results = {}
             for _endpoint in sync_table_results:
                 endpoint = new_or_stale_endpoints[_endpoint]
-                sync_changes_requests[endpoint['uuid']] = {'status': 200}
+                sync_changes_results[endpoint['uuid']] = {'status': 200}
 
         # mark endpoint loaded
         # mark table endpoint loaded
