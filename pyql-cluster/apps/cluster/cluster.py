@@ -1712,8 +1712,6 @@ async def run(server):
     async def cluster_table_config_auth(cluster, table, **kw):
         return await cluster_table_config(cluster, table, **kw)
 
-    
-    
     @server.trace
     async def cluster_table_config(cluster, table, **kw):
         return await endpoint_probe(cluster, table, method='GET', path=f'/config', **kw)
@@ -2940,6 +2938,41 @@ async def run(server):
         new_or_stale_endpoints = {}
         new_or_stale_endpoints.update(table_endpoints['new'])
         new_or_stale_endpoints.update(table_endpoints['stale'])
+
+        ## create table 
+        # create tables on new endpoints
+        if len(table_endpoints['new']) > 0:
+            table_config = None
+            create_requests = {} 
+            for _new_endpoint in table_endpoints['new']:
+                if not _new_endpoint in alive_endpoints:
+                    continue
+                new_endpoint = table_endpoints['new'][_new_endpoint]
+                
+                # avoid pulling table config twice
+                table_config = await cluster_table_config(
+                    cluster, table, **kw
+                    ) if table_config == None else table_config 
+            
+                # trigger table creation on new_endpoint
+                db = new_endpoint['db_name']
+                path = new_endpoint['path']
+                epuuid = new_endpoint['uuid']
+                token = new_endpoint['token']
+
+                create_requests[epuuid] = {
+                    'path': f"http://{path}/db/{db}/table/{table}/create",
+                    'data': table_config,
+                    'timeout': 2.0,
+                    'headers': await get_auth_http_headers('remote', token=token),
+                    'session': await get_endpoint_sessions(epuuid, **kw)
+                }
+            create_table_results = await async_request_multi(
+                create_requests, 
+                'POST', 
+                loop=loop
+            )
+            trace(f"{cluster} {table} {job} create_table_results: {create_table_results}")
 
         # get copy
         table_copy = await cluster_table_copy(cluster, table, log_cluster=True, **kw)
