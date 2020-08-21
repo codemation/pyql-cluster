@@ -892,6 +892,7 @@ async def run(server):
             _cluster,
             endpoints
         )
+        _cluster = _cluster[0]
 
         # process {"<table>.<column>": <value>} into {"<column>": <value>} 
         endpoints_key_split = []
@@ -908,7 +909,6 @@ async def run(server):
         table_endpoints['cluster_type'] = _cluster['type']
         trace.warning(f"result {table_endpoints}")
         return table_endpoints
-
 
 
     @server.trace
