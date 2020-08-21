@@ -3028,9 +3028,7 @@ async def run(server):
             # pull changes 
             latest_timestamp = table_copy['data'][-1]['timestamp']
             select_data = {
-                'select': {
-                    ['*']
-                },
+                'select': ['*'],
                 'where': [
                     ['timestamp', '>', latest_timestamp]
                 ]
