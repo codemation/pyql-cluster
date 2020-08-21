@@ -2931,7 +2931,10 @@ async def run(server):
         6. Final Sync 
         7. Un-Pause & Resume ops
         """
+        kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
+        loop = kw['loop']
         trace = kw['trace']
+
         pyql = await server.env['PYQL_UUID']
 
         new_or_stale_endpoints = {}
@@ -3085,7 +3088,8 @@ async def run(server):
                 cluster, 
                 table, 
                 alive_endpoints, 
-                table_endpoints
+                table_endpoints,
+                **kw
             )
 
         # create tables on new endpoints
