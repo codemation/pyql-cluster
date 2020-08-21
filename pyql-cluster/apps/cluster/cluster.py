@@ -2942,7 +2942,9 @@ async def run(server):
         new_or_stale_endpoints.update(table_endpoints['stale'])
 
         # get copy
-        table_copy = await cluster_table_copy(cluster, table, log_cluster=True, **kw)
+        table_copy = await cluster_table_copy(cluster, table, log_cluster=True, **kw)4
+
+        trace(f"table_copy: - {table_copy}")
 
         # sync tables - pre cutover
         sync_requests = {} 
