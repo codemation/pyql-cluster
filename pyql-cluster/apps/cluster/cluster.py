@@ -3082,7 +3082,7 @@ async def run(server):
         # mark table endpoint loaded
         state_updates = []
         for endpoint in sync_changes_results:
-            if not sync_changes_requests[endpoint]['status'] == 200:
+            if not sync_changes_results[endpoint]['status'] == 200:
                 continue
             state_updates.append(
                 cluster_table_change(
