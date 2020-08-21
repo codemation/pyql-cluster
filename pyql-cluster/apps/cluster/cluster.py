@@ -1436,10 +1436,15 @@ async def run(server):
         request = kw['request'] if 'request' in kw else None
         errors = []
 
-        method = request.method if not 'method' in kw else kw['method']
+        if data == None:
+            if not request == None:
+                method = request.method if not 'method' in kw else kw['method']
+            else:
+                method = 'GET'
+            
 
         if not 'method' in kw:
-            kw['method'] = request.method
+            kw['method'] = method if request == None else request.method
         
         if method in ['POST', 'PUT'] and data == None:
             server.http_exception(400, trace.error("expected json input for request"))
@@ -2972,75 +2977,97 @@ async def run(server):
                 'POST', 
                 loop=loop
             )
-            trace(f"{cluster} {table} {job} create_table_results: {create_table_results}")
+            trace(f"{cluster} {table} create_table_results: {create_table_results}")
 
         # get copy
         table_copy = await cluster_table_copy(cluster, table, log_cluster=True, **kw)
 
         trace(f"{cluster} {table} - table_copy: - {table_copy}")
 
-        # sync tables - pre cutover
-        sync_requests = {} 
-        for _endpoint in new_or_stale_endpoints:
-            if not _endpoint in alive_endpoints:
-                continue
-            endpoint = new_or_stale_endpoints[_endpoint]
-    
-            db = endpoint['db_name']
-            path = endpoint['path']
-            epuuid = endpoint['uuid']
-            token = endpoint['token']
+        if len(table_copy) > 0:
+            # sync tables - pre cutover
+            sync_requests = {} 
+            for _endpoint in new_or_stale_endpoints:
+                if not _endpoint in alive_endpoints:
+                    continue
+                endpoint = new_or_stale_endpoints[_endpoint]
+        
+                db = endpoint['db_name']
+                path = endpoint['path']
+                epuuid = endpoint['uuid']
+                token = endpoint['token']
 
-            sync_requests[epuuid] = {
-                'path': f"http://{path}/db/{db}/table/{table}/sync",
-                'data': table_copy,
-                'timeout': 2.0,
-                'headers': await get_auth_http_headers('remote', token=token),
-                'session': await get_endpoint_sessions(epuuid, **kw)
-            }
-        sync_table_results = await async_request_multi(
-            sync_requests, 
-            'POST', 
-            loop=loop
-        )
+                sync_requests[epuuid] = {
+                    'path': f"http://{path}/db/{db}/table/{table}/sync",
+                    'data': table_copy,
+                    'timeout': 2.0,
+                    'headers': await get_auth_http_headers('remote', token=token),
+                    'session': await get_endpoint_sessions(epuuid, **kw)
+                }
+            sync_table_results = await async_request_multi(
+                sync_requests, 
+                'POST', 
+                loop=loop
+            )
+        else:
+            sync_table_results = {}
+            for _endpoint in new_or_stale_endpoints:
+                if not _endpoint in alive_endpoints:
+                    continue
+                endpoint = new_or_stale_endpoints[_endpoint]
+                sync_table_results[endpoint['uuid']] = {'status': 200}
 
         # begin cut-over
         await table_pause(cluster, table, 'start', **kw)
 
-        # pull changes 
-        latest_timestamp = table_copy[-1]['timestamp']
-        table_changes = await table_select(
-            cluster,
-            table,
-            data={
+        if len(table_copy) > 0:
+            # pull changes 
+            latest_timestamp = table_copy[-1]['timestamp']
+            select_data = {
                 'select': {
                     ['*']
                 },
                 'where': [
                     ['timestamp', '>', latest_timestamp]
                 ]
-            },
+            }
+        else:
+            select_data = None
+
+        table_changes = await table_select(
+            cluster,
+            table,
+            data=select_data,
             **kw
         )
 
-        sync_changes_requests = {}
-        for _endpoint in sync_table_results:
-            if not sync_table_results[_endpoint]['status'] == 200:
-                continue
-            endpoint = new_or_stale_endpoints[_endpoint]
-    
-            db = endpoint['db_name']
-            path = endpoint['path']
-            epuuid = endpoint['uuid']
-            token = endpoint['token']
+        trace(f"{cluster} {table} - in-cutover - table_changes: - {table_changes}")
 
-            sync_changes_requests[epuuid] = {
-                'path': f"http://{path}/db/{db}/table/{table}/insert",
-                'data': table_changes,
-                'timeout': 2.0,
-                'headers': await get_auth_http_headers('remote', token=token),
-                'session': await get_endpoint_sessions(epuuid, **kw)
-            }
+        if len(table_changes['data']) > 0:
+
+            sync_changes_requests = {}
+            for _endpoint in sync_table_results:
+                if not sync_table_results[_endpoint]['status'] == 200:
+                    continue
+                endpoint = new_or_stale_endpoints[_endpoint]
+        
+                db = endpoint['db_name']
+                path = endpoint['path']
+                epuuid = endpoint['uuid']
+                token = endpoint['token']
+
+                sync_changes_requests[epuuid] = {
+                    'path': f"http://{path}/db/{db}/table/{table}/insert",
+                    'data': table_changes,
+                    'timeout': 2.0,
+                    'headers': await get_auth_http_headers('remote', token=token),
+                    'session': await get_endpoint_sessions(epuuid, **kw)
+                }
+        else:
+            sync_changes_requests = {}
+            for _endpoint in sync_table_results:
+                endpoint = new_or_stale_endpoints[_endpoint]
+                sync_changes_requests[endpoint['uuid']] = {'status': 200}
 
         # mark endpoint loaded
         # mark table endpoint loaded
