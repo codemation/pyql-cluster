@@ -867,7 +867,7 @@ async def run(server):
         table_endpoints = {'loaded': {}, 'new': {}, 'stale': {}}
 
         # Get cluster Name - coro
-        cluster_name = server.clusters.clusters.select(
+        _cluster = server.clusters.clusters.select(
             'name',
             'type',
             where={'id': cluster}
@@ -888,8 +888,8 @@ async def run(server):
         )
 
         # Run Coros
-        cluster_name, endpoints = await asyncio.gather(
-            cluster_name,
+        _cluster, endpoints = await asyncio.gather(
+            _cluster,
             endpoints
         )
 
@@ -904,8 +904,8 @@ async def run(server):
         for endpoint in endpoints_key_split:
             state = endpoint['state']
             table_endpoints[state][endpoint['uuid']] = endpoint
-        table_endpoints['cluster_name'] = cluster_name
-        table_endpoints['cluster_type'] = cluster_type
+        table_endpoints['cluster_name'] = _cluster['name']
+        table_endpoints['cluster_type'] = _cluster['type']
         trace.warning(f"result {table_endpoints}")
         return table_endpoints
 
