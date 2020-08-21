@@ -2988,7 +2988,7 @@ async def run(server):
 
         trace(f"{cluster} {table} - table_copy: - {table_copy}")
 
-        if len(table_copy) > 0:
+        if len(table_copy['data']) > 0:
             # sync tables - pre cutover
             sync_requests = {} 
             for _endpoint in new_or_stale_endpoints:
@@ -3024,7 +3024,7 @@ async def run(server):
         # begin cut-over
         await table_pause(cluster, table, 'start', **kw)
 
-        if len(table_copy) > 0:
+        if len(table_copy['data']) > 0:
             # pull changes 
             latest_timestamp = table_copy[-1]['timestamp']
             select_data = {
