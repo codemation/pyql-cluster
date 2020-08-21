@@ -1441,7 +1441,11 @@ async def run(server):
                 method = request.method if not 'method' in kw else kw['method']
             else:
                 method = 'GET'
-            
+        else:
+            if request == None or not 'method' in kw:   
+                method = 'POST'
+            else:
+                method = request.method if not request == None else kw['method']
 
         if not 'method' in kw:
             kw['method'] = method if request == None else request.method
