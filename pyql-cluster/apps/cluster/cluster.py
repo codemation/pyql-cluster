@@ -2944,7 +2944,7 @@ async def run(server):
         # get copy
         table_copy = await cluster_table_copy(cluster, table, log_cluster=True, **kw)
 
-        trace(f"table_copy: - {table_copy}")
+        trace(f"{cluster} {table} - table_copy: - {table_copy}")
 
         # sync tables - pre cutover
         sync_requests = {} 
