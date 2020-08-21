@@ -3026,7 +3026,7 @@ async def run(server):
 
         if len(table_copy['data']) > 0:
             # pull changes 
-            latest_timestamp = table_copy[-1]['timestamp']
+            latest_timestamp = table_copy['data'][-1]['timestamp']
             select_data = {
                 'select': {
                     ['*']
