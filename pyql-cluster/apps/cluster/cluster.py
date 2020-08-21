@@ -869,6 +869,7 @@ async def run(server):
         # Get cluster Name - coro
         cluster_name = server.clusters.clusters.select(
             'name',
+            'type',
             where={'id': cluster}
         )
 
@@ -904,6 +905,7 @@ async def run(server):
             state = endpoint['state']
             table_endpoints[state][endpoint['uuid']] = endpoint
         table_endpoints['cluster_name'] = cluster_name
+        table_endpoints['cluster_type'] = cluster_type
         trace.warning(f"result {table_endpoints}")
         return table_endpoints
 
@@ -1671,7 +1673,9 @@ async def run(server):
         last_txn_time
         """
         trace = kw['trace']
-        
+        log_cluster = False if not 'log_cluster' in kw else kw['log_cluster']
+
+
         endpoints = await get_table_endpoints(cluster, table, **kw)
         
         endpoints_info = await get_table_info(cluster, table, endpoints, **kw)
@@ -1681,10 +1685,13 @@ async def run(server):
         endpoint_info = endpoints_info['endpoints'][f"{endpoint_choice}_{table}"]
         path = endpoint_info['path']
         token = endpoint_info['token']
+        
+        # log clusters do not need last_txn_time via copy
+        op = 'copy' if not log_cluster else 'select'
 
         # pull table copy & last_txn_time
         table_copy, rc = await probe(
-            f"{path}/copy",
+            f"{path}/{op}",
             method='GET',
             token=token,
             session=await get_endpoint_sessions(
@@ -2091,6 +2098,24 @@ async def run(server):
                     'cluster': cluster
                 }
                 await cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
+
+                # need to create state entries for new endpoints
+                # for each table in log_cluster - create state entry for new endpoint
+                tables = await server.clusters.tables.select('name', where={'cluster': cluster})
+                tables = [table['name'] for table in tables]
+                for table in tables:
+                    data = {
+                        'name': f"{config['database']['uuid']}_{table}",
+                        'state': 'new',
+                        'table_name': table,
+                        'cluster': cluster,
+                        'uuid': config['database']['uuid'], # used for syncing logs
+                        'last_mod_time': 0.0
+                    }
+                    await cluster_table_change(pyql, 'state', 'insert', data, **kw)
+
+
+
                 joined_existing = True
         if not joined_existing:
             await pyql_create_txn_cluster(
@@ -2267,7 +2292,6 @@ async def run(server):
                     data = {
                         'name': table_endpoint,
                         'state': load_state,
-                        'in_sync': sync_state,
                         'table_name': table,
                         'cluster': cluster_id,
                         'uuid': endpoint['uuid'], # used for syncing logs
@@ -2893,6 +2917,128 @@ async def run(server):
         return response, rc
     
     @server.trace
+    async def txn_table_sync(cluster, table, alive_endpoints, table_endpoints, **kw):
+        """
+        used to sync log type tables in cluster in following events:
+        - new endpoint is added to pyql cluster and txn_cluster is not reached max endpoitns
+        - existing endpoint re-joins pyql cluster - existing txn_cluster tables are stale
+        - out of quorum endpoint now in quorum 
+        1. Get dict of endpoints - stale / new
+        2. check live-ness
+        3. create table, if new
+        4. Get Copy of a 'loaded' table
+        5. Pause Ops to this table in Txn cluster
+        6. Final Sync 
+        7. Un-Pause & Resume ops
+        """
+        trace = kw['trace']
+        pyql = await server.env['PYQL_UUID']
+
+        new_or_stale_endpoints = {}
+        new_or_stale_endpoints.update(table_endpoints['new'])
+        new_or_stale_endpoints.update(table_endpoints['stale'])
+
+        # get copy
+        table_copy = await cluster_table_copy(cluster, table, log_cluster=True, **kw)
+
+        # sync tables - pre cutover
+        sync_requests = {} 
+        for _endpoint in new_or_stale_endpoints:
+            if not _endpoint in alive_endpoints:
+                continue
+            endpoint = new_or_stale_endpoints[_endpoint]
+    
+            db = endpoint['db_name']
+            path = endpoint['path']
+            epuuid = endpoint['uuid']
+            token = endpoint['token']
+
+            sync_requests[epuuid] = {
+                'path': f"http://{path}/db/{db}/table/{table}/sync",
+                'data': table_copy,
+                'timeout': 2.0,
+                'headers': await get_auth_http_headers('remote', token=token),
+                'session': await get_endpoint_sessions(epuuid, **kw)
+            }
+        sync_table_results = await async_request_multi(
+            sync_requests, 
+            'POST', 
+            loop=loop
+        )
+
+        # begin cut-over
+        await table_pause(cluster, table, 'start', **kw)
+
+        # pull changes 
+        latest_timestamp = table_copy[-1]['timestamp']
+        table_changes = await table_select(
+            cluster,
+            table,
+            data={
+                'select': {
+                    ['*']
+                },
+                'where': [
+                    ['timestamp', '>', latest_timestamp]
+                ]
+            },
+            **kw
+        )
+
+        sync_changes_requests = {}
+        for _endpoint in sync_table_results:
+            if not sync_table_results[_endpoint]['status'] == 200:
+                continue
+            endpoint = new_or_stale_endpoints[_endpoint]
+    
+            db = endpoint['db_name']
+            path = endpoint['path']
+            epuuid = endpoint['uuid']
+            token = endpoint['token']
+
+            sync_changes_requests[epuuid] = {
+                'path': f"http://{path}/db/{db}/table/{table}/insert",
+                'data': table_changes,
+                'timeout': 2.0,
+                'headers': await get_auth_http_headers('remote', token=token),
+                'session': await get_endpoint_sessions(epuuid, **kw)
+
+        # mark endpoint loaded
+        # mark table endpoint loaded
+        state_updates = []
+        for endpoint in sync_changes_requests:
+            if not sync_changes_requests[endpoint]['status'] == 200:
+                continue
+            state_updates.append(
+                cluster_table_change(
+                    pyql,
+                    'state',
+                    'update',
+                    {
+                        'set': {
+                            'state': 'loaded'
+                            },
+                        'where': {
+                            'name': f"{endpoint}_{table}"
+                            }
+                    },
+                    loop=loop
+                )
+            )
+        state_update_results = await asyncio.gather(*state_updates, loop=loop)
+
+        # end cut-over
+        await table_pause(cluster, table, 'stop', **kw)
+
+        return {
+            "sync_requests": sync_requests,
+            "sync_changes_requests": sync_changes_requests, 
+            "state_update_results": state_update_results
+            }
+
+
+
+    @server.trace
     async def table_sync_run(cluster=None, table=None, config=None, job=None, **kw):
         """
         called by a job created by tablesync_mgr
@@ -2916,6 +3062,7 @@ async def run(server):
 
         # get list of table endpoints that are not 'loaded'
         table_endpoints = await get_table_endpoints(cluster, table, **kw)
+        cluster_type = table_endpoints['cluster_type']
 
         new_or_stale_endpoints = table_endpoints['new']
         new_or_stale_endpoints.update(table_endpoints['stale'])
@@ -2930,6 +3077,15 @@ async def run(server):
             if not check_alive_endpoints[endpoint]['status'] == 200:
                 continue
             alive_endpoints.append(endpoint)
+        
+        # Log Cluster Tables Workflow 
+        if cluster_type == 'log':
+            return await txn_table_sync(
+                cluster, 
+                table, 
+                alive_endpoints, 
+                table_endpoints
+            )
 
         # create tables on new endpoints
         if len(table_endpoints['new']) > 0:
