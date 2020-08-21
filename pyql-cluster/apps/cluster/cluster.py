@@ -2990,7 +2990,7 @@ async def run(server):
 
         if len(table_copy['data']) > 0:
             # sync tables - pre cutover
-            sync_requests = {} 
+            sync_requests = {}
             for _endpoint in new_or_stale_endpoints:
                 if not _endpoint in alive_endpoints:
                     continue
@@ -3067,8 +3067,13 @@ async def run(server):
                     'headers': await get_auth_http_headers('remote', token=token),
                     'session': await get_endpoint_sessions(epuuid, **kw)
                 }
+            sync_changes_results = await async_request_multi(
+                sync_requests, 
+                'POST', 
+                loop=loop
+            )
         else:
-            sync_changes_requests = {}
+            sync_changes_results = {}
             for _endpoint in sync_table_results:
                 endpoint = new_or_stale_endpoints[_endpoint]
                 sync_changes_requests[endpoint['uuid']] = {'status': 200}
@@ -3076,7 +3081,7 @@ async def run(server):
         # mark endpoint loaded
         # mark table endpoint loaded
         state_updates = []
-        for endpoint in sync_changes_requests:
+        for endpoint in sync_changes_results:
             if not sync_changes_requests[endpoint]['status'] == 200:
                 continue
             state_updates.append(
@@ -3101,8 +3106,8 @@ async def run(server):
         await table_pause(cluster, table, 'stop', **kw)
 
         return {
-            "sync_requests": sync_requests,
-            "sync_changes_requests": sync_changes_requests, 
+            "sync_table_results": sync_table_results,
+            "sync_changes_results": sync_changes_results, 
             "state_update_results": state_update_results
             }
 
