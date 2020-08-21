@@ -2856,7 +2856,7 @@ async def run(server):
                 await wait_on_jobs(pyql, 0, jobs_to_run_ordered)
             else:
                 for job in jobs[cluster]:
-                    await jobs_add(job, **kw)
+                    await jobs_add(job)
         trace.info(f"cluster_tablesync_mgr created {jobs} for outofSync endpoints")
         return {"jobs": jobs}
     server.clusterjobs['tablesync_mgr'] = tablesync_mgr
