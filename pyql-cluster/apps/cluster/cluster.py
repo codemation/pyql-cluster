@@ -2038,7 +2038,7 @@ async def run(server):
             'id': new_txn_cluster,
             'name': f"{new_txn_cluster}_log",
             'owner': service_id,
-            'access': {'allow': [admin_id, service_id]},
+            'access': {'allow': [admin_id[0]['id'], service_id]},
             'type': 'log',
             'key': None,
             'created_by_endpoint': config['name'],
