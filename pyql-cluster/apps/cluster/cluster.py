@@ -244,6 +244,7 @@ async def run(server):
                     log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {node_quorum}")
                 )
             state = state[0]
+            node_quorum = node_quorum[0]
             ready_and_healthy = node_quorum['health'] == 'healthy' and node_quorum['ready'] == True
             if state['state'] == 'loaded' and ready_and_healthy:
                 kwargs['pyql'] = pyql
@@ -267,7 +268,7 @@ async def run(server):
                     if node['uuid'] in headers['unsafe']:
                         continue
                     if not node['uuid'] in node_quorum['nodes']['nodes']:
-                        log.warning(f"node {node} was not yet 'unsafe' but is not in_quorum - {node_quorum_state} -, marking unsafe and will try other, if any")
+                        log.warning(f"node {node} was not yet 'unsafe' but is not in_quorum - {node_quorum} -, marking unsafe and will try other, if any")
                         headers['unsafe'].append(node['uuid'])
                         continue
                     headers['Host'] = node['path']
