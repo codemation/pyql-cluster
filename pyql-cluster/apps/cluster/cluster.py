@@ -2054,7 +2054,7 @@ async def run(server):
             'db_name': 'transactions',
             'path': config['path'],
             'token': config['token'],
-            'cluster': cluster
+            'cluster': new_txn_cluster
         }
         await cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
 
@@ -2069,7 +2069,7 @@ async def run(server):
                 'token': existing['endpoints.token'],
                 'cluster': new_txn_cluster
             }
-        await cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
+            await cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
 
     @server.trace
     async def pyql_join_txn_cluster(config: dict, **kw):
