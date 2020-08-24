@@ -1696,7 +1696,7 @@ async def run(server):
         token = endpoint_info['token']
         
         # log clusters do not need last_txn_time via copy
-        op = 'copy' if not log_cluster else 'select'
+        op = 'copy' if not log_cluster else 'select' ## 
 
         # pull table copy & last_txn_time
         table_copy, rc = await probe(
@@ -1708,7 +1708,13 @@ async def run(server):
                 **kw
             )
         )
-        return table_copy
+        if op == 'copy':
+            return table_copy
+        
+        last_txn_time = table_copy['data'][-1] if len(table_copy['data']) > 0 else time.time()
+        return {
+            'table_copy': table_copy, 
+            'last_txn_time': last_txn_time}
                 
     @server.api_route('/cluster/{cluster}/table/{table}/config', methods=['GET'])
     async def cluster_table_config_api(cluster: str, table: str, request: Request):
