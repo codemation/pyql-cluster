@@ -1115,7 +1115,7 @@ async def run(server):
             pause_check = await server.clusters.tables.select(
                 'is_paused',
                 where={
-                    'id': f'{log_cluster}{log_table}'
+                    'id': f'{log_cluster}_{log_table}'
                 }
             )
             if pause_check[0]['is_paused'] == False:
