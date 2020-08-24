@@ -1711,9 +1711,10 @@ async def run(server):
         if op == 'copy':
             return table_copy
         
+        # log cluster
         last_txn_time = table_copy['data'][-1] if len(table_copy['data']) > 0 else time.time()
         return {
-            'table_copy': table_copy, 
+            'table_copy': table_copy['data'], 
             'last_txn_time': last_txn_time}
                 
     @server.api_route('/cluster/{cluster}/table/{table}/config', methods=['GET'])
@@ -2994,7 +2995,7 @@ async def run(server):
 
         trace(f"{cluster} {table} - table_copy: - {table_copy}")
 
-        if len(table_copy['data']) > 0:
+        if len(table_copy['table_copy']) > 0:
             # sync tables - pre cutover
             sync_requests = {}
             for _endpoint in new_or_stale_endpoints:
