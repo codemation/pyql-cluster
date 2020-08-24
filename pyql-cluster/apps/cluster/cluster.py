@@ -1715,7 +1715,8 @@ async def run(server):
         last_txn_time = table_copy['data'][-1] if len(table_copy['data']) > 0 else time.time()
         return {
             'table_copy': table_copy['data'], 
-            'last_txn_time': last_txn_time}
+            'last_txn_time': last_txn_time
+            }
                 
     @server.api_route('/cluster/{cluster}/table/{table}/config', methods=['GET'])
     async def cluster_table_config_api(cluster: str, table: str, request: Request):
@@ -3031,9 +3032,9 @@ async def run(server):
         # begin cut-over
         await table_pause(cluster, table, 'start', **kw)
 
-        if len(table_copy['data']) > 0:
+        if len(table_copy['table_copy']) > 0:
             # pull changes 
-            latest_timestamp = table_copy['data'][-1]['timestamp']
+            latest_timestamp = table_copy['table_copy'][-1]['timestamp']
             select_data = {
                 'select': ['*'],
                 'where': [
