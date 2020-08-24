@@ -1863,7 +1863,7 @@ async def run(server):
         pause = True if pause == 'start' else False
         pause_set = {
             'set': {'is_paused': pause},
-            'where': {'id': f"{cluster}_{table}"
+            'where': {'id': f"{cluster}_{table}"}
         }
 
         # overrides table paused checks
