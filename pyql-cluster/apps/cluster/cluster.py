@@ -207,7 +207,21 @@ async def run(server):
                     log.error(f"state_and_quorum_check - cluster pyql node {os.environ['HOSTNAME']} is not in quorum - {quorum}")
                 )
             """
-            pyql = server.env['PYQL_UUID']
+            pyql = await server.env['PYQL_UUID']
+
+            node_quorum = await server.clusters.quorum.select(
+                '*',
+                where={
+                    'node': node_id
+                }
+            )
+            state = await server.clusters.state.select(
+                'state',
+                where={
+                    'name': f"{node_id}_state"
+                }
+            )
+            """
 
             # Check Quorum & State - check that state is in_sync
             node_quorum_state = server.clusters.quorum.select(
@@ -222,20 +236,21 @@ async def run(server):
                     'quorum.node': f'{node_id}'}
                 )
             pyql, node_quorum_state = await asyncio.gather(pyql, node_quorum_state)
+            """
 
-            if len(node_quorum_state) == 0 or node_quorum_state[0]['quorum.in_quorum'] == False:
+            if len(node_quorum) == 0 or node_quorum[0]['in_quorum'] == False:
                 server.http_exception(
                     500,
-                    log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {quorum}")
+                    log.error(f"cluster pyql node {os.environ['HOSTNAME']} is not in quorum {node_quorum}")
                 )
-            node_quorum_state = node_quorum_state[0]
-            ready_and_healthy = node_quorum_state['quorum.health'] == 'healthy' and node_quorum_state['quorum.ready'] == True
-            if node_quorum_state['state.in_sync'] == True and ready_and_healthy:
+            state = state[0]
+            ready_and_healthy = node_quorum['health'] == 'healthy' and node_quorum['ready'] == True
+            if state['state'] == 'loaded' and ready_and_healthy:
                 kwargs['pyql'] = pyql
                 return await func(*args, **kwargs)
             else:
                 pyql = await server.env['PYQL_UUID'] if not 'pyql' in kwargs else kwargs['pyql']
-                log.warning(f"node is inQuorum but not 'healthy' or state is out_of_sync: {node_quorum_state}")
+                log.warning(f"node is inQuorum but not 'healthy' or state is not loaded: {node_quorum} {state}")
                 pyql_nodes = await server.clusters.endpoints.select('uuid', 'path', where={'cluster': pyql})
                 headers = dict(request.headers)
                 # pop header fields which should not be passed
@@ -251,7 +266,7 @@ async def run(server):
                 for node in pyql_nodes:
                     if node['uuid'] in headers['unsafe']:
                         continue
-                    if not node['uuid'] in node_quorum_state['quorum.nodes']['nodes']:
+                    if not node['uuid'] in node_quorum['nodes']['nodes']:
                         log.warning(f"node {node} was not yet 'unsafe' but is not in_quorum - {node_quorum_state} -, marking unsafe and will try other, if any")
                         headers['unsafe'].append(node['uuid'])
                         continue
