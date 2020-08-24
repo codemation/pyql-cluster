@@ -458,9 +458,9 @@ async def run(server):
                 'db_name': config['database']['name'],
                 'endpoint': config['name']
             }
-        def get_tables_data(table,cluster_id, cfg, consistency):
+        def get_tables_data(table, cluster_id, cfg, consistency):
             return {
-                'id': str(uuid.uuid1()),
+                'id': f"{cluster_id}_{table}",
                 'name': table,
                 'cluster': cluster_id,
                 'config': cfg,
@@ -471,7 +471,6 @@ async def run(server):
             return {
                 'name': f'{config["database"]["uuid"]}_{table}',
                 'state': 'loaded',
-                'in_sync': True,
                 'table_name': table,
                 'cluster': cluster_id,
                 'uuid': config['database']['uuid'], # used for syncing logs 
@@ -974,22 +973,27 @@ async def run(server):
     async def get_table_info(cluster, table, endpoints, **kw):
         trace = kw['trace']
 
-        tables = await server.clusters.tables.select(
+        tb = await server.clusters.tables.select(
             '*',
-            where={'cluster': cluster, 'name': table})
-        for tb in tables:
-            trace(f"get_table_info_get_tables {tb}")
-            tb['endpoints'] = {}
-            for state in ['loaded', 'stale', 'new']:
-                for endpoint in endpoints[state]:
-                    path = endpoints[state][endpoint]['path']
-                    db = endpoints[state][endpoint]['db_name']
-                    name = endpoints[state][endpoint]['name']
-                    tb['endpoints'][name] = endpoints[state][endpoint]
-                    tb['endpoints'][name]['path'] = f"http://{path}/db/{db}/table/{tb['name']}"
-            trace(f"completed {tb}")
-            return tb
-        server.http_exception(500, trace(f"no tables in cluster {cluster} with name {table} - found: {tables}"))
+            where={
+                'id': f"{cluster}_{table}"
+            }
+        )
+        if len(tb) == 0:
+            server.http_exception(500, trace(f"no tables in cluster {cluster} with name {table} - found: {tables}"))
+        tb = tb[0]
+        trace(f"get_table_info_get_tables {tb}")
+        tb['endpoints'] = {}
+        for state in ['loaded', 'stale', 'new']:
+            for endpoint in endpoints[state]:
+                path = endpoints[state][endpoint]['path']
+                db = endpoints[state][endpoint]['db_name']
+                name = endpoints[state][endpoint]['name']
+                tb['endpoints'][name] = endpoints[state][endpoint]
+                tb['endpoints'][name]['path'] = f"http://{path}/db/{db}/table/{tb['name']}"
+        trace(f"completed {tb}")
+        return tb
+        
 
     @server.trace
     async def cluster_table_read(cluster, table, data, **kw):
@@ -1084,10 +1088,6 @@ async def run(server):
                 }
             async_results = await async_request_multi(endpoint_requests, 'POST', loop=loop)
             trace(f"async_results: {async_results}")
-        # add task to txn worker queue 
-        server.txn_signals.append(
-            signal_table_endpoints # to be awaited by txn_signal workers 
-        )
 
         # write to txn logs
         result = await write_to_txn_logs(
@@ -1095,6 +1095,11 @@ async def run(server):
             f"txn_{cluster_id_underscored}_{table}",
             txn,
             **kw
+        )
+    
+        # add task to txn worker queue 
+        server.txn_signals.append(
+            signal_table_endpoints # to be awaited by txn_signal workers 
         )
 
         return {"result": trace("finished")}
@@ -1104,6 +1109,20 @@ async def run(server):
         trace = kw['trace']
         loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
+
+        # check if table is paused
+        for i in range(11):
+            pause_check = await server.clusters.tables.select(
+                'is_paused',
+                where={
+                    'id': f'{log_cluster}{log_table}'
+                }
+            )
+            if pause_check[0]['is_paused'] == False:
+                break
+            if i == 10:
+                return {"error": trace.error(f"timeout reached waiting for {table} to un-pause")}
+            asyncio.sleep(0.001)
 
         table_endpoints = await get_table_endpoints(
             log_cluster, 
@@ -1561,7 +1580,7 @@ async def run(server):
         # add tables to pyql tables
 
         new_table = {
-            'id': str(uuid.uuid1()),
+            'id': f"{cluster}_{table}",
             'name': table,
             'cluster': cluster,
             'config': config,
@@ -1577,7 +1596,6 @@ async def run(server):
             state_data = {
                 'name': f"{endpoint}_{table}",
                 'state': load_state,
-                'in_sync': sync_state,
                 'table_name': table,
                 'cluster': cluster,
                 'uuid': endpoint # used for syncing logs
@@ -2226,7 +2244,7 @@ async def run(server):
                     await cluster_table_change(
                         pyql, 'state', 'update', 
                         {
-                            'set': {'in_sync': False}, 
+                            'set': {'state': 'stale'}, 
                             'where': {
                                 'uuid': config['database']['uuid'],
                                 'cluster': cluster_id
@@ -2264,7 +2282,7 @@ async def run(server):
                     new_tables.append(table_name)
                     #JobIfy - create as job so config
                     data = {
-                        'id': str(uuid.uuid1()),
+                        'id': f"{cluster_id}_{table_name}",
                         'name': table_name,
                         'cluster': cluster_id,
                         'config': tb_config,
