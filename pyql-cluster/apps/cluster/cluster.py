@@ -2028,6 +2028,7 @@ async def run(server):
     @server.trace
     async def pyql_create_txn_cluster(config, txn_clusters, **kw):
         trace = kw['trace']
+        pyql = await server.env['PYQL_UUID']
 
         # need to create a new txn cluster
         admin_id = await server.clusters.auth.select('id', where={'username': 'admin'})
@@ -2038,7 +2039,7 @@ async def run(server):
             'name': f"{new_txn_cluster}_log",
             'owner': service_id,
             'access': {'allow': [admin_id, service_id]},
-            'type': 'data' if name == 'pyql' else 'log',
+            'type': 'log',
             'key': None,
             'created_by_endpoint': config['name'],
             'create_date': f'{datetime.now().date()}'
