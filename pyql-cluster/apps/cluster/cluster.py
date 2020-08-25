@@ -1128,7 +1128,8 @@ async def run(server):
 
         if not 'force' in kw:
             # check if table is paused
-            for i in range(11):
+            cur_wait, max_wait = 0.01, 10.0
+            while cur_wait < max_wait:
                 pause_check = await server.clusters.tables.select(
                     'is_paused',
                     where={
@@ -1137,9 +1138,11 @@ async def run(server):
                 )
                 if pause_check[0]['is_paused'] == False:
                     break
-                if i == 10:
-                    return {"error": trace.error(f"timeout reached waiting for {table} to un-pause")}
-                asyncio.sleep(0.001)
+                # wait an try again
+                asyncio.sleep(0.01)
+                cur_wait+=0.01
+            else:
+                return {"error": trace.error(f"timeout reached waiting for {table} to un-pause")}
 
         table_endpoints = await get_table_endpoints(
             log_cluster, 
