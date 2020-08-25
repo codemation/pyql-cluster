@@ -38,9 +38,10 @@ async def run(server):
         log.info("finished imports")
         server.data[db_name] = await data.Database.create(
             **config,
-            cache_enabled=True,
             loop=server.event_loop 
             )
+        # enable database cache
+        server.data[db_name].enable_cache()
         log.info("finished dbsetup")
         await setup.attach_tables(server)
         log.info("finished attach_tables")
