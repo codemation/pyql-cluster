@@ -2612,6 +2612,7 @@ async def run(server):
                         "message": f"{job['id']} was reserved by another worker"
                         }
                 return job_check
+            return {"message": trace(f"{job['id']} was reserved by another worker")}
 
     @server.trace
     async def jobqueue(job_type, node=None, **kw):
