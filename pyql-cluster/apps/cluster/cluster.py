@@ -2598,7 +2598,7 @@ async def run(server):
         }
         while True:
             job_check = await table_select(pyql, 'jobs', data=job_select, method='POST', **kw)
-            if len(job_check) == 0:
+            if len(job_check['data']) == 0:
                 return {"message": trace(f"failed to reserve job {job['id']}, no longer exists")}
             trace(f"job_check: {job_check}")
             job_check = job_check['data'][0]
