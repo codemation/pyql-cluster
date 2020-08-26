@@ -3152,7 +3152,6 @@ async def run(server):
                     force=True,
                     loop=loop
                 )
-            )
             state_update_results.append(
                 await get_state_change()
             )
