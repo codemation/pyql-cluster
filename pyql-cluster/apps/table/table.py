@@ -66,7 +66,7 @@ async def run(server):
         return new_lock
 
     @server.api_route('/db/{database}/cache')
-    async def get_db_cache(database: str, request: Request):
+    async def get_db_cache_api(database: str, request: Request):
         return await get_db_cache(
             database,  
             request=await server.process_request(request)
