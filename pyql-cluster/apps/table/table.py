@@ -6,6 +6,8 @@ async def run(server):
     import uuid
     log = server.log
 
+    PYQL_TABLE_DB = 'cluster'
+
     server.flush_table_tasks = {}
 
     # table_locks are used by specific methods which cannot safely run in parelell 
@@ -17,7 +19,7 @@ async def run(server):
         """
         async def lock(lock_id):
             log.warning(f"created lock with id: {lock_id}")
-            locks = server.data['cluster'].tables['pyql']
+            locks = server.data[PYQL_TABLE_DB].tables['pyql']
             timeout = 30
             start = time.time()
             result = None
@@ -140,7 +142,7 @@ async def run(server):
         return await get_table_copy(database, table, **kw)
 
     async def get_table_copy(database, table, **kw):
-        last_txn_time = await server.data[database].tables['pyql'].select(
+        last_txn_time = await server.data[PYQL_TABLE_DB].tables['pyql'].select(
             'last_txn_time',
             where={
                 'table_name': table,
@@ -246,7 +248,7 @@ async def run(server):
                             server.actions[action](database, table, data)
                         )
                         await asyncio.gather(*coros_to_gather)
-                        update_last_txn_time = server.data['cluster'].tables['pyql'].update(
+                        update_last_txn_time = server.data[PYQL_TABLE_DB].tables['pyql'].update(
                             last_txn_time=txn['timestamp'],
                             where={"table_name": table}
                         )
@@ -281,7 +283,7 @@ async def run(server):
             for row in data_to_sync['table_copy']
             ]
         await asyncio.gather(*rows_to_insert)
-        await server.data[database].tables['pyql'].update(
+        await server.data[PYQL_TABLE_DB].tables['pyql'].update(
             last_txn_time=data_to_sync['last_txn_time'],
             where={"table_name": table}
         )
