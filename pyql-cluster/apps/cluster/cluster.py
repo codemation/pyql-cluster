@@ -1750,7 +1750,7 @@ async def run(server):
             return table_copy
         
         # log cluster
-        last_txn_time = table_copy['data'][-1] if len(table_copy['data']) > 0 else time.time()
+        last_txn_time = table_copy['data'][-1]['timestamp'] if len(table_copy['data']) > 0 else time.time()
         return {
             'table_copy': table_copy['data'], 
             'last_txn_time': last_txn_time
