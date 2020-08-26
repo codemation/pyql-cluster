@@ -3131,11 +3131,13 @@ async def run(server):
         # mark endpoint loaded
         # mark table endpoint loaded
         state_update_results = []
+        state_updates = []
         for endpoint in sync_changes_results:
             if not sync_changes_results[endpoint]['status'] == 200:
                 continue
-            state_update_results.append(
-                await cluster_table_change(
+            
+            def get_state_change():
+                return cluster_table_change(
                     pyql,
                     'state',
                     'update',
@@ -3147,18 +3149,33 @@ async def run(server):
                             'name': f"{endpoint}_{table}"
                             }
                     },
+                    force=True,
                     loop=loop
                 )
             )
+            state_update_results.append(
+                await get_state_change()
+            )
+            # creates list of post cut-over state-changes to issue
+            # this is needed for tables like 'state', which limits
+            # cluster table changes to 'loaded' tables
+            state_updates.append(
+                get_state_change()
+            )
+
 
         # end cut-over
         await table_pause(cluster, table, 'stop', **kw)
+        state_change_results = [await state_change() for state_change in state_updates]
 
         return {
             "sync_table_results": sync_table_results,
             "sync_changes_results": sync_changes_results, 
-            "state_update_results": state_update_results
+            "state_updates": {
+                "state_update_results": state_update_results
+                "state_change_results": state_change_results
             }
+        }
 
 
 
