@@ -65,6 +65,20 @@ async def run(server):
         # initializes lock generator with .asend(None) & returns lock
         return new_lock
 
+    @server.api_route('/db/{database}/cache')
+    async def get_db_cache(database, request: Request):
+        return await get_db_cache(
+            database,  
+            request=await server.process_request(request)
+        )
+    
+    async def get_db_cache(database, **kw):
+        cache_enabled = server.data[database].cache_enabled
+        return {
+            'cache_enabled': cache_enabled,
+            'cache': server.data[database].cache.__dict__ if cache_enabled else {}
+            }
+
     @server.api_route('/db/{database}/tables')
     async def get_all_tables_api(database, request: Request):
         return await get_all_tables(database,  request=await server.process_request(request))
@@ -131,6 +145,22 @@ async def run(server):
         return await server.actions['update'](database, table, {'set': set_vals, 'where': {key: val}})
     async def db_table_key_delete(database, table, key, val):
         return await server.actions['delete'](database, table, {'where': {key: val}})
+
+
+    @server.api_route('/db/{database}/table/{table}/cache')
+    async def db_get_table_cache_api(database, table, request: Request):
+        return await db_get_table_cache(
+            database,
+            table,
+            request=await server.process_request(request)
+        )
+    
+    async def db_get_table_cache(database, table, **kw):
+        cache_enabled = server.data[database].tables[table].cache_enabled
+        return {
+            'cache_enabled': cache_enabled,
+            'cache': server.data[database].tables[table].cache.__dict__ if cache_enabled else {}
+            }
 
 
     @server.api_route('/db/{database}/table/{table}/copy')
@@ -254,6 +284,7 @@ async def run(server):
                         )
                 if not update_last_txn_time == None:
                     await update_last_txn_time
+            
         # release table lock is issued by completely existing for loop
         return log.warning(f"{database} {table} table_flush completed successfully")
 
