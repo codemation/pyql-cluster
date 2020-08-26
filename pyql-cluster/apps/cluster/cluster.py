@@ -3171,7 +3171,7 @@ async def run(server):
             "sync_table_results": sync_table_results,
             "sync_changes_results": sync_changes_results, 
             "state_updates": {
-                "state_update_results": state_update_results
+                "state_update_results": state_update_results,
                 "state_change_results": state_change_results
             }
         }
