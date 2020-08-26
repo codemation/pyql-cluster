@@ -76,7 +76,7 @@ async def run(server):
         cache_enabled = server.data[database].cache_enabled
         return {
             'cache_enabled': cache_enabled,
-            'cache': server.data[database].cache.__dict__ if cache_enabled else {}
+            'cache': server.data[database].cache.cache if cache_enabled else {}
             }
 
     @server.api_route('/db/{database}/tables')
@@ -159,7 +159,7 @@ async def run(server):
         cache_enabled = server.data[database].tables[table].cache_enabled
         return {
             'cache_enabled': cache_enabled,
-            'cache': server.data[database].tables[table].cache.__dict__ if cache_enabled else {}
+            'cache': server.data[database].tables[table].cache.cache if cache_enabled else {}
             }
 
 
