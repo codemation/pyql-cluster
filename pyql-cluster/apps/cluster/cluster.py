@@ -3165,7 +3165,7 @@ async def run(server):
 
         # end cut-over
         await table_pause(cluster, table, 'stop', **kw)
-        state_change_results = [await state_change() for state_change in state_updates]
+        state_change_results = [await state_change for state_change in state_updates]
 
         return {
             "sync_table_results": sync_table_results,
