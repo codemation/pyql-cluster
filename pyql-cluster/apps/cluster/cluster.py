@@ -1444,11 +1444,13 @@ async def run(server):
         endpoints = await get_table_endpoints(cluster, table, **kw)
         endpoints = endpoints['loaded']
         loaded_endpoints = [ep for ep in endpoints]
+        """
         if len(loaded_endpoints) == 0 and table == 'jobs':
             await pyql_reset_jobs_table(**kw) # TODO - fix pyql_reset_jobs to work with new get_table_endpoints change
             endpoints = await get_table_endpoints(cluster, table, **kw)
             endpoints = endpoints['loaded']
             loaded_endpoints = [ep for ep in endpoints]
+        """
         while len(loaded_endpoints) > 0: 
             if node_id in loaded_endpoints:
                 endpoint_choice = loaded_endpoints.pop(loaded_endpoints.index(node_id))
@@ -2628,14 +2630,14 @@ async def run(server):
 
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         if pyql == None:
-            return {"message": "cluster is still bootstrapping, try again later"}
+            return {"message": trace("cluster is still bootstrapping, try again later")}
 
         endpoints = await server.clusters.endpoints.select(
             '*'
         )
 
         if len(endpoints) == 0:
-            return {"message": "cluster is bootstrapped, but still syncing"}
+            return {"message": trace("cluster is bootstrapped, but still syncing")}
 
         quorum = await cluster_quorum_query()
 
