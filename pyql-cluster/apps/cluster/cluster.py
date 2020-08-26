@@ -3130,12 +3130,12 @@ async def run(server):
 
         # mark endpoint loaded
         # mark table endpoint loaded
-        state_updates = []
+        state_update_results = []
         for endpoint in sync_changes_results:
             if not sync_changes_results[endpoint]['status'] == 200:
                 continue
-            state_updates.append(
-                cluster_table_change(
+            state_update_results.append(
+                await cluster_table_change(
                     pyql,
                     'state',
                     'update',
@@ -3150,7 +3150,6 @@ async def run(server):
                     loop=loop
                 )
             )
-        state_update_results = await asyncio.gather(*state_updates, loop=loop)
 
         # end cut-over
         await table_pause(cluster, table, 'stop', **kw)
