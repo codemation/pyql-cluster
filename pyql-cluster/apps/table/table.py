@@ -244,7 +244,7 @@ async def run(server):
             server.flush_table_tasks[f"{database}_{table}"] = {'work': 0, 'task': table_flush_task}
         server.flush_table_tasks[f"{database}_{table}"]['task'] = table_flush_task
         async def flush_job():
-            if f"{database}_{table}" in server.flush_table_tasks:
+            if 'task' in server.flush_table_tasks[f"{database}_{table}"]:
                 job = server.flush_table_tasks[f"{database}_{table}"].pop('task')
                 result = await job()
                 server.flush_table_tasks[f"{database}_{table}"]['work'] -=1
