@@ -5,9 +5,9 @@ def run(server):
     # Create a custom logger
     logger = logging.getLogger('pyql-cluster')
     logger.propagate = False
-    if logger.hasHandlers()):
+    if logger.hasHandlers():
         logger.handlers.clear()
-        
+
     i_handler = logging.StreamHandler()
     c_handler = logging.StreamHandler()
     f_handler = logging.FileHandler('pyql-cluster.log')
