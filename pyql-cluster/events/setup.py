@@ -71,10 +71,13 @@ async def run(server):
                 try:
                     result = await job()
                 except Exception as e:
-                    result = log.exception(f"worker encountered exception when running {job}")
+                    result = log.exception(f"{queue} worker encountered exception when running {job}")
                     restart = True
                 if queue == 'tasks' or restart:
-                    server.__dict__[queue].append(job)
+                    if restart and queue == 'flush':
+                        server.__dict__[queue].leftappend(job)
+                    else:
+                        server.__dict__[queue].append(job)
                 log.warning(f"{queue} worker finished job: {result} - queue: {server.__dict__[queue]}")
                 await asyncio.sleep(interval)
         except Exception as e:
