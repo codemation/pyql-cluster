@@ -1142,7 +1142,7 @@ async def run(server):
                 asyncio.sleep(0.01)
                 cur_wait+=0.01
             else:
-                return {"error": trace.error(f"timeout reached waiting for {table} to un-pause")}
+                return {"error": trace.error(f"timeout reached waiting for {log_table} to un-pause")}
 
         table_endpoints = await get_table_endpoints(
             log_cluster, 
