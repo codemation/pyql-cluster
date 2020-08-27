@@ -237,8 +237,18 @@ async def run(server):
     async def table_flush_auth(database: str, table: str,  flush_path: dict, **kw):
         async def table_flush_task():
             return await table_flush(database, table, flush_path, **kw)
+        
+        # flush tasks can over-ride each other, since each flush operation pulls 
+        # subsequently more each time
+        server.flush_table_tasks[f"{database}_{table}"] = table_flush_task
+        async def flush_job():
+            if f"{database}_{table}" in server.flush_table_tasks:
+                job = server.flush_table_tasks.pop(f"{database}_{table}")
+                return await job()
+            return {"message": "no flush work to perform"}
+
         server.flush.append(
-            table_flush_task # awaited via flush workers 
+            flush_job # table_flush_task # awaited via flush workers
         )
         return log.warning(f"added a flush op for {database} {table}")
 
