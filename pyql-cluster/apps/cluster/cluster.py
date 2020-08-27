@@ -2601,7 +2601,8 @@ async def run(server):
                 'id': job['id']
             }
         }
-        while True:
+        start_time, max_timeout = time.time(), 10.0
+        while time.time() - start_time < max_timeout:
             job_check = await table_select(pyql, 'jobs', data=job_select, method='POST', **kw)
             if len(job_check['data']) == 0:
                 return {"message": trace(f"failed to reserve job {job['id']}, no longer exists")}
@@ -2618,6 +2619,8 @@ async def run(server):
                         }
                 return job_check
             return {"message": trace(f"{job['id']} was reserved by another worker")}
+        else:
+            return {"message": trace.error(f"timeout of {max_timeout} reached while trying to reserve job")}
 
     @server.trace
     async def jobqueue(job_type, node=None, **kw):
