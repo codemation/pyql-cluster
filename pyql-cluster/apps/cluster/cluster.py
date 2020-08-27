@@ -67,7 +67,7 @@ async def run(server):
     # Table created only if 'init' is passed into os.environ['PYQL_CLUSTER_ACTION']
     tables = []
     if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
-        table_list = ['clusters', 'endpoints', 'tables', 'state', 'transactions', 'jobs', 'auth', 'data_to_txn_cluster']
+        table_list = ['clusters', 'endpoints', 'tables', 'state', 'jobs', 'auth', 'data_to_txn_cluster']
         tables = [{table_name: await server.get_table_config('cluster', table_name)} for table_name in table_list]
     
     join_job_type = "node" if os.environ['PYQL_CLUSTER_ACTION'] == 'init' or len(endpoints) == 1 else 'cluster'
@@ -587,12 +587,6 @@ async def run(server):
         results = {}
         results['state'] = await cluster_table_change(pyql, 'state', 'delete', delete_where, **kw)
         results['endpoints'] = await cluster_table_change(pyql, 'endpoints', 'delete', delete_where, **kw)
-        results['transactions'] = await cluster_table_change(
-            pyql, 
-            'transactions', 
-            'delete', {'where': {'cluster': cluster, 'endpoint': endpoint}},
-            **kw
-            )
         return {"message": trace(f"deleted {endpoint} successfully - results {results}")}
     server.clusterjobs['cluster_endpoint_delete'] = cluster_endpoint_delete
 
@@ -1343,7 +1337,7 @@ async def run(server):
                 if len(change_logs['txns']) > 0:
                     # Better solution - maintain transactions table for transactions, table sync and logic is already available
                     for txn in change_logs['txns']:
-                        await post_request_tables(pyql,'transactions','insert', txn, **kw)
+                        await post_request_tables(pyql, 'transactions', 'insert', txn, **kw)
             if cluster == pyql and table in pyql_txn_exceptions:
                 pass
             else:
@@ -2888,8 +2882,7 @@ async def run(server):
                     'clusters', 
                     'auth', 
                     'endpoints', 
-                    'jobs', 
-                    'transactions'
+                    'jobs'
                 ]
                 jobs_to_run_ordered = []
                 ready_jobs = []
