@@ -240,17 +240,23 @@ async def run(server):
         
         # flush tasks can over-ride each other, since each flush operation pulls 
         # subsequently more each time
-        server.flush_table_tasks[f"{database}_{table}"] = table_flush_task
+        if not f"{database}_{table}" in server.flush_table_tasks:
+            server.flush_table_tasks[f"{database}_{table}"] = {'work': 0, 'task': table_flush_task}
+        server.flush_table_tasks[f"{database}_{table}"]['task'] = table_flush_task
         async def flush_job():
             if f"{database}_{table}" in server.flush_table_tasks:
-                job = server.flush_table_tasks.pop(f"{database}_{table}")
-                return await job()
+                job = server.flush_table_tasks[f"{database}_{table}"].pop('task')
+                result = await job()
+                server.flush_table_tasks[f"{database}_{table}"]['work'] -=1
+            server.flush_table_tasks[f"{database}_{table}"]['work'] -=1
             return {"message": "no flush work to perform"}
 
-        server.flush.append(
-            flush_job # table_flush_task # awaited via flush workers
-        )
-        return log.warning(f"added a flush op for {database} {table}")
+        if server.flush_table_tasks[f"{database}_{table}"]['work'] < 10:
+            server.flush.append(
+                flush_job # table_flush_task # awaited via flush workers
+            )
+            log.warning(f"added a flush op for {database} {table}")
+        return {"message": f"table flush triggered"}
 
     async def table_flush(database: str, table: str, flush_path: dict, **kw):
         # acquire table lock 
