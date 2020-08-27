@@ -1,14 +1,17 @@
-import time
+import time, uuid
 
 class Tracer:
     def __init__(self, name, root=None, logger=None):
         self.logger = logger
         self.name = name
         self.root = root
+        self.op_id = None
+        if self.root == None:
+            self.op_id = uuid.uuid1()
         self.start = time.time()
     def get_callers(self, path=''):
         if self.root == None:
-            return f"{self.name}{path}"
+            return f"{self.op_id} {self.name}{path}"
         else:
             path = f" --> {self.name}{path}"
             return self.root.get_callers(path)
