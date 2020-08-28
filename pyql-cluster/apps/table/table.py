@@ -65,7 +65,7 @@ async def run(server):
         # initializes lock generator with .asend(None) & returns lock
         return new_lock
     @server.api_route('/db/{database}/cache/{timestamp}')
-    async def def get_db_cache_by_timestamp_api(database: str, timestamp: float, request: Request):
+    async def get_db_cache_by_timestamp_api(database: str, timestamp: float, request: Request):
         return await get_db_cache_by_timestamp(database, timestamp, request=await server.process_request(request))
     async def get_db_cache_by_timestamp(database, timestamp, **kw):
         cache_enabled = server.data[database].cache_enabled
