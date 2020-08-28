@@ -794,7 +794,7 @@ async def run(server):
             where={'node': node_id}
         )
         trace(f"current_quorum - {updated_quorum}")
-        return {"quorum": updated_quorum}
+        return {"quorum": updated_quorum[0]}
     server.clusterjobs['cluster_quorum_update'] = cluster_quorum_update
 
 
