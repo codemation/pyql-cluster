@@ -743,7 +743,7 @@ async def run(server):
 
         quorum_to_set = {
             'in_quorum': False,
-            'nodes': in_quorum_nodes
+            'nodes': in_quorum_nodes,
             'missing': missing_nodes
             }
         if len(in_quorum_nodes) / len(pyql_endpoints) >= 2/3:
