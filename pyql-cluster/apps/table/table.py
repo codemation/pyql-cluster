@@ -264,11 +264,13 @@ async def run(server):
             server.flush_table_tasks[f"{database}_{table}"]['work'] -=1
             return {"message": "no flush work to perform"}
 
-        if server.flush_table_tasks[f"{database}_{table}"]['work'] < 10:
+        if server.flush_table_tasks[f"{database}_{table}"]['work'] < 3:
             server.flush.append(
                 flush_job # table_flush_task # awaited via flush workers
             )
             log.warning(f"added a flush op for {database} {table}")
+        else:
+            log.warning(f"max flush ops queued for {database} {table}")
         return {"message": f"table flush triggered"}
 
     async def table_flush(database: str, table: str, flush_path: dict, **kw):
