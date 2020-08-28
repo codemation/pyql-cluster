@@ -70,7 +70,7 @@ async def run(server):
     async def get_db_cache_by_timestamp(database, timestamp, **kw):
         cache_enabled = server.data[database].cache_enabled
         cache = None
-        if not timestamp in server.data[database].cache.timestamp_to_cache:
+        if timestamp in server.data[database].cache.timestamp_to_cache:
             cache = server.data[database].cache.timestamp_to_cache[timestamp]
         return {
             f'{timestamp}': cache if not cache == None else 'no cache found'
