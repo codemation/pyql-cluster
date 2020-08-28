@@ -2677,20 +2677,23 @@ async def run(server):
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         trace = kw['trace']
         reservation = str(uuid.uuid1())
-        job_update = {
-            'set': {
-                'node': node_id,
-                'reservation': reservation,
-            }, 
-            'where': {
-                'id': job['id'], 
-                'node': None
+
+        async def reserve_or_rollback(rollback=False):
+
+            job_update = {
+                'set': {
+                    'node': node_id if not rollback else None,
+                    'reservation': reservation if not rollback else None
+                }, 
+                'where': {
+                    'id': job['id'], 
+                    'node': None if not rollback else node_id
+                }
             }
-        }
-        result = await cluster_table_change(pyql, 'jobs', 'update', job_update, **kw)
-        if not result:
-            trace.error(f"failed to reserve job {job} for node {node} with reservation {reservation}")
-            return {"message": trace("no jobs to process at this time")}
+            result = await cluster_table_change(pyql, 'jobs', 'update', job_update, **kw)
+            op = 'reserve' if not rollback else 'rollback'
+            return trace(f"{op} completed for job {job['id']} with result {result}")
+        _ = await reserve_or_rollback()
 
         # verify if job was reserved by node and pull config
         job_select = {
@@ -2718,6 +2721,7 @@ async def run(server):
                 return job_check
             return {"message": trace(f"{job['id']} was reserved by another worker")}
         else:
+            _ = await reserve_or_rollback(rollback=True)
             return {"message": trace.error(f"timeout of {max_timeout} reached while trying to reserve job")}
 
     @server.trace
