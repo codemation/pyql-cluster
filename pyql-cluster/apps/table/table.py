@@ -248,6 +248,7 @@ async def run(server):
                 job = server.flush_table_tasks[f"{database}_{table}"].pop('task')
                 result = await job()
                 server.flush_table_tasks[f"{database}_{table}"]['work'] -=1
+                return {"table_flush_task_result": result}
             server.flush_table_tasks[f"{database}_{table}"]['work'] -=1
             return {"message": "no flush work to perform"}
 
