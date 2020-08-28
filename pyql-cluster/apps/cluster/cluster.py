@@ -772,14 +772,17 @@ async def run(server):
                 }
                 add_healing_job_result = await jobs_add(job, **kw)
                 trace(f"add_healing_job_result - {add_healing_job_result}")
-
+            else:
+                if last_quorum['health'] = 'healing':
+                    trace(f"last_quorum is ready=True and health='healing', marking helathy")
+                    quorum_to_set['health'] = 'healthy'
         else:
             trace(f"node is in_quorum=False")
             if last_quorum['ready'] == True:
                 trace(f"last_quorum ready=True, so will mark this endpoint ready=False")
                 quorum_to_set['ready'] = False
             # mark un-healhty if healing or healthy
-            if last_quorum['health'] in {'healhty', 'healing'}:
+            if last_quorum['health'] in {'healthy', 'healing'}:
                 trace(f"last_quorum health = healthy|healing, so will mark this endpoint health='unhealthy")
                 quorum_to_set['health'] = 'unhealthy'
                 # mark all endpoints stale for this node
@@ -3474,6 +3477,29 @@ async def run(server):
             )
         state_update_results = await asyncio.gather(*state_updates, loop=loop)
         trace(f"{cluster} {table} {job} state_update_results: {state_update_results}")
+
+        for _endpoint in new_or_stale_endpoints:
+            if not _endpoint in alive_endpoints:
+                continue
+            endpoint = new_or_stale_endpoints[_endpoint]
+                # trigger table creation on new_endpoint
+            db = endpoint['db_name']
+            path = endpoint['path']
+            epuuid = endpoint['uuid']
+            if cluster == pyql:
+                trace(f"checking if pyql endpoint can be marked ready=True")
+                ready = True
+                for table_state in await server.clusters.state.select(
+                    'state', 'name', 
+                    where={"uuid": epuuid}
+                    ):
+                    if table_state['loaded'] in ['new', 'stale']:
+                        trace(f"{table_state['name']} is still {table_state['loaded']}, cannot mark endpoint ready")
+                        ready=False
+                        break
+                # no tables for endpoint are in_sync false - mark endpoint ready = True
+                if ready:
+                    await update_cluster_ready(path=path, ready=True, **kw)
 
         return {"state_update_results": state_update_results, "flush_results": flush_results}
 
