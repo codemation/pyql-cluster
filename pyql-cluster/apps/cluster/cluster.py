@@ -1555,7 +1555,7 @@ async def run(server):
                 else:
                     endpoint_choice = loaded_endpoints.pop(0)
             if not quorum == None and cluster == pyql:
-                if not endpoint_choice in quorum['quorum']['nodes']['nodes']:
+                if not endpoint_choice in quorum['quorum']['nodes']:
                     trace.warning(f"get_random_table_endpoint skipped pyql endpoint {endpoint_choice} as not in quorum")
                     if len(loaded_endpoints) == 0 and table == 'jobs':
                         await pyql_reset_jobs_table(**kw)   
