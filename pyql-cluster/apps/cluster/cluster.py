@@ -763,7 +763,7 @@ async def run(server):
                         'cluster': pyql, 
                         'table': 'state', 
                         'data': {
-                            'set': {'loaded': 'stale'},
+                            'set': {'state': 'stale'},
                             'where': {
                                 'uuid': node_id
                             }
