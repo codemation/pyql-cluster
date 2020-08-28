@@ -267,7 +267,7 @@ async def run(server):
                 for node in pyql_nodes:
                     if node['uuid'] in headers['unsafe']:
                         continue
-                    if not node['uuid'] in node_quorum['nodes']['nodes']:
+                    if not node['uuid'] in node_quorum['nodes']:
                         log.warning(f"node {node} was not yet 'unsafe' but is not in_quorum - {node_quorum} -, marking unsafe and will try other, if any")
                         headers['unsafe'].append(node['uuid'])
                         continue
@@ -649,7 +649,7 @@ async def run(server):
             if alive_endpoints[endpoint]['status'] == 200:
                 alive_endpoints_nodes.append(endpoint)
         # Compare live endpoints to current quorum 
-        latestQuorumNodes = quorum[0]['nodes']['nodes']
+        latestQuorumNodes = quorum[0]['nodes']
         if len(alive_endpoints_nodes) / len(pyql_endpoints) < 2/3: 
             quorum = {'alive': alive_endpoints_nodes, 'members': pyql_endpoints}
             server.http_exception(
@@ -731,14 +731,21 @@ async def run(server):
 
         # build list of in_quorum & missing nodes
 
-        in_quorum_nodes, missing_nodes = [], []
+        in_quorum_nodes, missing_nodes = {}, {}
         for endpoint in alive_endpoints:
             if alive_endpoints[endpoint]['status'] == 200:
-                in_quorum_nodes.append(endpoint)
+                in_quorum_nodes[endpoint] = time.time()
             else:
-                missing_nodes.append(endpoint)
+                if not endpoint in last_quorum['missing']:
+                    missing_nodes[endpoint] = time.time()
+                else:
+                    missing_nodes[endpoint] = last_quorum['missing'][endpoint]
 
-        quorum_to_set = {'in_quorum': False}
+        quorum_to_set = {
+            'in_quorum': False,
+            'nodes': in_quorum_nodes
+            'missing': missing_nodes
+            }
         if len(in_quorum_nodes) / len(pyql_endpoints) >= 2/3:
             trace(f"node is in_quorum=True")
             quorum_to_set['in_quorum'] = True
@@ -3935,7 +3942,7 @@ async def run(server):
 
         await server.clusters.quorum.insert(**{
             'node': node_id,
-            'nodes': {'nodes': [node_id]},
+            'nodes': {node_id: time.time()},
             'missing': {},
             'in_quorum': ready_and_quorum,
             'health': health,
