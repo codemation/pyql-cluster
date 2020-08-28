@@ -773,7 +773,7 @@ async def run(server):
                 add_healing_job_result = await jobs_add(job, **kw)
                 trace(f"add_healing_job_result - {add_healing_job_result}")
             else:
-                if last_quorum['health'] = 'healing':
+                if last_quorum['health'] == 'healing':
                     trace(f"last_quorum is ready=True and health='healing', marking helathy")
                     quorum_to_set['health'] = 'healthy'
         else:
