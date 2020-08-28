@@ -712,11 +712,11 @@ async def run(server):
             '*', 
             where={'cluster': pyql}
         )
-        if len(endpoints) == 0:
-            return {"message": trace(f"cluster_quorum_update node {node_id} is still syncing")}
-        if len(endpoints) == 1:
-            health = 'healthy'
 
+        if len(pyql_endpoints) == 0:
+            return {"message": trace(f"cluster_quorum_update node {node_id} is still syncing")}
+        if len(pyql_endpoints) == 1:
+            health = 'healthy'
         # get last recorded quorum - to check against
         last_quorum = await server.clusters.quorum.select(
             '*', 
