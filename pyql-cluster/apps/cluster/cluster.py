@@ -3493,8 +3493,8 @@ async def run(server):
                     'state', 'name', 
                     where={"uuid": epuuid}
                     ):
-                    if table_state['loaded'] in ['new', 'stale']:
-                        trace(f"{table_state['name']} is still {table_state['loaded']}, cannot mark endpoint ready")
+                    if table_state['state'] in ['new', 'stale']:
+                        trace(f"{table_state['name']} is still {table_state['state']}, cannot mark endpoint ready")
                         ready=False
                         break
                 # no tables for endpoint are in_sync false - mark endpoint ready = True
