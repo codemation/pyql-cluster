@@ -265,7 +265,7 @@ async def run(server):
             server.flush_table_tasks[f"{database}_{table}"]['work'] -=1
             return {"message": "no flush work to perform"}
 
-        if server.flush_table_tasks[f"{database}_{table}"]['work'] < 3:
+        if server.flush_table_tasks[f"{database}_{table}"]['work'] < 10:
             server.flush.append(
                 flush_job # table_flush_task # awaited via flush workers
             )
