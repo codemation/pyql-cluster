@@ -708,6 +708,101 @@ async def run(server):
         trace = kw['trace']
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
+        pyql_endpoints = await server.clusters.endpoints.select(
+            '*', 
+            where={'cluster': pyql}
+        )
+        if len(endpoints) == 0:
+            return {"message": trace(f"cluster_quorum_update node {node_id} is still syncing")}
+        if len(endpoints) == 1:
+            health = 'healthy'
+
+        # get last recorded quorum - to check against
+        last_quorum = await server.clusters.quorum.select(
+            '*', 
+            where={'node': node_id}
+        )
+        last_quorum = last_quorum[0]
+        trace(f"last_quorum  - {last_quorum}")
+
+        # check alive endpoints
+        alive_endpoints = await get_alive_endpoints(pyql_endpoints, **kw)
+        trace(f"alive_endpoints - {alive_endpoints}")
+
+        # build list of in_quorum & missing nodes
+
+        in_quorum_nodes, missing_nodes = [], []
+        for endpoint in alive_endpoints:
+            if alive_endpoints[endpoint]['status'] == 200:
+                in_quorum_nodes.append(endpoint)
+            else:
+                missing_nodes.append(endpoint)
+
+        quorum_to_set = {'in_quorum': False}
+        if len(in_quorum_nodes) / len(pyql_endpoints) >= 2/3:
+            trace(f"node is in_quorum=True")
+            quorum_to_set['in_quorum'] = True
+            if last_quorum['ready'] == False:
+                trace(f"last_quorum was ready=False, will mark endpoint 'healing'")
+                quorum_to_set['health'] = 'healing'
+                # create healing job - which marks endpoint stale
+                # on all pyql endpoints, thus triggering re-sync & 
+                # will mark endpoint ready upon healing
+                job = {
+                    'job': f"{node_id}_mark_state_stale",
+                    'job_type': 'cluster',
+                    'action': 'table_update',
+                    'config': {
+                        'cluster': pyql, 
+                        'table': 'state', 
+                        'data': {
+                            'set': {'loaded': 'stale'},
+                            'where': {
+                                'uuid': node_id
+                            }
+                        }
+                    }
+                }
+                add_healing_job_result = await jobs_add(job, **kw)
+                trace(f"add_healing_job_result - {add_healing_job_result}")
+
+        else:
+            trace(f"node is in_quorum=False")
+            if last_quorum['ready'] == True:
+                trace(f"last_quorum ready=True, so will mark this endpoint ready=False")
+                quorum_to_set['ready'] = False
+            # mark un-healhty if healing or healthy
+            if last_quorum['health'] in {'healhty', 'healing'}:
+                trace(f"last_quorum health = healthy|healing, so will mark this endpoint health='unhealthy")
+                quorum_to_set['health'] = 'unhealthy'
+                # mark all endpoints stale for this node
+                await server.clusters.state.update(
+                    loaded='stale',
+                    where={
+                        'uuid': node_id
+                    }
+                )
+        trace(f"quorum_to_set - {quorum_to_set}")
+        await server.clusters.quorum.update(
+            **quorum_to_set,
+            where={
+                'node': node_id
+            }
+        )
+        updated_quorum = await server.clusters.quorum.select(
+            '*',
+            where={'node': node_id}
+        )
+        trace(f"current_quorum - {updated_quorum}")
+        return {"quorum": updated_quorum}
+    server.clusterjobs['cluster_quorum_update'] = cluster_quorum_update
+
+
+    @server.trace
+    async def cluster_quorum_update_old(**kw):
+        trace = kw['trace']
+        kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
+        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         endpoints = await server.clusters.endpoints.select('*', where={'cluster': pyql})
         if len(endpoints) == 0:
             # may be a new node / still syncing
@@ -831,7 +926,6 @@ async def run(server):
         return {
             "message": trace(f"cluster_quorum_update on node {node_id} updated successfully"),
             'quorum': quorum_select[0]}
-    server.clusterjobs['cluster_quorum_update'] = cluster_quorum_update
 
     @server.trace
     async def cluster_quorum(update=False, **kw):
