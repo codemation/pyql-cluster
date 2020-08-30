@@ -286,7 +286,7 @@ async def run(server):
             if lock == lock_id:
         """
         # pull last txn time 
-        last_txn_time = server.data[PYQL_TABLE_DB].tables['pyql'].select(
+        last_txn_time = await server.data[PYQL_TABLE_DB].tables['pyql'].select(
             'last_txn_time',
             where={
                 'table_name': table
