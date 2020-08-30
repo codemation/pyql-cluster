@@ -264,7 +264,7 @@ async def run(server):
                 result = await job()
                 server.flush_table_tasks[f"{database}_{table}"]['work'] -=1
                 return {"table_flush_task_result": result}
-            count -=1
+            server.flush_table_tasks[f"{database}_{table}"]['work'] -=1
             return {"message": "no flush work to perform"}
 
         if count < 31:
