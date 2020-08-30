@@ -250,6 +250,7 @@ async def run(server):
         async def table_flush_task():
             return await table_flush(database, table, flush_path, **kw)
         
+        """
         # flush tasks can over-ride each other, since each flush operation pulls 
         # subsequently more each time
         if not f"{database}_{table}" in server.flush_table_tasks:
@@ -272,6 +273,8 @@ async def run(server):
             log.warning(f"added a flush op for {database} {table}")
         else:
             log.warning(f"max flush ops queued for {database} {table}")
+        """
+        server.flush.append(table_flush_task)
         return {"message": f"table flush triggered"}
 
     async def table_flush(database: str, table: str, flush_path: dict, **kw):
