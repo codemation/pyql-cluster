@@ -265,7 +265,7 @@ async def run(server):
             server.flush_table_tasks[f"{database}_{table}"]['work'] -=1
             return {"message": "no flush work to perform"}
 
-        if server.flush_table_tasks[f"{database}_{table}"]['work'] < 10:
+        if server.flush_table_tasks[f"{database}_{table}"]['work'] < 3:
             server.flush.append(
                 flush_job # table_flush_task # awaited via flush workers
             )
@@ -275,6 +275,8 @@ async def run(server):
         return {"message": f"table flush triggered"}
 
     async def table_flush(database: str, table: str, flush_path: dict, **kw):
+        
+        """
         # acquire table lock 
         lock_id = str(uuid.uuid1())
         log.warning(f"trying to acquire lock using lock_id: {lock_id}")
@@ -282,40 +284,49 @@ async def run(server):
         table_lock = await get_table_lock(table, lock_id)
         async for lock, last_txn_time in table_lock:
             if lock == lock_id:
-                log.warning(f"table_flush - table {table} lock acquired using {lock}")
-                # Using flush_path - pull txns newer than the latest txn
-                new_txns, rc  = await server.probe(
-                    flush_path["tx_cluster_path"],
-                    token=flush_path['token'],
-                    method='POST',
-                    data={
-                        "select": ["timestamp", "txn"],
-                        "where": [
-                            ["timestamp", ">", last_txn_time]
-                        ]
-                    }
-                )
-                if not 'data' in new_txns:
-                    log.error(f"ERROR encountered in table_flush - {new_txns} - releasing lock")
-                    continue
-                new_txns = new_txns['data']
-                # update latest txn
-                update_last_txn_time = None
-                for txn in new_txns:
-                    coros_to_gather = []
-                    for action, data in txn['txn'].items():
-                        if not update_last_txn_time == None:
-                            coros_to_gather.append(update_last_txn_time)
-                        coros_to_gather.append(
-                            server.actions[action](database, table, data)
-                        )
-                        await asyncio.gather(*coros_to_gather)
-                        update_last_txn_time = server.data[PYQL_TABLE_DB].tables['pyql'].update(
-                            last_txn_time=txn['timestamp'],
-                            where={"table_name": table}
-                        )
+        """
+        # pull last txn time 
+        last_txn_time = server.data[PYQL_TABLE_DB].tables['pyql'].select(
+            'last_txn_time',
+            where={
+                'table_name': table
+            }
+        )
+        last_txn_time = last_txn_time[0]['last_txn_time']
+
+        log.warning(f"table_flush - table {table} pulling using last_txn_time {last_txn_time}")
+        # Using flush_path - pull txns newer than the latest txn
+        new_txns, rc  = await server.probe(
+            flush_path["tx_cluster_path"],
+            token=flush_path['token'],
+            method='POST',
+            data={
+                "select": ["timestamp", "txn"],
+                "where": [
+                    ["timestamp", ">", last_txn_time]
+                ]
+            }
+        )
+        if not 'data' in new_txns:
+            return log.error(f"ERROR encountered in table_flush - {new_txns} - releasing lock")
+        new_txns = new_txns['data']
+        # update latest txn
+        update_last_txn_time = None
+        for txn in new_txns:
+            coros_to_gather = []
+            for action, data in txn['txn'].items():
                 if not update_last_txn_time == None:
-                    await update_last_txn_time
+                    coros_to_gather.append(update_last_txn_time)
+                coros_to_gather.append(
+                    server.actions[action](database, table, data)
+                )
+                await asyncio.gather(*coros_to_gather)
+                update_last_txn_time = server.data[PYQL_TABLE_DB].tables['pyql'].update(
+                    last_txn_time=txn['timestamp'],
+                    where={"table_name": table}
+                )
+        if not update_last_txn_time == None:
+            await update_last_txn_time
             
         # release table lock is issued by completely existing for loop
         return log.warning(f"{database} {table} table_flush completed successfully")
