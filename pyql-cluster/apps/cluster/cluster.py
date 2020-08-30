@@ -1178,7 +1178,7 @@ async def run(server):
                 # create limited use token
                 limited_use_token = await server.create_auth_token(
                     cluster, # id
-                    time.time() + 30,
+                    time.time() + 300, # 5 Minutes
                     'cluster',
                     extra_data={
                         'cluster_allowed': txn_cluster_id,
