@@ -250,31 +250,31 @@ async def run(server):
         async def table_flush_task():
             return await table_flush(database, table, flush_path, **kw)
         
-        """
         # flush tasks can over-ride each other, since each flush operation pulls 
         # subsequently more each time
         if not f"{database}_{table}" in server.flush_table_tasks:
             server.flush_table_tasks[f"{database}_{table}"] = {'work': 0, 'task': table_flush_task}
+
+        count = server.flush_table_tasks[f"{database}_{table}"]['work']
         server.flush_table_tasks[f"{database}_{table}"]['task'] = table_flush_task
-        server.flush_table_tasks[f"{database}_{table}"]['work'] +=1
+        count +=1
         async def flush_job():
             if 'task' in server.flush_table_tasks[f"{database}_{table}"]:
                 job = server.flush_table_tasks[f"{database}_{table}"].pop('task')
                 result = await job()
-                server.flush_table_tasks[f"{database}_{table}"]['work'] -=1
+                count -=1
                 return {"table_flush_task_result": result}
-            server.flush_table_tasks[f"{database}_{table}"]['work'] -=1
+            count -=1
             return {"message": "no flush work to perform"}
 
-        if server.flush_table_tasks[f"{database}_{table}"]['work'] < 10:
+        if count < 31:
             server.flush.append(
                 flush_job # table_flush_task # awaited via flush workers
             )
-            log.warning(f"added a flush op for {database} {table}")
+            log.warning(f"added a flush op for {database} {table} - {count} / 30")
         else:
-            log.warning(f"max flush ops queued for {database} {table}")
-        """
-        server.flush.append(table_flush_task)
+            log.warning(f"max flush ops queued for {database} {table} - {count}")
+        #server.flush.append(table_flush_task)
         return {"message": f"table flush triggered"}
 
     async def table_flush(database: str, table: str, flush_path: dict, **kw):
