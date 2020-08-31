@@ -2499,7 +2499,7 @@ async def run(server):
 
         if is_pyql_bootstrapped and not is_new_endpoint:
             trace(f"Not bootrapping cluster, not a new endpoint, starting tablesync_mgr")
-                await tablesync_mgr(**kw)
+            await tablesync_mgr(trace=trace)
         # pyql setup - sets pyql_uuid in env 
         setup, rc = await probe(
             f"http://{config['path']}/pyql/setup",
