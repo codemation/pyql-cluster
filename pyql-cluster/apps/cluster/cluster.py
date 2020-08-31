@@ -3546,6 +3546,7 @@ async def run(server):
             )
         #state_update_results = await asyncio.gather(*state_updates, loop=loop)
         trace(f"{cluster} {table} {job} state_update_results: {state_update_results}")
+        await asyncio.sleep(10)
 
         for _endpoint in new_or_stale_endpoints:
             if not _endpoint in alive_endpoints:
