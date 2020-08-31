@@ -2734,8 +2734,10 @@ async def run(server):
         queue = f'{job_type}s' if not job_type == 'cron' else job_type
 
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
-        if pyql == None:
-            return {"message": trace("cluster is still bootstrapping, try again later")}
+        ready = await server.clusters.quorum.select('ready', where={'node': node_id})
+        ready  = is_ready[0]['ready']
+        if pyql == None or not ready:
+            return {"message": trace("cluster is not ready or still bootstrapping, try again later")}
 
         endpoints = await server.clusters.endpoints.select(
             '*'
