@@ -3540,6 +3540,7 @@ async def run(server):
                             'name': f"{endpoint}_{table}"
                             }
                     },
+                    trace=trace,
                     loop=loop
                 )
             )
