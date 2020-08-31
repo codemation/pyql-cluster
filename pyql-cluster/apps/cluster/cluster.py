@@ -767,9 +767,10 @@ async def run(server):
                                 'state': 'stale',
                                 'info': {
                                     'stale reason': 'endpoint was out_of_quorum and started healing'
-                                    'operation': trace.get_root_operation()
-                                    }
-                                },
+                                    'operation': trace.get_root_operation(),
+                                    'node': node_id
+                                }
+                            },
                             'where': {
                                 'uuid': node_id
                             }
@@ -796,7 +797,8 @@ async def run(server):
                     loaded='stale',
                     info={
                         'stale reason': 'endpoint became un-healthy'
-                        'operation': trace.get_root_operation()
+                        'operation': trace.get_root_operation(),
+                        'node': node_id
                     },
                     where={
                         'uuid': node_id
@@ -1290,7 +1292,8 @@ async def run(server):
                             "state": 'stale',
                             'info': {
                                 'stale reason': 'log insertion failed'
-                                'operation': trace.get_root_operation()
+                                'operation': trace.get_root_operation(),
+                                'node': node_id
                                 }
                         },
                         "where": {
@@ -2405,9 +2408,10 @@ async def run(server):
                                 'state': 'stale',
                                 'info': {
                                     'stale reason': 'existing endpoint rejoined cluster'
-                                    'operation': trace.get_root_operation()
+                                    'operation': trace.get_root_operation(),
+                                    'node': node_id
                                 }
-                                }, 
+                            }, 
                             'where': {
                                 'uuid': config['database']['uuid'],
                                 'cluster': cluster_id
