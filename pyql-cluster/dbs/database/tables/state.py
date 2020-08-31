@@ -5,11 +5,11 @@ async def db_attach(server):
        'state', [
             ('name', str, 'UNIQUE NOT NULL'),
             ('state', str),
-            ('in_sync', bool),
             ('table_name', str),
             ('cluster', str),
             ('uuid', str), # used for syncing logs 
-            ('last_mod_time', float)
+            ('last_mod_time', float),
+            ('info', str)
        ],
        'name',
        cache_enabled=True
