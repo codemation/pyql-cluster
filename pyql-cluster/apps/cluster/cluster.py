@@ -763,7 +763,10 @@ async def run(server):
                         'cluster': pyql, 
                         'table': 'state', 
                         'data': {
-                            'set': {'state': 'stale'},
+                            'set': {
+                                'state': 'stale',
+                                'info': 'stale reason: endpoint was out_of_quorum and started healing'
+                                },
                             'where': {
                                 'uuid': node_id
                             }
@@ -788,6 +791,7 @@ async def run(server):
                 # mark all endpoints stale for this node
                 await server.clusters.state.update(
                     loaded='stale',
+                    info='stale reason: endpoint became un-healthy',
                     where={
                         'uuid': node_id
                     }
@@ -1277,7 +1281,8 @@ async def run(server):
                 if not log_table == f'txn_{pyql}_state':
                     state_data = {
                         "set": {
-                            "state": 'stale'
+                            "state": 'stale',
+                            'info': 'stale reason: log insertion failed'
                         },
                         "where": {
                             "name": f"{endpoint}_{log_table}"
@@ -2387,7 +2392,10 @@ async def run(server):
                     await cluster_table_change(
                         pyql, 'state', 'update', 
                         {
-                            'set': {'state': 'stale'}, 
+                            'set': {
+                                'state': 'stale',
+                                'info': 'stale reason: existing endpoint re-joined cluster, table is stale'
+                                }, 
                             'where': {
                                 'uuid': config['database']['uuid'],
                                 'cluster': cluster_id
