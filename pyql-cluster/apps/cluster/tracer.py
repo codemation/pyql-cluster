@@ -9,6 +9,10 @@ class Tracer:
         if self.root == None:
             self.op_id = uuid.uuid1()
         self.start = time.time()
+    def get_root_operation(self):
+        if not self.root == None:
+            return self.root.get_root_operation()
+        return self.op_id
     def get_callers(self, path=''):
         if self.root == None:
             return f"{self.op_id} {self.name}{path}"
