@@ -2735,7 +2735,7 @@ async def run(server):
 
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         ready = await server.clusters.quorum.select('ready', where={'node': node_id})
-        ready  = is_ready[0]['ready']
+        ready  = ready[0]['ready']
         if pyql == None or not ready:
             return {"message": trace("cluster is not ready or still bootstrapping, try again later")}
 
