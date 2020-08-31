@@ -4026,7 +4026,7 @@ async def run(server):
             ready_and_quorum = True
             health = 'healthy'
         else:
-            await server.clusters.state.update(in_sync=False, where={'uuid': node_id})
+            await server.clusters.state.update(state='stale', where={'uuid': node_id})
             ready_and_quorum = False
             health = 'healing'
         # Sets ready false for any node with may be restarting as resync is required before marked ready
