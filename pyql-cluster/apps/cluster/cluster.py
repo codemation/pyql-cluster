@@ -3523,11 +3523,12 @@ async def run(server):
 
         # mark table endpoint loaded
         state_updates = []
+        state_update_results = []
         for endpoint in flush_results:
             if not flush_results[endpoint]['status'] == 200:
                 continue
-            state_updates.append(
-                cluster_table_change(
+            state_update_results.append(
+                await cluster_table_change(
                     pyql,
                     'state',
                     'update',
@@ -3542,7 +3543,7 @@ async def run(server):
                     loop=loop
                 )
             )
-        state_update_results = await asyncio.gather(*state_updates, loop=loop)
+        #state_update_results = await asyncio.gather(*state_updates, loop=loop)
         trace(f"{cluster} {table} {job} state_update_results: {state_update_results}")
 
         for _endpoint in new_or_stale_endpoints:
