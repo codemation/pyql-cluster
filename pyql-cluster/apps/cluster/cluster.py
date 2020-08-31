@@ -765,7 +765,10 @@ async def run(server):
                         'data': {
                             'set': {
                                 'state': 'stale',
-                                'info': 'stale reason: endpoint was out_of_quorum and started healing'
+                                'info': {
+                                    'stale reason': 'endpoint was out_of_quorum and started healing'
+                                    'operation': trace.get_root_operation()
+                                    }
                                 },
                             'where': {
                                 'uuid': node_id
@@ -791,7 +794,10 @@ async def run(server):
                 # mark all endpoints stale for this node
                 await server.clusters.state.update(
                     loaded='stale',
-                    info='stale reason: endpoint became un-healthy',
+                    info={
+                        'stale reason': 'endpoint became un-healthy'
+                        'operation': trace.get_root_operation()
+                    },
                     where={
                         'uuid': node_id
                     }
@@ -1282,7 +1288,10 @@ async def run(server):
                     state_data = {
                         "set": {
                             "state": 'stale',
-                            'info': 'stale reason: log insertion failed'
+                            'info': {
+                                'stale reason': 'log insertion failed'
+                                'operation': trace.get_root_operation()
+                                }
                         },
                         "where": {
                             "name": f"{endpoint}_{log_table}"
@@ -2394,7 +2403,10 @@ async def run(server):
                         {
                             'set': {
                                 'state': 'stale',
-                                'info': 'stale reason: existing endpoint re-joined cluster, table is stale'
+                                'info': {
+                                    'stale reason': 'existing endpoint rejoined cluster'
+                                    'operation': trace.get_root_operation()
+                                }
                                 }, 
                             'where': {
                                 'uuid': config['database']['uuid'],
