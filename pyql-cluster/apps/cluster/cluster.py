@@ -1277,7 +1277,7 @@ async def run(server):
                 if not log_table == f'txn_{pyql}_state':
                     state_data = {
                         "set": {
-                            "in_sync": False
+                            "state": 'stale'
                         },
                         "where": {
                             "name": f"{endpoint}_{log_table}"
@@ -3298,6 +3298,7 @@ async def run(server):
 
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
         loop = kw['loop']
+
         sync_results = {}
         if cluster == None or table == None or job == None:
             cluster, table, job = (
@@ -3305,6 +3306,8 @@ async def run(server):
                 config['table'],
                 config['job']
             )
+
+        trace(f"starting for cluster: {cluster} table {table}")
 
         # get list of table endpoints that are not 'loaded'
         table_endpoints = await get_table_endpoints(cluster, table, **kw)
