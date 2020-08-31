@@ -766,7 +766,7 @@ async def run(server):
                             'set': {
                                 'state': 'stale',
                                 'info': {
-                                    'stale reason': 'endpoint was out_of_quorum and started healing'
+                                    'stale reason': 'endpoint was out_of_quorum and started healing',
                                     'operation': trace.get_root_operation(),
                                     'node': node_id
                                 }
@@ -796,7 +796,7 @@ async def run(server):
                 await server.clusters.state.update(
                     loaded='stale',
                     info={
-                        'stale reason': 'endpoint became un-healthy'
+                        'stale reason': 'endpoint became un-healthy',
                         'operation': trace.get_root_operation(),
                         'node': node_id
                     },
@@ -1291,7 +1291,7 @@ async def run(server):
                         "set": {
                             "state": 'stale',
                             'info': {
-                                'stale reason': 'log insertion failed'
+                                'stale reason': 'log insertion failed',
                                 'operation': trace.get_root_operation(),
                                 'node': node_id
                                 }
@@ -2407,7 +2407,7 @@ async def run(server):
                             'set': {
                                 'state': 'stale',
                                 'info': {
-                                    'stale reason': 'existing endpoint rejoined cluster'
+                                    'stale reason': 'existing endpoint rejoined cluster',
                                     'operation': trace.get_root_operation(),
                                     'node': node_id
                                 }
