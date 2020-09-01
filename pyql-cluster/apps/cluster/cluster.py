@@ -3383,8 +3383,8 @@ async def run(server):
                 await get_state_change()
             )
         if f'{pyql_under}_tables' in table:
-            trace(f"pyql tables txn table detected, waiting 5 sec before un-pausing table")
-            await asyncio.sleep(5)
+            trace(f"pyql tables txn table detected, waiting 10 sec before un-pausing table")
+            await asyncio.sleep(10)
         # end cut-over
         await table_pause(cluster, table, 'stop', **kw)
 
