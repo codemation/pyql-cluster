@@ -3298,10 +3298,13 @@ async def run(server):
         # mark table endpoint loaded
         state_update_results = []
         state_updates = []
+
+        pyql_under = '_'.join(pyql.split('-'))
+
         for endpoint in sync_changes_results:
             if not sync_changes_results[endpoint]['status'] == 200:
                 continue
-            if not f'{pyql}_state' in table:
+            if not f'{pyql_under}_state' in table:
                 def get_state_change():
                     return cluster_table_change(
                         pyql,
@@ -3377,7 +3380,7 @@ async def run(server):
             state_update_results.append(
                 await get_state_change()
             )
-        if f'{pyql}_tables' in table:
+        if f'{pyql_under}_tables' in table:
             trace(f"pyql tables txn table detected, waiting 5 sec before un-pausing table")
             await asyncio.sleep(5)
         # end cut-over
