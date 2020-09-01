@@ -3322,7 +3322,7 @@ async def run(server):
                         loop=loop
                     )
             else:
-                def get_state_change():
+                async def get_state_change():
                     state_change = cluster_table_change(
                         pyql,
                         'state',
