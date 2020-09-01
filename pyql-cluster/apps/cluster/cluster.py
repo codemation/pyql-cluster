@@ -3301,44 +3301,93 @@ async def run(server):
         for endpoint in sync_changes_results:
             if not sync_changes_results[endpoint]['status'] == 200:
                 continue
+            if not f'{pyql}_state' in table:
+                def get_state_change():
+                    return cluster_table_change(
+                        pyql,
+                        'state',
+                        'update',
+                        {
+                            'set': {
+                                'state': 'loaded'
+                                },
+                            'where': {
+                                'name': f"{endpoint}_{table}"
+                                }
+                        },
+                        force=True,
+                        loop=loop
+                    )
+            else:
+                def get_state_change():
+                    state_change = cluster_table_change(
+                        pyql,
+                        'state',
+                        'update',
+                        {
+                            'set': {
+                                'state': 'loaded'
+                                },
+                            'where': {
+                                'name': f"{endpoint}_{table}"
+                                }
+                        },
+                        force=True,
+                        loop=loop
+                    )
+                    # check if this txn table is used by pyql state 
+                    trace(f"pyql state txn table detected, waiting 5 sec then grabbing last txn table")
+                    await asyncio.sleep(5)
+                    endpoint = new_or_stale_endpoints[_endpoint]
             
-            def get_state_change():
-                return cluster_table_change(
-                    pyql,
-                    'state',
-                    'update',
-                    {
-                        'set': {
-                            'state': 'loaded'
-                            },
-                        'where': {
-                            'name': f"{endpoint}_{table}"
-                            }
-                    },
-                    force=True,
-                    loop=loop
-                )
+                    db = endpoint['db_name']
+                    path = endpoint['path']
+                    epuuid = endpoint['uuid']
+                    token = endpoint['token']
+
+                    latest_state_data = table_changes['data'] if len(table_changes['data']) > 0 else table_copy['table_copy']
+
+                    latest_state_timestamp = latest_state_data[-1]['timestamp']
+                    state_select_data = {
+                        'select': ['*'],
+                        'where': [
+                            ['timestamp', '>', latest_state_timestamp]
+                        ]
+                    }
+                    latest_state_changes = await table_select(
+                        cluster,
+                        table,
+                        data=state_select_data,
+                        **kw
+                    )
+                    trace(f"lastest state change: {latest_state_changes}")
+                    if len(latest_state_changes) > 0:
+                        sync_changes_requests[epuuid] = {
+                            'path': f"http://{path}/db/{db}/table/{table}/insert",
+                            'data': latest_state_changes,
+                            'timeout': 2.0,
+                            'headers': await get_auth_http_headers('remote', token=token),
+                            'session': await get_endpoint_sessions(epuuid, **kw)
+                        }
+                        state_change_result = await async_request_multi(
+                            sync_requests, 
+                            'POST', 
+                            loop=loop
+                        )
             state_update_results.append(
                 await get_state_change()
             )
-            # creates list of post cut-over state-changes to issue
-            # this is needed for tables like 'state', which limits
-            # cluster table changes to 'loaded' tables
-            state_updates.append(
-                get_state_change()
-            )
-
-
+        if f'{pyql}_tables' in table:
+            trace(f"pyql tables txn table detected, waiting 5 sec before un-pausing table")
+            await asyncio.sleep(5)
         # end cut-over
         await table_pause(cluster, table, 'stop', **kw)
-        state_change_results = [await state_change for state_change in state_updates]
 
         return {
             "sync_table_results": sync_table_results,
             "sync_changes_results": sync_changes_results, 
             "state_updates": {
-                "state_update_results": state_update_results,
-                "state_change_results": state_change_results
+                "state_update_results": state_update_results
             }
         }
 
