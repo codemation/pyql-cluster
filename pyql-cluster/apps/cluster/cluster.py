@@ -3341,12 +3341,12 @@ async def run(server):
                     # check if this txn table is used by pyql state 
                     trace(f"pyql state txn table detected, waiting 5 sec then grabbing last txn table")
                     await asyncio.sleep(5)
-                    endpoint = new_or_stale_endpoints[_endpoint]
+                    state_endpoint = new_or_stale_endpoints[endpoint]
             
-                    db = endpoint['db_name']
-                    path = endpoint['path']
-                    epuuid = endpoint['uuid']
-                    token = endpoint['token']
+                    db = state_endpoint['db_name']
+                    path = state_endpoint['path']
+                    epuuid = state_endpoint['uuid']
+                    token = state_endpoint['token']
 
                     latest_state_data = table_changes['data'] if len(table_changes['data']) > 0 else table_copy['table_copy']
 
