@@ -3364,8 +3364,10 @@ async def run(server):
                         **kw
                     )
                     trace(f"lastest state change: {latest_state_changes}")
+
+                    state_requests = {}
                     if len(latest_state_changes) > 0:
-                        sync_changes_requests[epuuid] = {
+                        state_requests[epuuid] = {
                             'path': f"http://{path}/db/{db}/table/{table}/insert",
                             'data': latest_state_changes,
                             'timeout': 2.0,
@@ -3373,7 +3375,7 @@ async def run(server):
                             'session': await get_endpoint_sessions(epuuid, **kw)
                         }
                         state_change_result = await async_request_multi(
-                            sync_requests, 
+                            state_requests, 
                             'POST', 
                             loop=loop
                         )
