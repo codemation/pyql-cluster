@@ -1249,7 +1249,7 @@ async def run(server):
                 if pause_check[0]['is_paused'] == False:
                     break
                 # wait an try again
-                asyncio.sleep(0.01)
+                await asyncio.sleep(0.01)
                 cur_wait+=0.01
             else:
                 return {"error": trace.error(f"timeout reached waiting for {log_table} to un-pause")}
