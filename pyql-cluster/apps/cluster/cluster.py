@@ -3087,60 +3087,6 @@ async def run(server):
     server.clusterjobs['tablesync_mgr'] = tablesync_mgr
 
     
-    #@server.trace
-    #def table_copy(cluster, table, in_sync_path, in_sync_token, in_sync_uuid,  out_of_sync_path, out_of_sync_token, out_of_sync_uuid, **kw):
-    @server.trace
-    async def table_copy(cluster, table, out_of_sync_path, out_of_sync_token, out_of_sync_uuid, **kw):
-        trace=kw['trace']
-        pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
-        in_sync_table_copy = await table_select(cluster, table, method='GET', **kw)
-
-        # This allows logs to generate for endpoint - following the copy
-        await table_endpoint(cluster, table, out_of_sync_uuid, {'state': 'loaded'}, **kw)
-        if 'unPauseAfterCopy' in kw:
-            # unpause to allow txn logs to generate while syncing
-            r = await table_pause(cluster, table, 'stop', **kw)
-
-        response, rc = await probe(
-            f'{out_of_sync_path}/sync',
-            method='POST', 
-            data=in_sync_table_copy, 
-            token=out_of_sync_token,
-            timeout=None, # liveness has already been checked  
-            session=await get_endpoint_sessions(out_of_sync_uuid, **kw), 
-            **kw)
-        if rc == 400 and 'message' in response:
-            if 'not found in database' in response['message']:
-                # create table & retry resync
-                trace.warning(f"table {table} was not found, attempting to create")
-                tb_config = table_config(cluster, table)
-                response, rc = await probe(
-                    f'{out_of_sync_path}/create', 'POST', tb_config, 
-                    token=out_of_sync_token, 
-                    session=await get_endpoint_sessions(out_of_sync_uuid, **kw),  
-                    **kw)
-                if not rc == 200:
-                    response, rc = trace.error(f"failed to create table using {tb_config}"), 500
-                    return {"message": trace.error(response)}, rc
-                #Retry sync since new table creation
-                response, rc = await probe(
-                    f'{out_of_sync_path}/sync', 
-                    'POST', 
-                    data=in_sync_table_copy, 
-                    token=out_of_sync_token, 
-                    session=await get_endpoint_sessions(out_of_sync_uuid, **kw),
-                    **kw)
-                if not rc == 200:
-                    return {"message": trace.error(response)}, rc
-
-        # mark table endpoint as 'new'
-        if not rc == 200:
-            await table_endpoint(cluster, table, out_of_sync_uuid, {'state': 'new'}, **kw)
-            return {"message": trace.error(response)}, rc
-        trace.warning(f"#SYNC table_copy results {response} {rc}")
-        trace.warning(f"#SYNC initial table copy of {table} in cluster {cluster} completed, need to sync changes now")
-        return response, rc
-
     @server.trace
     async def txn_table_sync(cluster, table, alive_endpoints, table_endpoints, **kw):
         """
@@ -3201,6 +3147,9 @@ async def run(server):
             )
             trace(f"{cluster} {table} create_table_results: {create_table_results}")
 
+        if f'{pyql_under}_tables' in table:
+            await table_pause(cluster, table, 'start', **kw)
+            await asyncio.sleep(3)
         # get copy
         table_copy = await cluster_table_copy(cluster, table, log_cluster=True, **kw)
 
@@ -3240,7 +3189,8 @@ async def run(server):
                 sync_table_results[endpoint['uuid']] = {'status': 200}
 
         # begin cut-over
-        await table_pause(cluster, table, 'start', **kw)
+        if not f'{pyql_under}_tables' in table:
+            await table_pause(cluster, table, 'start', **kw)
 
         if len(table_copy['table_copy']) > 0:
             # pull changes 
