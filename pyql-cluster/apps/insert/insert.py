@@ -6,8 +6,6 @@ async def run(server):
 
     @server.api_route('/db/{database}/table/{table}/insert', methods=['POST'])
     async def insert_func_api(database: str, table: str, params: Union[dict, list], request: Request):
-        if 'params' in params:
-            params = params['params']
         return await insert_func(database, table, params, request=await server.process_request(request))
 
     @server.is_authenticated('local')
@@ -23,6 +21,8 @@ async def run(server):
 
     async def insert(database, table, params, **kw):
         message, rc = await server.check_db_table_exist(database,table)
+        if 'params' in params:
+            params = params['params']
         if rc == 200:
             table = server.data[database].tables[table]
 
