@@ -1231,12 +1231,12 @@ async def run(server):
         return {"result": trace("finished")}
         
     @server.trace
-    async def write_to_txn_logs(log_cluster, log_table, txn, **kw):
+    async def write_to_txn_logs(log_cluster, log_table, txn, force=False, **kw):
         trace = kw['trace']
         loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
 
-        if not 'force' in kw:
+        if not force:
             # check if table is paused
             cur_wait, max_wait = 0.01, 10.0
             while cur_wait < max_wait:
@@ -3318,7 +3318,8 @@ async def run(server):
                                 'name': f"{endpoint}_{table}"
                                 }
                         },
-                        force=True,
+                        trace=trace,
+                        force=True if f'{pyql_under}_tables' in table else False,
                         loop=loop
                     )
             else:
@@ -3335,6 +3336,7 @@ async def run(server):
                                 'name': f"{endpoint}_{table}"
                                 }
                         },
+                        trace=trace,
                         force=True,
                         loop=loop
                     )
