@@ -3323,7 +3323,7 @@ async def run(server):
                     )
             else:
                 async def get_state_change():
-                    state_change = cluster_table_change(
+                    state_change = await cluster_table_change(
                         pyql,
                         'state',
                         'update',
