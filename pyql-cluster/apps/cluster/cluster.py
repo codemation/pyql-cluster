@@ -989,6 +989,9 @@ async def run(server):
     @server.trace
     async def get_table_endpoints(cluster, table, cluster_name=None, **kw):
         trace = kw['trace']
+
+        exclude = [] if not 'exclude' in kw else [kw['exclude']] 
+
         table_endpoints = {'loaded': {}, 'new': {}, 'stale': {}}
 
         # Get cluster Name - coro
@@ -1022,6 +1025,9 @@ async def run(server):
         # process {"<table>.<column>": <value>} into {"<column>": <value>} 
         endpoints_key_split = []
         for endpoint in endpoints:
+            if endpoint in exclude:
+                trace(f"endpoint {endpoint} excluded")
+                continue
             renamed = {}
             for k,v in endpoint.items():
                 renamed[k.split('.')[1]] = v
@@ -1556,6 +1562,7 @@ async def run(server):
     async def get_random_table_endpoint(cluster, table, quorum=None, **kw):
         trace = kw['trace']
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
+
         endpoints = await get_table_endpoints(cluster, table, **kw)
         endpoints = endpoints['loaded']
         loaded_endpoints = [ep for ep in endpoints]
@@ -3312,6 +3319,7 @@ async def run(server):
                         cluster,
                         table,
                         data=state_select_data,
+                        exclude=epuuid, # Avoids use of this endpoint ( marked 'loaded' but not fully synced, yet) 
                         **kw
                     )
                     trace(f"lastest state change: {latest_state_changes}")
