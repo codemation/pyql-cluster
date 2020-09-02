@@ -3107,6 +3107,7 @@ async def run(server):
         trace = kw['trace']
 
         pyql = await server.env['PYQL_UUID']
+        pyql_under = '_'.join(pyql.split('-'))
 
         new_or_stale_endpoints = {}
         new_or_stale_endpoints.update(table_endpoints['new'])
@@ -3248,8 +3249,6 @@ async def run(server):
         # mark table endpoint loaded
         state_update_results = []
         state_updates = []
-
-        pyql_under = '_'.join(pyql.split('-'))
 
         for endpoint in sync_changes_results:
             if not sync_changes_results[endpoint]['status'] == 200:
