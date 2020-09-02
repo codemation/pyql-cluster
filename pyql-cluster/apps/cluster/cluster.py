@@ -3236,7 +3236,7 @@ async def run(server):
 
                 sync_changes_requests[epuuid] = {
                     'path': f"http://{path}/db/{db}/table/{table}/insert",
-                    'data': table_changes,
+                    'data': {'params': table_changes['data']},
                     'timeout': 2.0,
                     'headers': await get_auth_http_headers('remote', token=token),
                     'session': await get_endpoint_sessions(epuuid, **kw)
@@ -3328,7 +3328,7 @@ async def run(server):
                     if len(latest_state_changes['data']) > 0:
                         state_requests[epuuid] = {
                             'path': f"http://{path}/db/{db}/table/{table}/insert",
-                            'data': latest_state_changes,
+                            'data': {'params': latest_state_changes['data']},
                             'timeout': 2.0,
                             'headers': await get_auth_http_headers('remote', token=token),
                             'session': await get_endpoint_sessions(epuuid, **kw)
