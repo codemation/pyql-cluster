@@ -1025,7 +1025,7 @@ async def run(server):
         # process {"<table>.<column>": <value>} into {"<column>": <value>} 
         endpoints_key_split = []
         for endpoint in endpoints:
-            if endpoint in exclude:
+            if endpoint['endpoints.uuid'] in exclude:
                 trace(f"endpoint {endpoint} excluded")
                 continue
             renamed = {}
