@@ -3322,11 +3322,10 @@ async def run(server):
                         exclude=epuuid, # Avoids use of this endpoint ( marked 'loaded' but not fully synced, yet) 
                         **kw
                     )
-                    latest_state_changes = latest_state_changes['data']
                     trace(f"lastest state change: {latest_state_changes}")
 
                     state_requests = {}
-                    if len(latest_state_changes) > 0:
+                    if len(latest_state_changes['data']) > 0:
                         state_requests[epuuid] = {
                             'path': f"http://{path}/db/{db}/table/{table}/insert",
                             'data': latest_state_changes,
