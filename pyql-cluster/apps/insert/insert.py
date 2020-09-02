@@ -47,7 +47,7 @@ async def run(server):
                     for k,v in item.items(): 
                         if not k in table.columns:
                             error = f"invalid key provided '{k}' not found in table {table.name}, valid keys {[col for col in table.columns]}"
-                         multi_insert  log.error(error)
+                            log.error(error)
                             server.http_exception(400, error)
                     multi_insert.append(
                         insert_to_db(item)
