@@ -3322,6 +3322,7 @@ async def run(server):
                         exclude=epuuid, # Avoids use of this endpoint ( marked 'loaded' but not fully synced, yet) 
                         **kw
                     )
+                    latest_state_changes = latest_state_changes['data']
                     trace(f"lastest state change: {latest_state_changes}")
 
                     state_requests = {}
@@ -3338,6 +3339,7 @@ async def run(server):
                             'POST', 
                             loop=loop
                         )
+                        trace(f"state_change_result: - {state_change_result}")
             state_update_results.append(
                 await get_state_change()
             )
