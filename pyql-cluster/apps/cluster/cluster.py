@@ -721,7 +721,7 @@ async def run(server):
         if len(in_quorum_nodes) / len(pyql_endpoints) >= 2/3:
             trace(f"node is in_quorum=True")
             quorum_to_set['in_quorum'] = True
-            if last_quorum['ready'] == False:
+            if last_quorum['ready'] == False and not last_quorum['health'] == 'healing':
                 trace(f"last_quorum was ready=False, will mark endpoint 'healing'")
                 quorum_to_set['health'] = 'healing'
                 # create healing job - which marks endpoint stale
