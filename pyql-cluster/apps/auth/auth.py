@@ -246,7 +246,7 @@ async def run(server):
 
     @server.is_authenticated('local')
     async def cluster_set_token_key(location, key, **kw):
-        return await set_token_key(location, key) ## TODO - Convert to async & await
+        return await set_token_key(location, key)
 
 
     @server.api_route('/auth/setup/cluster', methods=['POST'])
@@ -263,7 +263,6 @@ async def run(server):
             'PYQL_CLUSTER_SERVICE_TOKEN', 
             service_token['PYQL_CLUSTER_SERVICE_TOKEN']
         )
-        #TODO - Make probe more "async"
         r, rc = await server.probe(
             f"http://{os.environ['PYQL_CLUSTER_SVC']}/auth/key/cluster",
             auth='remote',
@@ -357,11 +356,6 @@ async def run(server):
         @server.trace
         async def auth_user_register(authtype, user_info, **kw):
             return user_register(authtype, user_info, **kw)
-        """TODO - Delete after testing
-        @server.api_route('/auth/token/user')
-        async def get_user_auth_token_endpoint(request: Request):
-            return await get_user_auth_token(request=await server.process_request(request))
-        """
         
         @server.state_and_quorum_check
         @server.is_authenticated('cluster')
@@ -369,12 +363,6 @@ async def run(server):
         async def get_user_auth_token(**kw):
             return {"token": await create_auth_token(kw['authentication'], time.time() + 3600, 'cluster')}
 
-        """TODO - Delete after testing
-        # Retrieve current local / cluster token - requires auth 
-        @server.api_route('/auth/token/join')
-        async def cluster_service_join_token_endpoint(request: Request):
-            return await cluster_service_join_token( request=await server.process_request(request))
-        """
         @server.state_and_quorum_check
         @server.is_authenticated('cluster')
         @server.trace
