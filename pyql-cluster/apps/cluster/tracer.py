@@ -7,7 +7,7 @@ class Tracer:
         self.root = root
         self.op_id = None
         if self.root == None:
-            self.op_id = uuid.uuid1()
+            self.op_id = str(uuid.uuid1())
         self.start = time.time()
     def get_root_operation(self):
         if not self.root == None:
