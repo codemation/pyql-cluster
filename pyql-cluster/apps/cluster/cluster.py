@@ -2728,6 +2728,17 @@ async def run(server):
         new_or_stale_endpoints.update(table_endpoints['new'])
         new_or_stale_endpoints.update(table_endpoints['stale'])
 
+        # verify endpoints are alive
+        check_alive_endpoints = await get_alive_endpoints(
+            new_or_stale_endpoints,
+            **kw
+        )
+        alive_endpoints = []
+        for endpoint in check_alive_endpoints:
+            if not check_alive_endpoints[endpoint]['status'] == 200:
+                continue
+            alive_endpoints.append(endpoint)
+
         ## create table 
         # create tables on new endpoints
         if len(table_endpoints['new']) > 0:
