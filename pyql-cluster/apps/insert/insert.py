@@ -52,7 +52,7 @@ async def run(server):
                     multi_insert.append(
                         insert_to_db(item)
                     )
-                await asyncio.gather(*multi_insert)
+                insert_result = await asyncio.gather(*multi_insert, return_exceptions=True)
 
             # Single Insertion
             else:
@@ -62,13 +62,13 @@ async def run(server):
                         log.error(error)
                         server.http_exception(400, error)
                 try:
-                    response = await table.insert(**params)
+                    insert_result = await table.insert(**params)
                 except Exception as e:
                     server.http_exception(
                         400, 
                         log.exception(f"error inserting into {database} {table} using {params} - {repr(e)}")
                         )
-            return {"message": "items added"}
+            return {"message": "items added", 'insert_result': insert_result}
         else:
             server.http_exception(rc, message)
     server.actions['insert'] = insert
