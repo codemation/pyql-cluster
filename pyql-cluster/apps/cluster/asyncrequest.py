@@ -79,7 +79,7 @@ async def async_request_multi(urls, method='GET', loop=None, session=None):
     request_results = {}
     request = async_get_request if method == 'GET' else async_post_request
     results = await asyncio.gather(
-        *[request(urls[url]['session'], {url: urls[url]}, loop=loop) for url in urls]
+        *[request(urls[url]['session'], {url: urls[url]}, loop=loop) for url in urls],
         loop=loop,
         return_exceptions=True,
         )
