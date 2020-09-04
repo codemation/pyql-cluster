@@ -2030,8 +2030,7 @@ async def run(server):
                                 }
                             }, 
                             'where': {
-                                'uuid': config['database']['uuid'],
-                                'cluster': cluster_id
+                                'uuid': config['database']['uuid']
                                 }
                         }, 
                         **kw
