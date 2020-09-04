@@ -1050,7 +1050,7 @@ async def run(server):
                 trace(f"flush trigger failure(s) detected, marking failed endpoint(s) stale - result {mark_stale_results}")
 
 
-        return trace(f"async_results: {async_results}")
+        return trace(f"flush_requests_results: {flush_requests_results}")
 
         # write to txn logs
         result = await write_to_txn_logs(
