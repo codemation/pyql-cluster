@@ -978,7 +978,7 @@ async def run(server):
             loop = asyncio.get_running_loop()
             kw['loop'] = loop
             table_endpoints = await get_table_endpoints(cluster, table, loop=loop)
-            endpoint_requests = {}
+            flush_requests = {}
             for endpoint in table_endpoints['loaded']:
                 _endpoint = table_endpoints['loaded'][endpoint]
                 path = _endpoint['path']
@@ -1005,15 +1005,52 @@ async def run(server):
                     "token": limited_use_token
                 }
 
-                endpoint_requests[endpoint] = {
+                flush_requests[endpoint] = {
                     'path': f"http://{path}/db/{db}/table/{table}/flush",
                     'data': flush_config,
                     'timeout': 2.0,
                     'headers': await get_auth_http_headers('remote', token=token),
                     'session': await get_endpoint_sessions(epuuid, **kw)
                 }
-            async_results = await async_request_multi(endpoint_requests, 'POST', loop=loop)
-            trace(f"async_results: {async_results}")
+            flush_requests_results = await async_request_multi(flush_requests, 'POST', loop=loop)
+            
+            # handle flush trigger failures by marking stale
+            flush_fail_mark_stale = []
+            for endpoint in flush_requests_results:
+                if flush_requests_results[endpoint]['status'] == 200:
+                    continue
+                state_data = {
+                    "set": {
+                        "state": 'stale',
+                        'info': {
+                            'stale reason': 'flush trigger failed',
+                            'operation': trace.get_root_operation(),
+                            'node': node_id
+                            }
+                    },
+                    "where": {
+                        "name": f"{endpoint}_{table}"
+                    }
+                }
+                flush_fail_mark_stale.append(
+                    cluster_table_change(
+                            pyql,
+                            'state',
+                            'update',
+                            state_data,
+                            **kw
+                        )
+                )
+            if len(flush_fail_mark_stale) > 0:
+                mark_stale_results = await asyncio.gather(
+                    *flush_fail_mark_stale, 
+                    loop=loop, 
+                    return_exceptions=True
+                )
+                trace(f"flush trigger failure(s) detected, marking failed endpoint(s) stale - result {mark_stale_results}")
+
+
+        return trace(f"async_results: {async_results}")
 
         # write to txn logs
         result = await write_to_txn_logs(
@@ -1114,9 +1151,16 @@ async def run(server):
 
         # mark failures out_of_sync if sucesses & failures exist
         if pass_fail['fail'] > 0 and pass_fail['success'] > 0:
-            asyncio.gather(*log_state_out_of_sync, loop=loop)
+            mark_stale_results = await asyncio.gather(
+                *log_state_out_of_sync, 
+                loop=loop, 
+                return_exceptions=True
+            )
+            trace(f"log insertion failure detected, marking failed endpoints stale - result {mark_stale_results}")
+
+
                 
-        return {'results': log_insert_results}
+        return {'results': log_insert_results, 'pass_fail': pass_fail}
 
     @server.trace
     async def table_select(cluster, table, **kw):
@@ -1306,10 +1350,15 @@ async def run(server):
             update_state_tasks.append(
                 cluster_table_change(pyql, 'state', 'insert', state_data, **kw)
             )
-        await asyncio.gather(*update_state_tasks, loop=loop)
+        update_state_results = await asyncio.gather(
+            *update_state_tasks, 
+            loop=loop, 
+            return_exceptions=True
+        )
+        trace(f"update_state_results - {update_state_results}")
 
         return {
-            "message": log.warning(f"cluster {cluster} table {table} created")
+            "message": trace(f"cluster {cluster} table {table} created - finished")
             }
     
     @server.trace
