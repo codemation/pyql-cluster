@@ -81,7 +81,7 @@ async def async_request_multi(urls, method='GET', loop=None, session=None):
     results = await asyncio.gather(
         *[request(urls[url]['session'], {url: urls[url]}, loop=loop) for url in urls],
         loop=loop,
-        return_exceptions=True,
+        return_exceptions=True
         )
     for result in results:
         if isinstance(result, dict):
