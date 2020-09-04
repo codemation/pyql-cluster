@@ -12,7 +12,6 @@ async def run(server):
     from aiohttp import ClientSession
 
     from apps.cluster.asyncrequest import async_request_multi, async_get_request, async_post_request
-    from apps.cluster import request_async
     from apps.cluster import tracer
 
     log = server.log
@@ -949,6 +948,8 @@ async def run(server):
         - Node triggering table_change  
         """
         trace = kw['trace']
+        pyql = await server.env['PYQL_UUID']
+
         _txn = {action: request_data}
         trace(f"called for {_txn}")
         loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
