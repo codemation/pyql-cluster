@@ -41,7 +41,11 @@ async def run(server):
                             'lock_id': lock_id
                         }
                     )
-                    _, new_lock = await asyncio.gather(reserve, new_lock)
+                    _, new_lock = await asyncio.gather(
+                                            reserve, 
+                                            new_lock,
+                                            return_exceptions=True
+                                            )
                     if len(new_lock) > 0:
                         lock_id, last_txn_time = new_lock[0]['lock_id'], new_lock[0]['last_txn_time']
                         result = yield lock_id, last_txn_time
@@ -316,6 +320,7 @@ async def run(server):
         new_txns = new_txns['data']
         # update latest txn
         update_last_txn_time = None
+        flush_results = []
         for txn in new_txns:
             coros_to_gather = []
             for action, data in txn['txn'].items():
@@ -324,7 +329,9 @@ async def run(server):
                 coros_to_gather.append(
                     server.actions[action](database, table, data)
                 )
-                await asyncio.gather(*coros_to_gather)
+                flush_results.append(
+                    await asyncio.gather(*coros_to_gather, return_exceptions=True)
+                )
                 update_last_txn_time = server.data[PYQL_TABLE_DB].tables['pyql'].update(
                     last_txn_time=txn['timestamp'],
                     where={"table_name": table}
@@ -333,7 +340,10 @@ async def run(server):
             await update_last_txn_time
             
         # release table lock is issued by completely existing for loop
-        return log.warning(f"{database} {table} table_flush completed successfully")
+        return {
+            "message": log.warning(f"{database} {table} table_flush completed successfully"), 
+            "flush_results": flush_results
+            }
 
     @server.api_route('/db/{database}/table/{table}/sync', methods=['POST'])
     async def sync_table_func_api(database: str, table: str, data_to_sync: dict, request: Request):
@@ -360,12 +370,15 @@ async def run(server):
             server.data[database].tables[table].insert(**row)
             for row in data_to_sync['table_copy']
             ]
-        await asyncio.gather(*rows_to_insert)
+        insert_results = await asyncio.gather(*rows_to_insert, return_exceptions=True)
         await server.data[PYQL_TABLE_DB].tables['pyql'].update(
             last_txn_time=data_to_sync['last_txn_time'],
             where={"table_name": table}
         )
-        return {"message": log.warning(f"{database} {table} sync successful")}
+        return {
+            "message": log.warning(f"{database} {table} sync successful"), 
+            "insert_results": insert_results
+            }
 
     @server.api_route('/db/{database}/table/{table}/{key}', methods=['GET', 'POST', 'DELETE'])
     async def db_table_key_api(database: str, table: str, key: str, request: Request, params: dict = None):
