@@ -1073,6 +1073,8 @@ async def run(server):
         loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
 
+        stale_state_log_table = False if not 'stale_state_log_table' in kw else True
+
         if not force:
             # check if table is paused
             cur_wait, max_wait = 0.01, 10.0
@@ -1123,7 +1125,7 @@ async def run(server):
         for endpoint in log_insert_results:
             if not log_insert_results[endpoint]['status'] == 200:
                 pass_fail['fail']+=1
-                if not log_table == f'txn_{pyql}_state':
+                if not stale_state_log_table:
                     state_data = {
                         "set": {
                             "state": 'stale',
@@ -1137,6 +1139,8 @@ async def run(server):
                             "name": f"{endpoint}_{log_table}"
                         }
                     }
+                    if log_table == f'txn_{pyql}_state':
+                        kw['stale_state_log_table'] = True
                     log_state_out_of_sync.append(
                         cluster_table_change(
                                 pyql,
@@ -1158,8 +1162,6 @@ async def run(server):
             )
             trace(f"log insertion failure detected, marking failed endpoints stale - result {mark_stale_results}")
 
-
-                
         return {'results': log_insert_results, 'pass_fail': pass_fail}
 
     @server.trace
