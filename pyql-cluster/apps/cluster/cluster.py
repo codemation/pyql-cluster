@@ -2876,7 +2876,8 @@ async def run(server):
                         'update',
                         {
                             'set': {
-                                'state': 'loaded'
+                                'state': 'loaded',
+                                'info': {}
                                 },
                             'where': {
                                 'name': f"{endpoint}_{table}"
@@ -2894,7 +2895,8 @@ async def run(server):
                         'update',
                         {
                             'set': {
-                                'state': 'loaded'
+                                'state': 'loaded',
+                                'info': {}
                                 },
                             'where': {
                                 'name': f"{endpoint}_{table}"
@@ -3156,7 +3158,8 @@ async def run(server):
                     'update',
                     {
                         'set': {
-                            'state': 'loaded'
+                            'state': 'loaded',
+                            'info': {}
                             },
                         'where': {
                             'name': f"{endpoint}_{table}"
