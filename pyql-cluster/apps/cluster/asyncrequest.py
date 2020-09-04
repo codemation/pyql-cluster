@@ -79,9 +79,17 @@ async def async_request_multi(urls, method='GET', loop=None, session=None):
     request_results = {}
     request = async_get_request if method == 'GET' else async_post_request
     results = await asyncio.gather(
-        *[request(urls[url]['session'], {url: urls[url]}, loop=loop) for url in urls])
+        *[request(urls[url]['session'], {url: urls[url]}, loop=loop) for url in urls]
+        loop=loop,
+        return_exceptions=True,
+        )
     for result in results:
-        request_results.update(result)
+        if isinstance(result, dict):
+            request_results.update(result)
+        else:
+            if not 'errors' in request_results:
+                request_results['errors'] = []
+            request_results['errors'].append(result)
     return request_results
 
 def async_request(urls, method='GET', loop=None, session=None):
