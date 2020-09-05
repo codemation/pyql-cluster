@@ -1111,7 +1111,7 @@ async def run(server):
                 'data': txn,
                 'timeout': 2.0,
                 'headers': await get_auth_http_headers('remote', token=token),
-                'session': await get_endpoint_sessions(ep_uuid, **kw)
+                'session': await get_endpoint_sessions(endpoint, **kw)
             }
         log_insert_results = await async_request_multi(
             log_inserts, 
