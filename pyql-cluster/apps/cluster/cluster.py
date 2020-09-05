@@ -1142,7 +1142,7 @@ async def run(server):
                     if log_table == f'txn_{pyql}_state':
                         kw['stale_state_log_table'] = True
                     log_state_out_of_sync.append(
-                        cluster_table_change(
+                        await cluster_table_change(
                                 pyql,
                                 'state',
                                 'update',
@@ -1155,12 +1155,7 @@ async def run(server):
 
         # mark failures out_of_sync if sucesses & failures exist
         if pass_fail['fail'] > 0 and pass_fail['success'] > 0:
-            mark_stale_results = await asyncio.gather(
-                *log_state_out_of_sync, 
-                loop=loop, 
-                return_exceptions=True
-            )
-            trace(f"log insertion failure detected, marking failed endpoints stale - result {mark_stale_results}")
+            trace(f"log insertion failure detected, marking failed endpoints stale - result {log_state_out_of_sync}")
 
         return {'results': log_insert_results, 'pass_fail': pass_fail}
 
