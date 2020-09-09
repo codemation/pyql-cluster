@@ -1072,6 +1072,7 @@ async def run(server):
         trace = kw['trace']
         loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
+        pyql_under = '_'.join(pyql.split('-'))
 
         stale_state_log_table = False if not 'stale_state_log_table' in kw else True
 
@@ -1139,7 +1140,7 @@ async def run(server):
                             "name": f"{endpoint}_{log_table}"
                         }
                     }
-                    if log_table == f'txn_{pyql}_state':
+                    if log_table == f'txn_{pyql_under}_state':
                         kw['stale_state_log_table'] = True
                     log_state_out_of_sync.append(
                         await cluster_table_change(
