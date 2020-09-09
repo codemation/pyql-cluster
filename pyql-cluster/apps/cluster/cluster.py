@@ -2764,7 +2764,7 @@ async def run(server):
 
         if f'{pyql_under}_tables' in table:
             await table_pause(cluster, table, 'start', **kw)
-            await asyncio.sleep(3)
+            await asyncio.sleep(5)
         # get copy
         table_copy = await cluster_table_copy(cluster, table, log_cluster=True, **kw)
 
@@ -2807,6 +2807,7 @@ async def run(server):
         # begin cut-over
         if not f'{pyql_under}_tables' in table:
             await table_pause(cluster, table, 'start', **kw)
+            await asyncio.sleep(5)
 
         if len(table_copy['table_copy']) > 0:
             # pull changes 
@@ -2910,7 +2911,7 @@ async def run(server):
                     )
                     # check if this txn table is used by pyql state 
                     trace(f"pyql state txn table detected, waiting 5 sec then grabbing last txn table")
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(5)
                     state_endpoint = new_or_stale_endpoints[endpoint]
             
                     db = state_endpoint['db_name']
