@@ -3000,7 +3000,8 @@ async def run(server):
         new_or_stale_endpoints.update(table_endpoints['stale'])
 
         all_table_endpoints = {}
-        for state in table_endpoints:
+        
+        for state in ['loaded', 'stale', 'new']:
             all_table_endpoints.update(table_endpoints[state])
 
         # verify endpoints are alive
