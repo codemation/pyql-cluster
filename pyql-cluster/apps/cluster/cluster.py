@@ -579,11 +579,7 @@ async def run(server):
                 'timeout':timeout,
                 'session': await get_endpoint_sessions(endpoint['uuid'], **kw)
             }
-        try:
-            ep_results = await async_request_multi(ep_requests, loop=loop)
-        except Exception as e:
-            server.http_exception(
-                500, trace.exception(f"Unhandled Excepton found during get_alive_endpoints"))
+        ep_results = await async_request_multi(ep_requests, loop=loop)
         for endpoint_id, response in ep_results.items():
             if response['status'] == 408:
                 log.warning(f"observed timeout with endpoint {endpoint_id}, triggering cleanup of session")
