@@ -3001,7 +3001,7 @@ async def run(server):
 
         # verify endpoints are alive
         check_alive_endpoints = await get_alive_endpoints(
-            new_or_stale_endpoints,
+            table_endpoints,
             **kw
         )
         alive_endpoints = []
