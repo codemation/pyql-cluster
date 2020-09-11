@@ -88,23 +88,6 @@ async def run(server):
             "consistency": ['clusters', 'endpoints', 'auth'] # defines whether table modifications are cached before submission & txn time is reviewed
         }
     }
-    join_txn_cluster_job = {
-        "job": f"{os.environ['HOSTNAME']}{os.environ['PYQL_CLUSTER_ACTION']}_cluster",
-        "job_type": join_job_type,
-        "method": "POST",
-        "path": "/cluster/pyql_txns/join",
-        "data": {
-            "name": os.environ['HOSTNAME'],
-            "path": f"{os.environ['PYQL_NODE']}:{os.environ['PYQL_PORT']}",
-            "token": await server.env['PYQL_LOCAL_SERVICE_TOKEN'],
-            "database": {
-                'name': "transactions",
-                'uuid': f"{node_id}_txns"
-            },
-            "tables": ["txn_cluster_tables"],
-            "consistency": None # defines whether table modifications are cached before submission & txn time is reviewed
-        }
-    }
 
 
     if 'PYQL_CLUSTER_JOIN_TOKEN' in os.environ and os.environ['PYQL_CLUSTER_ACTION'] == 'join':
@@ -1752,7 +1735,7 @@ async def run(server):
             "token": await server.env['PYQL_LOCAL_SERVICE_TOKEN'],
             "database": {
                 'name': "transactions",
-                'uuid': f"{node_id}_txns"
+                'uuid': f"{node_id}"
             },
             "tables": [
                 await server.get_table_config('transactions', 'txn_cluster_tables')
@@ -3000,7 +2983,7 @@ async def run(server):
         new_or_stale_endpoints.update(table_endpoints['stale'])
 
         all_table_endpoints = {}
-        
+
         for state in ['loaded', 'stale', 'new']:
             all_table_endpoints.update(table_endpoints[state])
 
