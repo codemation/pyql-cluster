@@ -1503,7 +1503,8 @@ async def run(server):
             where={'cluster': cluster, 'name': table})
         primary = primary[0]['config'][table]['primary_key']
         if request.method == 'POST':
-            return table_update(cluster=cluster, table=table, data={'set': data, 'where': {primary: key}}, **kw)
+            kw['data'] = {'set': data, 'where': {primary: key}}
+            return table_update(cluster=cluster, table=table, **kw)
         if request.method == 'DELETE':
             return table_delete(cluster, table, {'where': {primary: key}}, **kw)
     
