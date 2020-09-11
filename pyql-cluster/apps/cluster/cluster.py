@@ -2632,18 +2632,26 @@ async def run(server):
                         'table': table, 
                         'job': f'sync_table_{cluster}_{table}'}
                     })
+        
         for cluster in jobs:
-            if cluster == pyql:
+            tables_in_jobs = [job['table'] for job in jobs[cluster]]
+            order = [
+                'data_to_txn_cluster',
+                'state',
+                'tables',
+                'clusters', 
+                'auth', 
+                'endpoints', 
+                'jobs'
+            ]
+            pyql_txn_tables = False
+            for table in order:
+                for job_table in tables_in_jobs:
+                    if table in job_table:
+                        pyql_txn_tables = True
+
+            if cluster == pyql or pyql_txn_tables:
                 #order = ['jobs', 'state', 'tables', 'clusters', 'auth', 'endpoints', 'transactions'] # 
-                order = [
-                    'data_to_txn_cluster',
-                    'state',
-                    'tables',
-                    'clusters', 
-                    'auth', 
-                    'endpoints', 
-                    'jobs'
-                ]
                 jobs_to_run_ordered = []
                 ready_jobs = []
                 while len(order) > 0:
@@ -2652,7 +2660,7 @@ async def run(server):
                     for job in jobs[cluster]:
                         if len(order) == 0:
                             break
-                        if job['table'] == order[0]:
+                        if order[0] in job['table']:
                             #if order[0] == 'state':
                             #    stateCheck = True
                             last_pop = order.pop(0)
