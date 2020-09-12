@@ -2821,7 +2821,7 @@ async def run(server):
 
         trace(f"{cluster} {table} - in-cutover - table_changes: - {table_changes}")
 
-        if len(table_changes['data']) > 0:
+        while len(table_changes['data']) > 0:
 
             sync_changes_requests = {}
             for _endpoint in sync_table_results:
@@ -2846,6 +2846,24 @@ async def run(server):
                 'POST', 
                 loop=loop
             )
+
+            # check for new changes
+            latest_timestamp = table_changes['data'][-1]['timestamp']
+            select_data = {
+                'select': ['*'],
+                'where': [
+                    ['timestamp', '>', latest_timestamp]
+                ]
+            }
+            table_changes = await table_select(
+                cluster,
+                table,
+                data=select_data,
+                **kw
+            )
+
+            trace(f"{cluster} {table} - in-cutover - table_changes: - {table_changes}")
+
         else:
             sync_changes_results = {}
             for _endpoint in sync_table_results:
