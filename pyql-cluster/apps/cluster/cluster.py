@@ -313,12 +313,15 @@ async def run(server):
         #try:
         if endpoint in server.sessions:
             log.warning(f"removing session for endpoint {endpoint}")
-            for session in server.sessions[endpoint]:
-                try:
-                    await session['session'].asend('finished')
-                except StopAsyncIteration:
-                    pass
-            del server.sessions[endpoint]
+            try:
+                for session in server.sessions[endpoint]:
+                    try:
+                        await session['session'].asend('finished')
+                    except StopAsyncIteration:
+                        pass
+                del server.sessions[endpoint]
+            except Exception as e:
+                log.exception("exception when cleaning up session")
         #except StopAsyncIteration:
         #    await cleanup_session(endpoint)
         #    del server.sessions[endpoint]
