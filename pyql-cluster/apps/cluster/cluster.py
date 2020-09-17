@@ -2400,6 +2400,8 @@ async def run(server):
 
         node = node_id
 
+        trace(f"checking for {job_type} jobs to run")
+
         job_select = {
             'select': ['id', 'name', 'type', 'next_run_time', 'node'], 
             'where':{
@@ -2414,12 +2416,12 @@ async def run(server):
             pyql, 'jobs', data=job_select, method='POST', quorum=quorum, **kw)
         if not job_list:
             return {"message": trace("unable to pull jobs at this time")}
-        trace(f"finished pulling list of jobs - job_list {job_list} ")
+        trace(f"type {job_type} - finished pulling list of jobs - job_list {job_list} ")
         job_list = job_list['data']
         for i, job in enumerate(job_list):
             if not job['next_run_time'] == None:
                 #Removes queued job from list if next_run_time is still in future 
-                if not float(job['next_run_time']) < float(time.time()):
+                if float(job['next_run_time']) > time.time():
                     job_list.pop(i)
                 if not job['node'] == None:
                     if time.time() - float(job['next_run_time']) > 120.0:
@@ -2486,6 +2488,8 @@ async def run(server):
             if status =='queued':
                 update_where['set']['node'] = None
                 update_where['set']['start_time'] = None
+                if job_type == 'cron':
+                    update_where['set']['next_run_time'] = str(time.time())
             else:
                 update_where['set']['start_time'] = str(time.time())
             return await cluster_table_change(pyql, 'jobs', 'update', update_where, **kw)
