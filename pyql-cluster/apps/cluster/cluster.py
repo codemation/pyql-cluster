@@ -2352,7 +2352,7 @@ async def run(server):
                 'id': job['id']
             }
         }
-        start_time, max_timeout = time.time(), 10.0
+        start_time, max_timeout = time.time(), 20.0
         while time.time() - start_time < max_timeout:
             job_check = await table_select(pyql, 'jobs', data=job_select, method='POST', **kw)
             if len(job_check['data']) == 0:
@@ -2361,7 +2361,7 @@ async def run(server):
             job_check = job_check['data'][0]
             if job_check['node'] == None:
                 # wait until 'node' is assigned
-                await asyncio.sleep(0.05)
+                await asyncio.sleep(0.1)
                 continue
             if job_check['node'] == node_id:
                 if not job_check['reservation'] == reservation:
@@ -2421,7 +2421,7 @@ async def run(server):
         for i, job in enumerate(job_list):
             if not job['next_run_time'] == None:
                 #Removes queued job from list if next_run_time is still in future 
-                if float(job['next_run_time']) > time.time():
+                if float(job['next_run_time']) < time.time():
                     job_list.pop(i)
                 if not job['node'] == None:
                     if time.time() - float(job['next_run_time']) > 120.0:
