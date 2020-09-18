@@ -987,7 +987,7 @@ async def run(server):
                     ),
                     "token": limited_use_token
                 }
-                if cluster == pyql and table in ('jobs', 'state', 'tables'):
+                if cluster == pyql and table in ('jobs'):
                     op = action
                     flush_config = txn['txn'][op]
 
