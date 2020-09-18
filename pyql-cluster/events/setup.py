@@ -69,7 +69,7 @@ async def run(server):
                 if job == 'finished':
                     return
                 try:
-                    result = await job() if not queue == 'txn_signals' else await job
+                    result = await job() if not queue == 'txn_signals' else await job[0]
                 except Exception as e:
                     result = log.exception(f"{queue} worker encountered exception when running {job}")
                     restart = True
@@ -77,7 +77,9 @@ async def run(server):
                     if restart and queue == 'flush':
                         server.__dict__[queue].leftappend(job)
                     else:
-                        server.__dict__[queue].append(job)
+                        server.__dict__[queue].append(
+                            (job[1](**job[2]), job[1], job[2]) if queue == 'txn_signals' else job
+                        )
                 log.warning(f"{queue} worker finished job: {result} - queue: {server.__dict__[queue]}")
                 await asyncio.sleep(interval)
         except Exception as e:
