@@ -1046,16 +1046,18 @@ async def run(server):
         )
     
         # add task to txn worker queue
+        """
         if cluster == pyql and table == 'jobs':
             await signal_table_endpoints(**kw)
         else:
-            server.txn_signals.append(
-                (
-                    signal_table_endpoints(**kw), # to be awaited by txn_signal workers
-                    signal_table_endpoints, # to be retried, if first coro fails
-                    kw # to be passed into any retries
-                )
+        """
+        server.txn_signals.append(
+            (
+                signal_table_endpoints(**kw), # to be awaited by txn_signal workers
+                signal_table_endpoints, # to be retried, if first coro fails
+                kw # to be passed into any retries
             )
+        )
 
         return {"result": trace("finished")}
         
