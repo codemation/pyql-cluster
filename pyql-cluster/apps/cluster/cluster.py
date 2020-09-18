@@ -1502,14 +1502,14 @@ async def run(server):
             except Exception as e:
                 server.http_exception(400, trace.error("expected json input for request"))
         primary = await server.clusters.tables.select(
-            'config', 
+            'config',
             where={'cluster': cluster, 'name': table})
         primary = primary[0]['config'][table]['primary_key']
         if request.method == 'POST':
             kw['data'] = {'set': data, 'where': {primary: key}}
-            return table_update(cluster=cluster, table=table, **kw)
+            return await table_update(cluster=cluster, table=table, **kw)
         if request.method == 'DELETE':
-            return table_delete(cluster, table, {'where': {primary: key}}, **kw)
+            return await table_delete(cluster, table, {'where': {primary: key}}, **kw)
     
     @server.api_route('/cluster/{cluster}/table/{table}/update', methods=['POST'])
     async def cluster_table_update_api(cluster: str, table: str, request: Request, data: dict = None):
