@@ -980,16 +980,19 @@ async def run(server):
                         'table_allowed': tx_table
                     }
                 )
-
+                op = 'flush'
                 flush_config = {
                     "tx_cluster_path": (
                         f"http://{os.environ['PYQL_CLUSTER_SVC']}/cluster/{txn_cluster_id}_log/table/{tx_table}/select"
                     ),
                     "token": limited_use_token
                 }
+                if cluster == pyql and table == 'jobs':
+                    op = txn['txn']['action']
+                    flush_config = txn['txn'][op]
 
                 flush_requests[endpoint] = {
-                    'path': f"http://{path}/db/{db}/table/{table}/flush",
+                    'path': f"http://{path}/db/{db}/table/{table}/{op}",
                     'data': flush_config,
                     'timeout': 2.0,
                     'headers': await get_auth_http_headers('remote', token=token),
@@ -1042,10 +1045,13 @@ async def run(server):
             **kw
         )
     
-        # add task to txn worker queue 
-        server.txn_signals.append(
-            signal_table_endpoints # to be awaited by txn_signal workers 
-        )
+        # add task to txn worker queue
+        if cluster == pyql and table == 'jobs':
+            await signal_table_endpoints(**kw)
+        else:
+            server.txn_signals.append(
+                signal_table_endpoints(**kw) # to be awaited by txn_signal workers
+            )
 
         return {"result": trace("finished")}
         
