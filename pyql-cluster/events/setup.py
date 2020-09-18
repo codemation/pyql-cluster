@@ -69,7 +69,7 @@ async def run(server):
                 if job == 'finished':
                     return
                 try:
-                    result = await job()
+                    result = await job() if not queue == 'txn_signals' else await job
                 except Exception as e:
                     result = log.exception(f"{queue} worker encountered exception when running {job}")
                     restart = True
