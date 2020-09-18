@@ -988,7 +988,7 @@ async def run(server):
                     "token": limited_use_token
                 }
                 if cluster == pyql and table == 'jobs':
-                    op = txn['txn']['action']
+                    op = action
                     flush_config = txn['txn'][op]
 
                 flush_requests[endpoint] = {
