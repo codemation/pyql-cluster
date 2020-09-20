@@ -1461,10 +1461,17 @@ async def run(server):
         # i.e check if endpoint_info['uuid'] == node_id
 
         if endpoint_info['uuid'] == node_id:
-            table_copy = await server.get_table_copy(
-                endpoint_info['db_name'],
-                table
-            )
+            if not log_cluster:
+                table_copy = await server.get_table_copy(
+                    endpoint_info['db_name'],
+                    table
+                )
+            else:
+                table_copy = await server.actions['select'](
+                    endpoint_info['db_name'], 
+                    table, 
+                    **kw
+                )
         else:
             # log clusters do not need last_txn_time via copy
             op = 'copy' if not log_cluster else 'select' ## 
