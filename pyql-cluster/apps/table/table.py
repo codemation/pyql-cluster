@@ -191,7 +191,7 @@ async def run(server):
         last_txn_time = await server.data[PYQL_TABLE_DB].tables['pyql'].select(
             'last_txn_time',
             where={
-                'table_name': table,
+                'table_name': table
             }
         )
         last_txn_time = last_txn_time[0]['last_txn_time']
@@ -200,6 +200,7 @@ async def run(server):
             'last_txn_time': last_txn_time, 
             'table_copy': table_copy
             }
+    server.get_table_copy = get_table_copy
 
     @server.api_route('/db/{database}/table/{table}/config')
     async def db_get_table_config_api(database: str, table: str, request: Request):
