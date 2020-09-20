@@ -1482,6 +1482,7 @@ async def run(server):
         if not log_cluster:
             return table_copy
         
+        trace(f"log cluster - table_copy - {table_copy}")
         table_copy = table_copy['data'] if 'data' in table_copy else table_copy
 
         # log cluster
