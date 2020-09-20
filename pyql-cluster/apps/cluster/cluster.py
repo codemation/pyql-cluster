@@ -1456,21 +1456,30 @@ async def run(server):
         endpoint_info = endpoints_info['endpoints'][f"{endpoint_choice}_{table}"]
         path = endpoint_info['path']
         token = endpoint_info['token']
-        
-        # log clusters do not need last_txn_time via copy
-        op = 'copy' if not log_cluster else 'select' ## 
 
-        # pull table copy & last_txn_time
-        table_copy, rc = await probe(
-            f"{path}/{op}",
-            method='GET',
-            token=token,
-            session=await get_endpoint_sessions(
-                endpoint_info['uuid'],
-                **kw
+        #TODO - table_copy  / select should use server.data[] if querying local endpoint
+        # i.e check if endpoint_info['uuid'] == node_id
+
+        if endpoint_info['uuid'] == node_id:
+            table_copy = server.get_table_copy(
+                endpoint_info['db_name'],
+                table
             )
-        )
-        if op == 'copy':
+        else:
+            # log clusters do not need last_txn_time via copy
+            op = 'copy' if not log_cluster else 'select' ## 
+
+            # pull table copy & last_txn_time
+            table_copy, rc = await probe(
+                f"{path}/{op}",
+                method='GET',
+                token=token,
+                session=await get_endpoint_sessions(
+                    endpoint_info['uuid'],
+                    **kw
+                )
+            )
+        if not log_cluster:
             return table_copy
         
         # log cluster
