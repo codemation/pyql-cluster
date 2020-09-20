@@ -1482,10 +1482,12 @@ async def run(server):
         if not log_cluster:
             return table_copy
         
+        table_copy = table_copy['data'] if 'data' in table_copy else table_copy
+
         # log cluster
-        last_txn_time = table_copy['data'][-1]['timestamp'] if len(table_copy['data']) > 0 else time.time()
+        last_txn_time = table_copy[-1]['timestamp'] if len(table_copy) > 0 else time.time()
         return {
-            'table_copy': table_copy['data'], 
+            'table_copy': table_copy, 
             'last_txn_time': last_txn_time
             }
                 
