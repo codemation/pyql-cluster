@@ -1461,7 +1461,7 @@ async def run(server):
         # i.e check if endpoint_info['uuid'] == node_id
 
         if endpoint_info['uuid'] == node_id:
-            table_copy = server.get_table_copy(
+            table_copy = await server.get_table_copy(
                 endpoint_info['db_name'],
                 table
             )
