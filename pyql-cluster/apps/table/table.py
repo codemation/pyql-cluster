@@ -194,7 +194,7 @@ async def run(server):
                 'table_name': table
             }
         )
-        last_txn_time = last_txn_time[0]['last_txn_time']
+        last_txn_time = last_txn_time[0]['last_txn_time'] if len(last_txn_time) > 0 else time.time()
         table_copy = await server.data[database].tables[table].select('*')
         return {
             'last_txn_time': last_txn_time, 
