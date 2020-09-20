@@ -2357,7 +2357,7 @@ async def run(server):
     async def jobqueue_reserve_job(job, **kw):
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         trace = kw['trace']
-        reservation = str(uuid.uuid1())
+        reservation = trace.get_root_operation()
 
         async def reserve_or_rollback(rollback=False):
 
