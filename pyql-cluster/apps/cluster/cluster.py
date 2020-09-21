@@ -987,7 +987,7 @@ async def run(server):
                     ),
                     "token": limited_use_token
                 }
-                if cluster == pyql and table in ('jobs'):
+                if cluster == pyql and table in ('jobs', 'state', 'tables'):
                     op = action
                     flush_config = txn['txn'][op]
 
@@ -1037,7 +1037,7 @@ async def run(server):
 
             return trace(f"flush_requests_results: {flush_requests_results}")
 
-        if not (cluster == pyql and table == 'jobs'):
+        if not (cluster == pyql and table in ('jobs', 'state', 'tables')):
             # write to txn logs
             result = await write_to_txn_logs(
                 txn_cluster_id,
