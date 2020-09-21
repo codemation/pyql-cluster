@@ -252,6 +252,9 @@ async def run(server):
 
     @server.is_authenticated('local')
     async def table_flush_auth(database: str, table: str,  flush_path: dict, **kw):
+        return await table_flush_trigger(database, table, flush_path, **kw)
+
+    async def table_flush_trigger(database: str, table: str,  flush_path: dict, **kw):
         async def table_flush_task():
             return await table_flush(database, table, flush_path, **kw)
         
@@ -282,6 +285,7 @@ async def run(server):
             log.warning(f"max flush ops queued for {database} {table} - {count}")
         #server.flush.append(table_flush_task)
         return {"message": f"table flush triggered"}
+    server.table_flush_trigger = table_flush_trigger
 
     async def table_flush(database: str, table: str, flush_path: dict, **kw):
         
