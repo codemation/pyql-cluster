@@ -1019,7 +1019,7 @@ async def run(server):
                     flush_requests_results.update(
                         await async_request_multi(flush_requests, 'POST', loop=loop)
                     )
-                flush_tasks.append(remote_flush)
+                flush_tasks.append(remote_flush())
             await asyncio.gather(*flush_tasks, return_exceptions=True)
             
             # handle flush trigger failures by marking stale
