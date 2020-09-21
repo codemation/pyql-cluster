@@ -2393,6 +2393,9 @@ async def run(server):
                     'node': None if not rollback else node_id
                 }
             }
+            if rollback:
+                job_update['reservation'] = reservation
+
             result = await cluster_table_change(pyql, 'jobs', 'update', job_update, **kw)
             op = 'reserve' if not rollback else 'rollback'
             return trace(f"{op} completed for job {job['id']} with result {result}")
@@ -2416,12 +2419,10 @@ async def run(server):
                 # wait until 'node' is assigned
                 await asyncio.sleep(0.1)
                 continue
-            if job_check['node'] == node_id:
-                if not job_check['reservation'] == reservation:
-                    return {
-                        "message": f"{job['id']} was reserved by another worker"
-                        }
+            if (job_check['node'] == node_id and 
+                job_check['reservation'] == reservation ):
                 return job_check
+            await reserve_or_rollback(rollback=True)
             return {"message": trace(f"{job['id']} was reserved by another worker")}
         else:
             _ = await reserve_or_rollback(rollback=True)
