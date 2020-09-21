@@ -962,12 +962,15 @@ async def run(server):
             kw['loop'] = loop
             table_endpoints = await get_table_endpoints(cluster, table, loop=loop)
             flush_requests = {}
+            flush_tasks = []
+            flush_requests_results = {}
             for endpoint in table_endpoints['loaded']:
                 _endpoint = table_endpoints['loaded'][endpoint]
                 path = _endpoint['path']
                 db = _endpoint['db_name']
                 token = _endpoint['token']
                 epuuid = _endpoint['uuid']
+
                 tx_table = '_'.join(f"txn_{cluster}_{table}".split('-'))
                 
                 # create limited use token
@@ -987,6 +990,19 @@ async def run(server):
                     ),
                     "token": limited_use_token
                 }
+                if epuuid == node_id:
+                    async def local_flush():
+                        flush_requests_results[endpoint] = {
+                            'status': 200,
+                            'content': await server.table_flush_trigger(
+                                db,
+                                table,
+                                flush_config
+                            )
+                        }
+                    flush_tasks.append(local_flush())
+                    continue
+                    
                 #if cluster == pyql and table in ('jobs', 'state', 'tables'):
                 #    op = action
                 #    flush_config = txn['txn'][op]
@@ -998,7 +1014,13 @@ async def run(server):
                     'headers': await get_auth_http_headers('remote', token=token),
                     'session': await get_endpoint_sessions(epuuid, **kw)
                 }
-            flush_requests_results = await async_request_multi(flush_requests, 'POST', loop=loop)
+            if flush_requests:
+                async def remote_flush():
+                    flush_requests_results.update(
+                        await async_request_multi(flush_requests, 'POST', loop=loop)
+                    )
+                flush_tasks.append(remote_flush)
+            await asyncio.gather(*flush_tasks, return_exceptions=True)
             
             # handle flush trigger failures by marking stale
             flush_fail_mark_stale = []
@@ -1045,9 +1067,8 @@ async def run(server):
             txn,
             **kw
         )
-    
-        # add task to txn worker queue
         """
+        # add task to txn worker queue
         if cluster == pyql and table == 'jobs':
             await signal_table_endpoints(**kw)
         else:
