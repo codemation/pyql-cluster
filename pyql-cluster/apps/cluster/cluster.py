@@ -987,9 +987,9 @@ async def run(server):
                     ),
                     "token": limited_use_token
                 }
-                if cluster == pyql and table in ('jobs', 'state', 'tables'):
-                    op = action
-                    flush_config = txn['txn'][op]
+                #if cluster == pyql and table in ('jobs', 'state', 'tables'):
+                #    op = action
+                #    flush_config = txn['txn'][op]
 
                 flush_requests[endpoint] = {
                     'path': f"http://{path}/db/{db}/table/{table}/{op}",
