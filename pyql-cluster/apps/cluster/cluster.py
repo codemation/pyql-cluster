@@ -1037,14 +1037,14 @@ async def run(server):
 
             return trace(f"flush_requests_results: {flush_requests_results}")
 
-        if not (cluster == pyql and table in ('jobs', 'state', 'tables')):
+        #if not (cluster == pyql and table in ('jobs', 'state', 'tables')):
             # write to txn logs
-            result = await write_to_txn_logs(
-                txn_cluster_id,
-                f"txn_{cluster_id_underscored}_{table}",
-                txn,
-                **kw
-            )
+        result = await write_to_txn_logs(
+            txn_cluster_id,
+            f"txn_{cluster_id_underscored}_{table}",
+            txn,
+            **kw
+        )
     
         # add task to txn worker queue
         """
