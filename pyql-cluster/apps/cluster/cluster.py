@@ -1933,6 +1933,8 @@ async def run(server):
         # For each table in bootstrap, create corresponding txn table
         for table in config['tables']:
             for table_name, _ in table.items():
+                if table_name in ['state', 'tables', 'jobs']:
+                    continue
                 await server.create_txn_cluster_table(pyql, table_name)
                 pyql_id_underscored = (
                     '_'.join(pyql.split('-'))
