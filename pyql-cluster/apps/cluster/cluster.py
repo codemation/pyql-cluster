@@ -3194,7 +3194,7 @@ async def run(server):
             # avoid pulling table copy twice
             if table_copy == None:
                 table_copy = await cluster_table_copy(
-                    cluster, 
+                    pyql, 
                     table, 
                     copy_only=True, 
                     **kw
