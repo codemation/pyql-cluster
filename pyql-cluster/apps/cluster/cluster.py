@@ -915,7 +915,125 @@ async def run(server):
         trace(f"called for {_txn}")
         loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
 
+    @server.trace
+    async def pyql_state_tables_change(table, action, request_data, force=False, **kw):
+        """
+        Meant to be called for pyql cluster - tables ['tables', 'state', 'jobs']
+        as logs will not be generated for these tables, but applied ASAP 
+        """
+        trace = kw['trace']
+        pyql = await server.env['PYQL_UUID']
+        loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
 
+        if not force:
+            # check if table is paused
+            cur_wait, max_wait = 0.01, 10.0
+            while cur_wait < max_wait:
+                pause_check = await server.clusters.tables.select(
+                    'is_paused',
+                    where={
+                        'id': f'{pyql}_{table}'
+                    }
+                )
+                if pause_check[0]['is_paused'] == False:
+                    break
+                # wait an try again
+                await asyncio.sleep(0.01)
+                cur_wait+=0.01
+            else:
+                return {"error": trace.error(f"timeout reached waiting for {table} to un-pause")}
+
+        table_endpoints = await get_table_endpoints(pyql, table, **kw)
+
+        state_change_requests = {}
+
+        for endpoint in table_endpoints['loaded']:
+            _endpoint = table_endpoints['loaded'][endpoint]
+            path = _endpoint['path']
+            db = _endpoint['db_name']
+            token = _endpoint['token']
+            epuuid = _endpoint['uuid']
+
+            state_change_requests[endpoint] = {
+                'path': f"http://{path}/db/{db}/table/{table}/{action}",
+                'data': request_data,
+                'timeout': 2.0,
+                'headers': await get_auth_http_headers('remote', token=token),
+                'session': await get_endpoint_sessions(epuuid, **kw)
+            }
+        state_change_results = await async_request_multi(
+            state_change_requests, 
+            'POST', 
+            loop=loop
+        )
+
+        status = {'success': [] 'fail': []}
+        for _endpoint in state_change_results:
+            endpoint = state_change_results[endpoint]
+            if endpoint['status'] == 200:
+                status['success'].append(endpoint)
+                continue
+            status['fail'].append(endpoint)
+
+        trace(f"state_change_results status: {status}")
+
+        if len(status['success']) == 0:
+            return {
+                'error': trace.error("all endpoints failed"),
+                'status': status
+            }
+       
+        for fail_endpoint in status['fail']:
+            mark_stale = {
+                "set": {
+                    'state': 'stale',
+                    'info': {
+                        'stale reason': f'{table} {action} failed',
+                        'operation': trace.get_root_operation(),
+                        'node': node_id
+                        }
+                },
+                'where': {
+                    'name': f"{fail_endpoint['uuid']}_{table}"
+                }
+            }
+
+            if not table == 'state':
+                trace(f"marking fail_endpoint {fail_endpoint['uuid']} stale")
+                await pyql_state_tables_change(
+                    'state',
+                    mark_stale,
+                    **kw
+                )
+                continue
+
+            ## state table ##
+            state_mark_stale = {}
+            for endpoint in status['success']:
+                _endpoint = table_endpoints['loaded'][endpoint]
+                path = _endpoint['path']
+                db = _endpoint['db_name']
+                token = _endpoint['token']
+                epuuid = _endpoint['uuid']
+
+                state_mark_stale[endpoint] = {
+                    'path': f"http://{path}/db/{db}/table/state/update",
+                    'data': mark_stale,
+                    'timeout': 2.0,
+                    'headers': await get_auth_http_headers('remote', token=token),
+                    'session': await get_endpoint_sessions(epuuid, **kw)
+                }
+            state_mark_stale_results = await async_request_multi(
+                state_change_requests, 
+                'POST', 
+                loop=loop
+            )
+            trace(f"state_mark_stale_results: {state_mark_stale_results}")
+        return {
+            "state_change_results": state_change_results, 
+            "status": status
+
+        }
     @server.trace
     async def cluster_table_change(cluster, table, action, request_data, **kw):
         """
@@ -931,6 +1049,9 @@ async def run(server):
         """
         trace = kw['trace']
         pyql = await server.env['PYQL_UUID']
+
+        if cluster == pyql and table in ['jobs', 'state', 'tables']:
+            return await pyql_state_tables_change(table, request_data, **kw)
 
         _txn = {action: request_data}
         trace(f"called for {_txn}")
@@ -1466,7 +1587,7 @@ async def run(server):
         last_txn_time
         """
         trace = kw['trace']
-        log_cluster = False if not 'log_cluster' in kw else kw['log_cluster']
+        copy_only = False if not 'copy_only' in kw else kw['copy_only']
 
 
         endpoints = await get_table_endpoints(cluster, table, **kw)
@@ -1483,7 +1604,7 @@ async def run(server):
         # i.e check if endpoint_info['uuid'] == node_id
 
         if endpoint_info['uuid'] == node_id:
-            if not log_cluster:
+            if not copy_only:
                 table_copy = await server.get_table_copy(
                     endpoint_info['db_name'],
                     table
@@ -1496,7 +1617,7 @@ async def run(server):
                 )
         else:
             # log clusters do not need last_txn_time via copy
-            op = 'copy' if not log_cluster else 'select' ## 
+            op = 'copy' if not copy_only else 'select' ## 
 
             # pull table copy & last_txn_time
             table_copy, rc = await probe(
@@ -1508,7 +1629,7 @@ async def run(server):
                     **kw
                 )
             )
-        if not log_cluster:
+        if not copy_only:
             return table_copy
         
         trace(f"log cluster - table_copy - {table_copy}")
@@ -2815,7 +2936,7 @@ async def run(server):
             await table_pause(cluster, table, 'start', **kw)
             await asyncio.sleep(5)
         # get copy
-        table_copy = await cluster_table_copy(cluster, table, log_cluster=True, **kw)
+        table_copy = await cluster_table_copy(cluster, table, copy_only=True, **kw)
 
         trace(f"{cluster} {table} - table_copy: - {table_copy}")
 
@@ -3036,7 +3157,100 @@ async def run(server):
             }
         }
 
+    @server.trace
+    async def pyql_state_sync_run(table, alive_endpoints, table_endpoints, **kw):
+        """
+        to be used when syncing pyql table ['state', 'tables', 'jobs']
+        as logs are not used for syncing
+        """
+        trace=kw['trace']
+        pyql = await server.env['PYQL_UUID']
 
+        kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
+        loop = kw['loop']
+        
+        # table should have been created for new endpoints already
+
+        # issue / start cutover
+        pause_table = await table_pause(pyql, table, 'start', **kw)
+        trace(f"pause_table starting - {pause_table}")
+        await asyncio.sleep(2)
+
+        # for each created table, need to send a /db/database/table/sync 
+        # which includes copy of latest table & last_txn_time
+        table_copy = None
+
+        sync_requests = {} 
+        for _new_endpoint in table_endpoints['new']:
+            if not _new_endpoint in alive_endpoints:
+                continue
+            new_endpoint = table_endpoints['new'][_new_endpoint]
+            
+            # avoid pulling table copy twice
+            if table_copy == None:
+                table_copy = await cluster_table_copy(
+                    cluster, 
+                    table, 
+                    copy_only=True, 
+                    **kw
+                )
+                # trigger table creation on new_endpoint
+            db = new_endpoint['db_name']
+            path = new_endpoint['path']
+            epuuid = new_endpoint['uuid']
+            token = new_endpoint['token']
+
+            sync_requests[epuuid] = {
+                'path': f"http://{path}/db/{db}/table/{table}/sync",
+                'data': table_copy,
+                'timeout': 2.0,
+                'headers': await get_auth_http_headers('remote', token=token),
+                'session': await get_endpoint_sessions(epuuid, **kw)
+            }
+        sync_table_results = await async_request_multi(
+            sync_requests, 
+            'POST', 
+            loop=loop
+        )
+        trace(f"sync_table_results: {sync_table_results}")
+
+        # mark loaded
+        mark_loaded = []
+        for endpoint in sync_table_results:
+            if not sync_table_results[endpoint]['status'] == 200:
+                continue
+            mark_loaded.append(
+                cluster_table_change(
+                    pyql,
+                    'state',
+                    'update',
+                    {
+                        'set': {
+                            'state': 'loaded',
+                            'info': {}
+                            },
+                        'where': {
+                            'name': f"{endpoint}_{table}"
+                            }
+                    },
+                    trace=trace,
+                    loop=loop
+                )
+            )
+        mark_loaded_results = await asyncio.gather(
+            *mark_loaded,
+            return_exceptions=True
+        )
+        trace(f"mark_loaded_results: {mark_loaded_results}")
+        
+
+        # post sync - unpause
+        unpause_table = await table_pause(pyql, table, 'stop', **kw)
+        trace(f"unpause_table - {unpause_table}")
+        return {
+            "sync_table_results": sync_table_results,
+            "mark_loaded": mark_loaded
+        }
 
     @server.trace
     async def table_sync_run(cluster=None, table=None, config=None, job=None, **kw):
@@ -3129,6 +3343,14 @@ async def run(server):
                 loop=loop
             )
             trace(f"{cluster} {table} {job} create_table_results: {create_table_results}")
+
+            if cluster == pyql and table in ['jobs', 'tables', 'state']:
+                return await pyql_state_sync_run(
+                    table, 
+                    alive_endpoints,
+                    table_endpoints,
+                    **kw
+                )
 
             # for each created table, need to send a /db/database/table/sync 
             # which includes copy of latest table & last_txn_time
