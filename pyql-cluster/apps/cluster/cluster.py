@@ -1592,6 +1592,7 @@ async def run(server):
         last_txn_time
         """
         trace = kw['trace']
+        pyql = await server.env['PYQL_UUID']
         copy_only = False if not 'copy_only' in kw else kw['copy_only']
 
 
@@ -1639,6 +1640,12 @@ async def run(server):
         
         trace(f"log cluster - table_copy - {table_copy}")
         table_copy = table_copy['data'] if 'data' in table_copy else table_copy
+        
+        if cluster == pyql and table in ('state', 'tables', 'jobs'):
+            return {
+                'table_copy': table_copy, 
+                'last_txn_time': time.time()
+                }
 
         # log cluster
         last_txn_time = table_copy[-1]['timestamp'] if len(table_copy) > 0 else time.time()
@@ -3198,7 +3205,7 @@ async def run(server):
                 table_copy = await cluster_table_copy(
                     pyql, 
                     table, 
-                    copy_only=True, 
+                    copy_only=True,
                     **kw
                 )
                 # trigger table creation on new_endpoint
