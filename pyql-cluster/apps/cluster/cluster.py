@@ -2233,12 +2233,12 @@ async def run(server):
                         'is_paused': False
                     }
                     await cluster_table_change(pyql, 'tables', 'insert', data, **kw)
-                    
-                    await cluster_txn_table_create(
-                        txn_cluster_id,
-                        table_name,
-                        **kw
-                    )
+                    if not (cluster_id == pyql and table_name in ['jobs', 'state', 'tables']):
+                        await cluster_txn_table_create(
+                            txn_cluster_id,
+                            table_name,
+                            **kw
+                        )
         trace(f"finished with {new_tables} new tables in cluster")
         return new_tables
     
