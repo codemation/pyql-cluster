@@ -967,7 +967,7 @@ async def run(server):
             loop=loop
         )
 
-        status = {'success': [] 'fail': []}
+        status = {'success': [], 'fail': []}
         for _endpoint in state_change_results:
             endpoint = state_change_results[endpoint]
             if endpoint['status'] == 200:
