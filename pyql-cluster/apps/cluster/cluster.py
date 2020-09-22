@@ -1051,7 +1051,12 @@ async def run(server):
         pyql = await server.env['PYQL_UUID']
 
         if cluster == pyql and table in ['jobs', 'state', 'tables']:
-            return await pyql_state_tables_change(table, request_data, **kw)
+            return await pyql_state_tables_change(
+                table,
+                action,
+                request_data, 
+                **kw
+            )
 
         _txn = {action: request_data}
         trace(f"called for {_txn}")
