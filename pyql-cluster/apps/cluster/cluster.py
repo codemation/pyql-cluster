@@ -3238,20 +3238,21 @@ async def run(server):
         for endpoint in sync_table_results:
             if not sync_table_results[endpoint]['status'] == 200:
                 continue
+            set_loaded = {
+                'set': {
+                    'state': 'loaded',
+                    'info': {}
+                    },
+                'where': {
+                    'name': f"{endpoint}_{table}"
+                    }
+            }
             mark_loaded.append(
                 cluster_table_change(
                     pyql,
                     'state',
                     'update',
-                    {
-                        'set': {
-                            'state': 'loaded',
-                            'info': {}
-                            },
-                        'where': {
-                            'name': f"{endpoint}_{table}"
-                            }
-                    },
+                    set_loaded,
                     force=True,
                     trace=trace,
                     loop=loop
@@ -3268,7 +3269,7 @@ async def run(server):
 
                 stale_state_update[epuuid] = {
                     'path': f"http://{path}/db/{db}/table/state/update",
-                    'data': table_copy,
+                    'data': set_loaded,
                     'timeout': 2.0,
                     'headers': await get_auth_http_headers('remote', token=token),
                     'session': await get_endpoint_sessions(epuuid, **kw)
