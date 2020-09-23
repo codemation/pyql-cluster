@@ -3200,10 +3200,10 @@ async def run(server):
         table_copy = None
 
         sync_requests = {} 
-        for _new_endpoint in table_endpoints['new']:
-            if not _new_endpoint in alive_endpoints:
+        for _endpoint in new_or_stale_endpoints:
+            if not _endpoint in alive_endpoints:
                 continue
-            new_endpoint = table_endpoints['new'][_new_endpoint]
+            endpoint = new_or_stale_endpoints[_endpoint]
             
             # avoid pulling table copy twice
             if table_copy == None:
@@ -3214,10 +3214,10 @@ async def run(server):
                     **kw
                 )
                 # trigger table creation on new_endpoint
-            db = new_endpoint['db_name']
-            path = new_endpoint['path']
-            epuuid = new_endpoint['uuid']
-            token = new_endpoint['token']
+            db = endpoint['db_name']
+            path = endpoint['path']
+            epuuid = endpoint['uuid']
+            token = endpoint['token']
 
             sync_requests[epuuid] = {
                 'path': f"http://{path}/db/{db}/table/{table}/sync",
@@ -3226,6 +3226,9 @@ async def run(server):
                 'headers': await get_auth_http_headers('remote', token=token),
                 'session': await get_endpoint_sessions(epuuid, **kw)
             }
+            if table == 'state':
+                # Allowing only 1 state table sync per job, to avoid state mismatches
+                break
         sync_table_results = await async_request_multi(
             sync_requests, 
             'POST', 
