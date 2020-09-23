@@ -1011,13 +1011,12 @@ async def run(server):
             ## state table ##
             state_mark_stale = {}
             for endpoint in status['success']:
-                _endpoint = table_endpoints['loaded'][endpoint]
-                path = _endpoint['path']
-                db = _endpoint['db_name']
-                token = _endpoint['token']
-                epuuid = _endpoint['uuid']
+                path = endpoint['path']
+                db = endpoint['db_name']
+                token = endpoint['token']
+                epuuid = endpoint['uuid']
 
-                state_mark_stale[endpoint] = {
+                state_mark_stale[epuuid] = {
                     'path': f"http://{path}/db/{db}/table/state/update",
                     'data': mark_stale,
                     'timeout': 2.0,
