@@ -1002,6 +1002,7 @@ async def run(server):
                 trace(f"marking fail_endpoint {fail_endpoint['uuid']} stale")
                 await pyql_state_tables_change(
                     'state',
+                    'update',
                     mark_stale,
                     **kw
                 )
