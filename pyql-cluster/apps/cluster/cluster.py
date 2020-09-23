@@ -3247,6 +3247,7 @@ async def run(server):
                             'name': f"{endpoint}_{table}"
                             }
                     },
+                    force=True,
                     trace=trace,
                     loop=loop
                 )
@@ -3263,7 +3264,7 @@ async def run(server):
         trace(f"unpause_table - {unpause_table}")
         return {
             "sync_table_results": sync_table_results,
-            "mark_loaded": mark_loaded
+            "mark_loaded": mark_loaded_results
         }
 
     @server.trace
