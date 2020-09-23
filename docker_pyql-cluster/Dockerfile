@@ -1,6 +1,6 @@
 FROM joshjamison/python37:latest
 
-RUN apt-get install -y curl
+RUN apt-get update && apt-get install -y curl
 
 RUN git clone --single-branch --branch fastapi https://github.com/codemation/pyql-cluster.git
 
