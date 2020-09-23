@@ -970,7 +970,7 @@ async def run(server):
         status = {'success': [], 'fail': []}
         for _endpoint in state_change_results:
             endpoint = table_endpoints['loaded'][_endpoint]
-            if endpoint['status'] == 200:
+            if state_change_results[_endpoint]['status'] == 200:
                 status['success'].append(endpoint)
                 continue
             status['fail'].append(endpoint)
