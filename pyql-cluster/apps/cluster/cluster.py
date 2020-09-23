@@ -3604,7 +3604,7 @@ async def run(server):
                 job_status = f"job {job_check[0]['id'] }with name {job['job']} already exists"
                 return {
                     'message': trace.warning(job_status),
-                    'job_id': job['job']
+                    'job_id': job_check[0]['id']
                 }
 
         response = await cluster_table_change(pyql, 'jobs', 'insert', job_insert, **kw)
