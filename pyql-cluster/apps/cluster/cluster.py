@@ -3274,8 +3274,8 @@ async def run(server):
                     'session': await get_endpoint_sessions(epuuid, **kw)
                 }
                 mark_loaded.append(
-                    stale_state_update(
-                        sync_requests, 
+                    async_request_multi(
+                        stale_state_update, 
                         'POST', 
                         loop=loop
                     )
