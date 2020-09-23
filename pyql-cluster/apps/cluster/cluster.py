@@ -3192,6 +3192,11 @@ async def run(server):
 
         # for each created table, need to send a /db/database/table/sync 
         # which includes copy of latest table & last_txn_time
+        if table == 'state':
+            new_or_stale_endpoints = {}
+            new_or_stale_endpoints.update(table_endpoints['new'])
+            new_or_stale_endpoints.update(table_endpoints['stale'])
+
         table_copy = None
 
         sync_requests = {} 
@@ -3252,6 +3257,29 @@ async def run(server):
                     loop=loop
                 )
             )
+            # update stale - 'state' endpoint 
+            if table == 'state':
+                stale_state_update = {}
+                _endpoint = new_or_stale_endpoints[endpoint]
+                db = _endpoint['db_name']
+                path = _endpoint['path']
+                epuuid = _endpoint['uuid']
+                token = _endpoint['token']
+
+                stale_state_update[epuuid] = {
+                    'path': f"http://{path}/db/{db}/table/state/update",
+                    'data': table_copy,
+                    'timeout': 2.0,
+                    'headers': await get_auth_http_headers('remote', token=token),
+                    'session': await get_endpoint_sessions(epuuid, **kw)
+                mark_loaded.append(
+                    stale_state_update(
+                        sync_requests, 
+                        'POST', 
+                        loop=loop
+                    )
+                )
+
         mark_loaded_results = await asyncio.gather(
             *mark_loaded,
             return_exceptions=True
