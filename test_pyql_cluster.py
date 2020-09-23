@@ -33,14 +33,17 @@ class cluster:
     def auth_setup(self):
         # Test Basic auth by pulling token from /auth/token/cluster
         self.step('test_auth - waiting for cluster to finish initalizing')
-        time.sleep(10)
         self.step('test_auth - trying to pull cluster_token')
-        token, rc = self.probe(
-            f'/auth/token/cluster',
-            auth={
-                'method': 'basic', 'auth': self.config['init_admin_pw']
-            }
-        )
+        for _ in range(3):
+            time.sleep(10)
+            token, rc = self.probe(
+                f'/auth/token/cluster',
+                auth={
+                    'method': 'basic', 'auth': self.config['init_admin_pw']
+                }
+            )
+            if rc == 200:
+                break
         print(f"token {token} rc {rc}")
         self.cluster_token = token['PYQL_CLUSTER_SERVICE_TOKEN']
         print(f"token pulled {self.cluster_token}")
@@ -70,7 +73,7 @@ class cluster:
                     'method': 'basic', 'auth': self.config['init_admin_pw']
                 }
             )
-            assert isinstance(token, dict), f"expected token is type dict, found {type(token)} with value {token}"
+            assert isinstance(token, dict), f"expected token {token} is type dict , found {type(token)} with value {token}"
             token = token['join']
         if port == None:
             self.nodes.append(self.nodes[-1]+1)
@@ -107,8 +110,8 @@ class cluster:
 
                 table_endpoints, rc = self.probe(f"/cluster/{cluster['id']}/table/{table}/endpoints")
 
-                for endpoint in table_endpoints['in_sync']:
-                    endpoint_info = table_endpoints['in_sync'][endpoint]
+                for endpoint in table_endpoints['loaded']:
+                    endpoint_info = table_endpoints['loaded'][endpoint]
 
                 # pull config from table to verify primary_key to sort data on
 
@@ -199,15 +202,18 @@ class cluster:
             diff_tables = []
             for table, endpoints in verify.items():
                 for endpoint, status in endpoints.items():
-                    if not table == 'jobs':
-                        if False in status['status']: 
-                            if try_count < 2:
-                                print(f"{table} endpoint {endpoint} data did not match with {status['diff'].keys()} - retrying")
-                                time.sleep(5)
-                                self.verify_data(try_count+1)
-                                return # avoid asserting if this is not the max retry run
-                        if False in status['status']:
-                            verify_fail.append(f"{table} endpoint {endpoint} data did not match with {status['diff']}")
+                    if table == 'jobs':
+                        continue
+                    if 'txn' in table and 'jobs' in table:
+                        continue
+                    if False in status['status']: 
+                        if try_count < 2:
+                            print(f"{table} endpoint {endpoint} data did not match with {status['diff'].keys()} - retrying")
+                            time.sleep(5)
+                            self.verify_data(try_count+1)
+                            return # avoid asserting if this is not the max retry run
+                    if False in status['status']:
+                        verify_fail.append(f"{table} endpoint {endpoint} data did not match with {status['diff']}")
             if not len(verify_fail) == 0:
                 print(verify_fail)
                 print('\n'.join(diff))
@@ -290,7 +296,7 @@ class cluster:
             start, timeout = time.time(), 60
             while time.time() - start < timeout:
                 quorum, rc = self.probe('/cluster/pyql/ready')
-                quorum_count = len(quorum['nodes']['nodes']) if isinstance(quorum['nodes']['nodes'], list) else 0
+                quorum_count = len(quorum['nodes']) if isinstance(quorum['nodes'], dict) else 0
                 if rc == 200 and quorum_count == expected_count:
                     break
                 time.sleep(5)
@@ -300,13 +306,17 @@ class cluster:
             except Exception as e:
                 assert False, f"{repr(e)} - error comparing {quorum_count} and {expected_count}"
         # re-enable node
+        self.step(f"sleeping 90 seconds before recovery")
+        time.sleep(90)
         for node in stopped_nodes:
             self.step(f'restarting stopped node {node} to test recovery')
             self.docker_restart(node)
-            self.sync_job_check()
-    def insync_and_state_check(self):
+        self.sync_job_check()
+        self.state_check()
+        self.verify_data()
+    def state_check(self):
         """
-        checks state of tables & querries sync_job_check until state is in_sync True
+        checks state of tables & querries sync_job_check until state is loaded
         """
         self.step('verifying tables are properly synced on all endpoints')
         is_ok = True
@@ -316,8 +326,8 @@ class cluster:
                 state_check, rc = self.probe('/cluster/pyql/table/state/select')
                 assert rc == 200, f"something wrong happened when checking state table {rc}"
                 for state in state_check['data']:
-                    if not state['in_sync'] == True or not state['state'] == 'loaded':
-                        print(f"found state which was not in_sync=True & 'loaded {state}, retrying")
+                    if not state['state'] == 'loaded':
+                        print(f"found state which was not 'loaded {state}, retrying")
                         is_ok = False
                         self.sync_job_check()
                         break
@@ -326,7 +336,8 @@ class cluster:
                 count+=1
             except Exception as e:
                 print(f"something wrong happened when checking state table")
-                break     
+                break
+        self.step("all endpoints verfied loaded") 
 
 def get_auth_http_headers(method, auth):
     headers = {'Accept': 'application/json', "Content-Type": "application/json"}
@@ -335,7 +346,7 @@ def get_auth_http_headers(method, auth):
     else:
         headers['Authentication'] = f'Basic {auth}'
     return headers
-def probe(path, method='GET', data=None, timeout=20.0, auth=None, **kw):
+def probe(path, method='GET', data=None, timeout=60.0, auth=None, **kw):
     action = requests if not 'session' in kw else kw['session']
     if 'method' in auth and 'auth' in auth:
         headers = get_auth_http_headers(**auth)
@@ -366,7 +377,8 @@ class PyqlCluster(unittest.TestCase):
 
     def test_01_expand(self):
         # Test Basic auth by pulling token from /auth/token/cluster
-        test_cluster.expand_cluster()
+        for _ in range(2):
+            test_cluster.expand_cluster()
         test_cluster.sync_job_check()
         test_cluster.verify_data()
         
@@ -381,85 +393,41 @@ class PyqlCluster(unittest.TestCase):
             jobs, rc = test_cluster.get_cluster_jobs()
             if rc == 200:
                 jobs = [ job['name'] for job in jobs['data'] ]
-                if 'tablesync_check' in jobs and 'cluster_job_cleanup' in jobs:
+                missing = False
+                for i in [30, 90]:
+                    for job in ['tablesync_check', 'cluster_job_cleanup']:
+                        if not f'{job}_{i}' in jobs:
+                            missing = True
+                            break
+                if missing:
+                    print(jobs)
+                    time.sleep(10)
+                else:
                     break
-            time.sleep(10)
         for i in [30, 90]:
             for job in ['tablesync_check', 'cluster_job_cleanup']:
                 assert f'{job}_{i}' in jobs, f'{job}_{i} cron job is missing after cluster init - jobs {jobs}'
     #Cluster Expansion testing
-    def test_03_cluster_expansion(self):
-        pass
-        #test_cluster.expand_cluster()
-        #test_cluster.sync_job_check()
-        #test_cluster.verify_data()
-    def test_04_muliti_cluster_expansion(self): 
+    def test_03_muliti_cluster_expansion(self): 
         for _ in range(4):
             test_cluster.expand_cluster()
         test_cluster.sync_job_check()
         test_cluster.verify_data()
     
     # Cluster Recovery 
-    def test_05_cluster_recovery(self):
-        test_cluster.step(f"test_05_cluster_recovery - bring down random node to verify node removal & recovery upon restarting")
-        """
-        node = test_cluster.nodes[random.randrange(len(test_cluster.nodes)) - 1]
-        # prevent node 8090 from being stopped as there is not load balancer for other ports
-        node = node + 1 if node == 8090 else node
-        test_cluster.docker_stop(node)
-        
-        start, timeout = time.time(), 60
-        while time.time() - start < timeout:
-            quorum, rc = test_cluster.probe('/cluster/pyql/ready')
-            if rc == 200 and len(quorum['nodes']['nodes']) == len(test_cluster.nodes) - 1:
-                break
-            time.sleep(5)
-        try:
-            assert len(quorum['nodes']['nodes']) == len(test_cluster.nodes) - 1, f"expected number of nodes to be {len(quorum['nodes']['nodes'])} after stopping node {node} - found {quorum}"
-        except Exception as e:
-            assert False, f"could not check length on {quorum}"
-
-        # re-enable node
-        test_cluster.step('test_05_cluster_recovery - restarting stopped node to test recovery')
-        test_cluster.docker_restart(node)
-        test_cluster.sync_job_check()
-        """
+    def test_04_cluster_recovery(self):
+        count = 2
+        test_cluster.step(f"test_05_cluster_recovery - bring down {count} random node(s) to verify node removal & recovery upon restarting")
         test_cluster.test_node_recovery(2)
-
-    # Verify successful sync
-    def test_06_verify_cluster_sync(self):
-        test_cluster.step('test_06_verify_cluster_sync verifying tables are properly synced on all endpoints')
-        MAX_TRY = 3
-        is_ok = True
-        for _ in range(MAX_TRY):
-            state_check, rc = test_cluster.probe('/cluster/pyql/table/state/select')
-            assert rc == 200, f"something wrong happened when checking state table {rc}"
-            for state in state_check['data']:
-                if not state['in_sync'] == True or not state['state'] == 'loaded':
-                    print(f"found state which was not in_sync=True & 'loaded {state}, retrying")
-                    is_ok = False
-                    test_cluster.sync_job_check()
-                    break
-            if is_ok:
-                break
-        for state in state_check['data']:
-            assert state['in_sync'] == True and state['state'] == f'loaded', f"found state which was not in_sync=True & 'loaded {state}"
-        
-        # check each endpoint individually to verify if there are any differences in state
+        test_cluster.state_check()
         test_cluster.verify_data()
 
-    # Cluster Recovery 
-    def test_07_multi_cluster_recovery(self):
-        pass
-        #test_cluster.test_node_recovery(2)
-
-    def test_08_multi_cluster_expand_recovery(self):
+    def test_05_multi_cluster_expand_recovery(self):
         test_cluster.step("starting test_08_multi_cluster_expand_recovery - expand")
         # expand by 4, 2 at a time beween sync job checks
-        for _ in range(2):
-            for _ in range(2):
-                test_cluster.expand_cluster()
-            test_cluster.sync_job_check()
-            test_cluster.verify_data()
+        for _ in range(4):
+            test_cluster.expand_cluster()
+        test_cluster.sync_job_check()
+        test_cluster.verify_data()
         test_cluster.step("starting test_08_multi_cluster_expand_recovery - recovery(break/heal)")
         test_cluster.test_node_recovery(3)
