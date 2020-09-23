@@ -3192,10 +3192,10 @@ async def run(server):
 
         # for each created table, need to send a /db/database/table/sync 
         # which includes copy of latest table & last_txn_time
-        if table == 'state':
-            new_or_stale_endpoints = {}
-            new_or_stale_endpoints.update(table_endpoints['new'])
-            new_or_stale_endpoints.update(table_endpoints['stale'])
+
+        new_or_stale_endpoints = {}
+        new_or_stale_endpoints.update(table_endpoints['new'])
+        new_or_stale_endpoints.update(table_endpoints['stale'])
 
         table_copy = None
 
