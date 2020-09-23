@@ -3272,6 +3272,7 @@ async def run(server):
                     'timeout': 2.0,
                     'headers': await get_auth_http_headers('remote', token=token),
                     'session': await get_endpoint_sessions(epuuid, **kw)
+                }
                 mark_loaded.append(
                     stale_state_update(
                         sync_requests, 
