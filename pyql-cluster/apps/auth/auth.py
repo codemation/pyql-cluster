@@ -76,7 +76,7 @@ async def run(server):
                             server.http_exception(401, debug(log.error(f"token authentication failed")))
 
                         kwargs['authentication'] = decoded_token['id']
-                        request.auth = response['userid']
+                        request.auth = decoded_token['id']
                         if 'cluster_allowed' in decoded_token:
                             kwargs.update(decoded_token)
 
