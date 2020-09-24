@@ -2,7 +2,6 @@
 async def run(server):
     from fastapi import Request
     import os, uuid, time, json, base64, jwt, string, random, socket
-    import uvloop, asyncio
     
     hostname = socket.getfqdn()
     char_nums = string.ascii_letters + ''.join([str(i) for i in range(10)])
@@ -79,9 +78,11 @@ async def run(server):
                         kwargs['authentication'] = decoded_token['id']
                         if 'cluster_allowed' in decoded_token:
                             kwargs.update(decoded_token)
-                        request.auth = decoded_token['id']
-                        if isinstance(decoded_token['expiration'], dict) and 'join' in decoded_token['expiration']:
-                            # Join tokens should only be used to join an endpoint to a cluster
+
+                        # Join tokens should only be used to join an endpoint to a cluster
+                        if ( isinstance(decoded_token['expiration'], dict)
+                            and 'join' in decoded_token['expiration'] ):
+
                             if not 'join_cluster' in str(f):
                                 error = log.error(f"token authentication failed, join token auth attempted for {f}")
                                 server.http_exception(401, debug(error))
@@ -350,7 +351,7 @@ async def run(server):
         
         @server.api_route('/auth/{authtype}/register', methods=['POST'], status_code=201)
         async def auth_user_register_endpoint(authtype: str, user_info: dict, request: Request):
-            return await auth_user_register(authtype,  request=await server.process_request(request))
+            return await auth_user_register(authtype, user_info, request=await server.process_request(request))
         @server.state_and_quorum_check
         @server.is_authenticated('pyql')
         @server.trace
