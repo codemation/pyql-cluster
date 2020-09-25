@@ -341,13 +341,12 @@ async def run(server):
             # User is unique - adding user
             user_info['id'] = str(uuid.uuid1())
             trace(f"creating new user with id {user_info['id']}")
-            response, rc = server.cluster_table_insert(pyql, 'auth', user_info, trace=trace)
-            if rc == 200:
-                if authtype == 'user' or authtype == 'admin':
-                    svc, status = await user_register('service', {'parent': user_info['id']})
-                    trace(f"creating service account for new user {svc} {status}")
-                return {"message": trace(f"user created successfully")}
-            return response, rc
+            response = await server.cluster_table_insert(pyql, 'auth', user_info, trace=trace)
+
+            if authtype == 'user' or authtype == 'admin':
+                svc_register = await user_register('service', {'parent': user_info['id']})
+                trace(f"creating service account for new user {svc_register}")
+            return {"message": trace(f"user created successfully")}
         
         @server.api_route('/auth/{authtype}/register', methods=['POST'], status_code=201)
         async def auth_user_register_endpoint(authtype: str, user_info: dict, request: Request):
