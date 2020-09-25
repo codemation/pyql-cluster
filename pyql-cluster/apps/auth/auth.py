@@ -329,8 +329,7 @@ async def run(server):
                         'select': ['id', 'password'], 
                         'where': {'email': user_info['email']}
                     },
-                    trace=trace,
-                    request=request
+                    trace=trace
                 )
                 if len(email_check['data']) > 0:
                     server.http_exception(
