@@ -357,7 +357,7 @@ async def run(server):
         @server.is_authenticated('pyql')
         @server.trace
         async def auth_user_register(authtype, user_info, **kw):
-            return user_register(authtype, user_info, **kw)
+            return await user_register(authtype, user_info, **kw)
         
         @server.state_and_quorum_check
         @server.is_authenticated('cluster')
