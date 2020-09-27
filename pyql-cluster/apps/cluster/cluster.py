@@ -2173,7 +2173,7 @@ async def run(server):
                     'token': config['token']},
                 'where': {
                     'uuid': config['database']['uuid']
-                    }
+                }
             }
             if len(endpoints) == 1 and cluster_id == pyql:
                 #Single node pyql cluster - path changed
@@ -2353,8 +2353,6 @@ async def run(server):
         new_endpoint_or_database = False
         is_pyql_bootstrapped = False
         pyql = None
-
-
 
         trace.info(f"join cluster for {cluster_name} with kwargs {kw}")
 
