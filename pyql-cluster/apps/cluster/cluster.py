@@ -2118,7 +2118,7 @@ async def run(server):
         new_cluster_to_txn_map = {
             'data_cluster_id': cluster_id,
             'txn_cluster_name': txn_cluster['txn_cluster_name'],
-            'txn_cluster_id': txn_cluster['id'] # await get_txn_cluster_to_join()
+            'txn_cluster_id': txn_cluster['txn_cluster_id'] # await get_txn_cluster_to_join()
         }
         join_txn_cluster_result = await cluster_table_change(
             pyql, 
