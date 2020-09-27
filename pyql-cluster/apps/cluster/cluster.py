@@ -1201,7 +1201,7 @@ async def run(server):
         else:
         """
         server.txn_signals.append(
-            (q
+            (
                 signal_table_endpoints(**kw), # to be awaited by txn_signal workers
                 signal_table_endpoints, # to be retried, if first coro fails
                 kw # to be passed into any retries
