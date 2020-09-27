@@ -277,6 +277,7 @@ async def run(server):
         server.reset_cache()
         return {"message": f"{nodeId} reset_cache completed"} 
     server.node_reset_cache = node_reset_cache
+
     @server.trace
     async def get_endpoint_sessions(endpoint, **kw):
         """
@@ -1200,7 +1201,7 @@ async def run(server):
         else:
         """
         server.txn_signals.append(
-            (
+            (q
                 signal_table_endpoints(**kw), # to be awaited by txn_signal workers
                 signal_table_endpoints, # to be retried, if first coro fails
                 kw # to be passed into any retries
@@ -1897,7 +1898,7 @@ async def run(server):
         trace = kw['trace']
         trace(f"starting")
 
-        data_and_txn_clusters = await server.data_to_txn_cluster.select('*')
+        data_and_txn_clusters = await server.clusters.data_to_txn_cluster.select('*')
         data_and_txn_clusters_count = Counter()
         for cluster_map in data_and_txn_clusters:
             txn_cluster_id = cluster_map['txn_cluster_id']
