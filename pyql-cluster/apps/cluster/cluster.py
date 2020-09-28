@@ -1524,8 +1524,7 @@ async def run(server):
                         "mods": ""
                     }
                 ],
-                "primary_key": "timestamp",
-                "foreign_keys": null,
+                "primary_key": "timestamp", # "foreign_keys": None,
                 "cache_enabled": True
             }
         }
