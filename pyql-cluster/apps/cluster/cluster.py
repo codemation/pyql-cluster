@@ -1484,7 +1484,7 @@ async def run(server):
             sync_state = 'loaded' if async_results[endpoint]['status'] == 200 else 'new'
             state_data = {
                 'name': f"{endpoint}_{table}",
-                'state': load_state,
+                'state': 'loaded',
                 'table_name': table,
                 'cluster': cluster,
                 'uuid': endpoint # used for syncing logs
