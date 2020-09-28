@@ -1431,6 +1431,7 @@ async def run(server):
     async def cluster_table_create(cluster: str, table: str, config: dict, **kw):
         pyql = await server.env['PYQL_UUID']
         loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
+        trace = kw['trace']
 
         # check existence of table 
 
@@ -1780,13 +1781,12 @@ async def run(server):
         
     @server.trace
     async def table_endpoint(cluster, table, endpoint, config=None, **kw):
-        trace=kw['trace']
         """ Sets state 
         cluster: uuid, table: name, endpoint: uuid, 
         config: {'in_sync': True|False, 'state': 'loaded|new'}
         last_mod_time: float(time.time())
-        
         """
+        trace=kw['trace']
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         set_config = config
         valid_inputs = ['in_sync', 'state']
