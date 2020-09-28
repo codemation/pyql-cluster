@@ -1429,6 +1429,7 @@ async def run(server):
         )
     @server.trace
     async def cluster_table_create(cluster: str, table: str, config: dict, **kw):
+        pyql = await server.env['PYQL_UUID']
         loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
 
         # check existence of table 
