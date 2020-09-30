@@ -3397,6 +3397,11 @@ async def run(server):
             )
             trace(f"{cluster} {table} {job} create_table_results: {create_table_results}")
 
+            for endpoint in create_table_results:
+                if not create_table_results[endpoint]['status'] == 200:
+                    del table_endpoints['new'][endpoint]
+                    
+
             if cluster == pyql and table in ['jobs', 'tables', 'state']:
                 return await pyql_state_sync_run(
                     table, 
