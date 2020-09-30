@@ -1672,33 +1672,6 @@ async def run(server):
     async def cluster_table_config(cluster, table, **kw):
         return await endpoint_probe(cluster, table, method='GET', path=f'/config', **kw)
 
-    @server.api_route('/cluster/{cluster}/table/{table}/{key}', methods=['GET', 'POST', 'DELETE'])
-    async def cluster_table_key(cluster: str, table: str, key: str, request: Request, data: dict = None):
-        return await cluster_table_key(cluster, table, key, data=data,  request=await server.process_request(request))
-    @state_and_quorum_check
-    @server.is_authenticated('cluster')
-    @cluster_name_to_uuid
-    @server.trace
-    async def cluster_table_key(cluster, table, key, **kw):
-        trace = kw['trace']
-        request = kw['request']
-        if request.method == 'GET':
-            return await endpoint_probe(cluster, table, path=f'/{key}', **kw)
-        data = None
-        if request.method == 'POST':
-            try:
-                data = kw['data']
-            except Exception as e:
-                server.http_exception(400, trace.error("expected json input for request"))
-        primary = await server.clusters.tables.select(
-            'config',
-            where={'cluster': cluster, 'name': table})
-        primary = primary[0]['config'][table]['primary_key']
-        if request.method == 'POST':
-            kw['data'] = {'set': data, 'where': {primary: key}}
-            return await table_update(cluster=cluster, table=table, **kw)
-        if request.method == 'DELETE':
-            return await table_delete(cluster, table, {'where': {primary: key}}, **kw)
     
     @server.api_route('/cluster/{cluster}/table/{table}/update', methods=['POST'])
     async def cluster_table_update_api(cluster: str, table: str, request: Request, data: dict = None):
@@ -1750,6 +1723,37 @@ async def run(server):
     @server.trace
     async def table_delete(cluster, table, data, **kw):
         return await cluster_table_change(cluster, table, 'delete', data, **kw)
+
+    @server.api_route('/cluster/{cluster}/table/{table}/{key}', methods=['GET', 'POST', 'DELETE'])
+    async def cluster_table_key(cluster: str, table: str, key: str, request: Request, data: dict = None):
+        return await cluster_table_key(cluster, table, key, data=data,  request=await server.process_request(request))
+    @state_and_quorum_check
+    @server.is_authenticated('cluster')
+    @cluster_name_to_uuid
+    @server.trace
+    async def cluster_table_key(cluster, table, key, **kw):
+        trace = kw['trace']
+        request = kw['request']
+        if request.method == 'GET':
+            return await endpoint_probe(cluster, table, path=f'/{key}', **kw)
+        data = None
+        if request.method == 'POST':
+            try:
+                data = kw['data']
+            except Exception as e:
+                server.http_exception(400, trace.error("expected json input for request"))
+        primary = await server.clusters.tables.select(
+            'config',
+            where={'cluster': cluster, 'name': table})
+        primary = primary[0]['config'][table]['primary_key']
+        if request.method == 'POST':
+            kw['data'] = {'set': data, 'where': {primary: key}}
+            return await table_update(cluster=cluster, table=table, **kw)
+        if request.method == 'DELETE':
+            return await table_delete(cluster, table, {'where': {primary: key}}, **kw)
+
+
+
 
     @server.api_route('/cluster/{cluster}/table/{table}/pause/{pause}', methods=['POST'])
     async def cluster_table_pause_api(cluster: str, table: str, pause: str, request: Request):
