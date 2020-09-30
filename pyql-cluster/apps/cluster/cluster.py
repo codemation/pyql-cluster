@@ -1533,7 +1533,7 @@ async def run(server):
 
         return await cluster_table_create(
             txn_cluster_id,
-            table,
+            f"txn_{table}",
             config,
             **kw
         )
@@ -2246,7 +2246,7 @@ async def run(server):
                     if not (cluster_id == pyql and table_name in ['jobs', 'state', 'tables']):
                         await cluster_txn_table_create(
                             txn_cluster_id,
-                            table_name,
+                            f'{cluster_id}_{table_name}',
                             **kw
                         )
         trace(f"finished with {new_tables} new tables in cluster")
