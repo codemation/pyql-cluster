@@ -1505,15 +1505,16 @@ async def run(server):
             }
     
     @server.trace
-    async def cluster_txn_table_create(txn_cluster_id: str, table: str, **kw):
-        # New Table - need to create corresponding txn table
-        # ('timestamp', float, 'UNIQUE'),
-        # ('txn', str)
+    async def cluster_txn_table_create(txn_cluster_id: str, data_cluster_and_table: str, **kw):
+        """
+        txn table name is composed of the following
+        txn_{data_cluster_id}_{table_name}
+        """
         txn_cluster_id_underscored = (
             '_'.join(txn_cluster_id.split('-'))
         )
         config = {
-            f'txn_{txn_cluster_id_underscored}_{table}': {
+            f'txn_{data_cluster_and_table}': {
                 "columns": [
                     {
                         "name": "timestamp",
@@ -1533,7 +1534,7 @@ async def run(server):
 
         return await cluster_table_create(
             txn_cluster_id,
-            f"txn_{table}",
+            f"txn_{data_cluster_and_table}",
             config,
             **kw
         )
