@@ -1,5 +1,5 @@
 async def run(server):
-    import asyncio, uuid, uvloop
+    import asyncio, uuid
     from fastapi.websockets import WebSocket
     from fastapi.testclient import TestClient
     from collections import deque
@@ -75,7 +75,7 @@ async def run(server):
                     restart = True
                 if queue == 'tasks' or restart:
                     if restart and queue == 'flush':
-                        server.__dict__[queue].leftappend(job)
+                        server.__dict__[queue].appendleft(job)
                     else:
                         server.__dict__[queue].append(
                             (job[1](**job[2]), job[1], job[2]) if queue == 'txn_signals' else job
