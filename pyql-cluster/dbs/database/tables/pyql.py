@@ -20,7 +20,7 @@ async def db_attach(server):
             'table_name',
             cache_enabled=True
             )
-            db_uuid = uuid.uuid1()
+            db_uuid = str(uuid.uuid1())
             insert_coros = []
             for tb in server.data[database].tables:
                 insert_coros.append(db.tables['pyql'].insert(
