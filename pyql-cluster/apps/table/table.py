@@ -299,7 +299,7 @@ async def run(server):
         if not table in server.data[database].tables:
             server.http_exception(400, log.error(f"{table} not found in database {database}"))
         table_config = await get_table_config(database, table)
-        await server.data[database].run(f'drop table {table}')
+
         message = await create_table(database, table_config)
         log.warning(f"table /sync create_table_func response {message}")
         #for row in data_to_sync['data']:
@@ -340,6 +340,10 @@ async def run(server):
             for table_name in table_config:
                 if table_name in db.tables:
                     log.warning(f'table {table_name} already exists - trying anyway')
+                    try:
+                        await server.data[database].run(f'drop table {table_name}')
+                    except Exception as e:
+                        log.exception(f'table create exception pre-dropping table {table_name}')
                 tb_config = table_config[table_name]
                 if not "columns" in tb_config:
                     server.http_exception(
@@ -379,8 +383,6 @@ async def run(server):
                 else:
                     tb_config['foreign_keys'] = None
                 # All required table configuration has been provided, Creating table.
-                if table_name in db.tables:
-                    await server.data[database].run(f'drop table {table_name}')
 
                 await db.create_table(
                     table_name, 
