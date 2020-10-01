@@ -18,7 +18,7 @@ async def run(server):
         if 'message' in job:
             return log.warning(f"get_and_process_job - result {job}")
 
-        log.warning(f"get_and_process_job pulled job {job}")
+        log.warning(f"get_and_process_job pulled job {job}"
         job_id = job['id']
         job = job['config']
         try:
@@ -68,15 +68,3 @@ async def run(server):
     server.tasks.append(
         server_get_and_process_job
     )
-
-
-    """
-    import os
-    import subprocess
-    log = server.log
-    log.info("starting job workers")
-    with open('.cmddir', 'r') as c:
-        events = f'{[l for l in c][0]}events/'
-        path = f'{events}jobs/'
-    subprocess.Popen(['python', f'{path}worker.py', '/internal/job', '10.0', events])
-    """
