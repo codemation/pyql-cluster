@@ -10,64 +10,6 @@ async def run(server):
 
     server.flush_table_tasks = {}
 
-    # table_locks are used by specific methods which cannot safely run in parelell 
-
-    async def get_table_lock(table: str, lock_id: str):
-        """
-        creates an async generator which acts as a context manager 
-        for acquiring / releasing table_locks 
-        """
-        async def lock(lock_id):
-            log.warning(f"created lock with id: {lock_id}")
-            locks = server.data[PYQL_TABLE_DB].tables['pyql']
-            timeout = 30
-            start = time.time()
-            result = None
-            try:
-                while time.time() - start < timeout:
-                    # try to acquire lock 
-                    reserve = locks.update(
-                        lock_id=lock_id,
-                        where={
-                            'table_name': table,
-                            'lock_id': None
-                        }
-                    )
-                    new_lock = locks.select(
-                        'lock_id',
-                        'last_txn_time',
-                        where={
-                            'table_name': table,
-                            'lock_id': lock_id
-                        }
-                    )
-                    _, new_lock = await asyncio.gather(
-                                            reserve, 
-                                            new_lock,
-                                            return_exceptions=True
-                                            )
-                    if len(new_lock) > 0:
-                        lock_id, last_txn_time = new_lock[0]['lock_id'], new_lock[0]['last_txn_time']
-                        result = yield lock_id, last_txn_time
-                        break
-                    asyncio.sleep(0.01)
-                else:
-                    log.error("timeout while acquiring table lock")
-                    return
-            except Exception as e:
-                pass
-            finally:
-                await locks.update(
-                    lock_id=None,
-                    where={
-                        'table_name': table,
-                        'lock_id': lock_id
-                    }
-                )
-        # creates a lock generator
-        new_lock = lock(lock_id)
-        # initializes lock generator with .asend(None) & returns lock
-        return new_lock
     @server.api_route('/db/{database}/cache/{timestamp}')
     async def get_db_cache_by_timestamp_api(database: str, timestamp: float, request: Request):
         return await get_db_cache_by_timestamp(database, timestamp, request=await server.process_request(request))
@@ -79,7 +21,6 @@ async def run(server):
         return {
             f'{timestamp}': cache if not cache == None else 'no cache found'
             }
-
 
     @server.api_route('/db/{database}/cache')
     async def get_db_cache_api(database: str, request: Request):
@@ -222,7 +163,9 @@ async def run(server):
                     "type": str(col.type.__name__), 
                     "mods": col.mods } for k,col in table.columns.items()],
                 "primary_key": table.prim_key,
-                "foreign_keys": table.foreign_keys
+                "foreign_keys": table.foreign_keys,
+                "cache_enabled": table.cache_enabled,
+                "max_cache_len": table.max_cache_len
             }        
         }
         return response
@@ -289,15 +232,6 @@ async def run(server):
 
     async def table_flush(database: str, table: str, flush_path: dict, **kw):
         
-        """
-        # acquire table lock 
-        lock_id = str(uuid.uuid1())
-        log.warning(f"trying to acquire lock using lock_id: {lock_id}")
-        
-        table_lock = await get_table_lock(table, lock_id)
-        async for lock, last_txn_time in table_lock:
-            if lock == lock_id:
-        """
         # pull last txn time 
         last_txn_time = await server.data[PYQL_TABLE_DB].tables['pyql'].select(
             'last_txn_time',
@@ -445,12 +379,16 @@ async def run(server):
                 else:
                     tb_config['foreign_keys'] = None
                 # All required table configuration has been provided, Creating table.
+                if table_name in db.tables:
+                    await server.data[database].run(f'drop table {table_name}')
+
                 await db.create_table(
                     table_name, 
                     columns,
                     tb_config["primary_key"],
                     foreign_keys=tb_config["foreign_keys"],
-                    cache_enabled=tb_config['cache_enabled'] if 'cache_enabled' in tb_config else False
+                    cache_enabled=tb_config['cache_enabled'] if 'cache_enabled' in tb_config else False,
+                    max_cache_len=tb_config['max_cache_len'] if 'max_cache_len' in tb_config else 125
                     )
                 await server.db_check(database)
                 return {"message": log.warning(f"""table {table_name} created successfully """)}
