@@ -18,7 +18,7 @@ async def run(server):
         if 'message' in job:
             return log.warning(f"get_and_process_job - result {job}")
 
-        log.warning(f"get_and_process_job pulled job {job}"
+        log.warning(f"get_and_process_job pulled job {job}")
         job_id = job['id']
         job = job['config']
         try:
