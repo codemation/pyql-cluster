@@ -22,8 +22,11 @@ async def attach_tables(server):
     from dbs.database.tables import jobs
     db_attach_coros.append(jobs.db_attach(server))
 
-    from dbs.database.tables import cache
-    db_attach_coros.append(cache.db_attach(server))
+    from dbs.database.tables import auth
+    db_attach_coros.append(auth.db_attach(server))
+
+    #from dbs.database.tables import cache
+    #db_attach_coros.append(cache.db_attach(server))
 
     from dbs.database.tables import quorum
     db_attach_coros.append(quorum.db_attach(server))
@@ -34,9 +37,6 @@ async def attach_tables(server):
     from dbs.database.tables import authlocal
     db_attach_coros.append(authlocal.db_attach(server))
             
-    from dbs.database.tables import auth
-    db_attach_coros.append(auth.db_attach(server))
-
     from dbs.database.tables import env
     db_attach_coros.append(env.db_attach(server))
 
