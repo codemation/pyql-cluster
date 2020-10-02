@@ -16,17 +16,11 @@ async def attach_tables(server):
     from dbs.database.tables import state
     db_attach_coros.append(state.db_attach(server))
             
-    from dbs.database.tables import transactions
-    db_attach_coros.append(transactions.db_attach(server))
-            
     from dbs.database.tables import jobs
     db_attach_coros.append(jobs.db_attach(server))
 
     from dbs.database.tables import auth
     db_attach_coros.append(auth.db_attach(server))
-
-    #from dbs.database.tables import cache
-    #db_attach_coros.append(cache.db_attach(server))
 
     from dbs.database.tables import quorum
     db_attach_coros.append(quorum.db_attach(server))

@@ -1,6 +1,8 @@
 
 async def db_attach(server):
     db = server.data['cluster']
+    if 'quorum' in db.tables:
+        await db.run('drop table quorum')
     await db.create_table(
        'quorum', [
            ('node', str, 'UNIQUE NOT NULL'), 

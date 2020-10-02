@@ -2,6 +2,8 @@
 async def db_attach(server):
     import os
     db = server.data['cluster']
+    if 'clusters' in db.tables:
+        return
     await db.create_table(
         'clusters',
         [

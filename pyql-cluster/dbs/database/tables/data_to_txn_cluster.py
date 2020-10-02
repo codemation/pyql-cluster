@@ -1,6 +1,8 @@
 
 async def db_attach(server):
-    db = server.data['cluster']    
+    db = server.data['cluster']
+    if 'data_to_txn_cluster' in db.tables:
+        return
     await db.create_table(
        'data_to_txn_cluster', 
        [

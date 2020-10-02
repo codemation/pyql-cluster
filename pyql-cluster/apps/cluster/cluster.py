@@ -2705,7 +2705,6 @@ async def run(server):
             run when all table-endpoints are in_sync=False
         """
         trace = kw['trace']
-        request = kw['request']
         #need to check quorum as all endpoints are currently in_sync = False for table
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         """
@@ -3400,7 +3399,7 @@ async def run(server):
             for endpoint in create_table_results:
                 if not create_table_results[endpoint]['status'] == 200:
                     del table_endpoints['new'][endpoint]
-                    
+
 
             if cluster == pyql and table in ['jobs', 'tables', 'state']:
                 return await pyql_state_sync_run(
@@ -3738,12 +3737,6 @@ async def run(server):
                 log.warning(f"adding job {job['job']} to internaljobs queue")
                 await server.internal_job_add(new_cron_job)
         
-        # Check for number of endpoints in pyql cluster, if == 1, mark ready=True
-        quorum = await server.clusters.quorum.select('*')
-        # clear existing quorum
-        for node in quorum:
-            await server.clusters.quorum.delete(where={'node': node['node']})
-
         if len(endpoints) == 1 or os.environ['PYQL_CLUSTER_ACTION'] == 'init':
             ready_and_quorum = True
             health = 'healthy'

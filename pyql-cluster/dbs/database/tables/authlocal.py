@@ -1,9 +1,8 @@
 
 async def db_attach(server):
     db = server.data['cluster']
-    # 'id': serviceId,
-    # 'username': 'pyql',
-    # 'type': 'service'
+    if 'authlocal' in db.tables:
+        return
     await db.create_table(
        'authlocal', [
            ('id', str, 'UNIQUE NOT NULL'), 

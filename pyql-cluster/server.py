@@ -37,11 +37,12 @@ else:
     # For loading when triggered by uWSGI
     if os.environ.get('PYQL_TYPE') in ['K8S', 'DOCKER']:
         os.environ['PYQL_NODE'] = socket.gethostbyname(socket.getfqdn())
+        os.environ['PYQL_DEBUG'] = 'True'
     else:
         # Triggered by uvicorn
-        os.environ['PYQL_NODE'] = '192.168.3.33'
+        os.environ['PYQL_NODE'] = '192.168.1.8'
         os.environ['PYQL_PORT'] = '8090'
-        os.environ['PYQL_CLUSTER_SVC'] = '192.168.3.33:8090'
+        os.environ['PYQL_CLUSTER_SVC'] = '192.168.1.8:8090'
         os.environ['PYQL_CLUSTER_ACTION'] = 'init'
         os.environ['PYQL_DEBUG'] = 'True'
 

@@ -1,6 +1,9 @@
 
 async def db_attach(server):
+
     db = server.data['cluster']
+    if 'auth' in db.tables:
+        return
     await db.create_table(
        'auth', [
            ('id', str, 'UNIQUE NOT NULL'), 
