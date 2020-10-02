@@ -88,8 +88,4 @@ async def run(server):
     await internal.run(server)
       
     from apps.cluster import cluster
-    await cluster.run(server)     
-
-    from apps.cache import cache
-    await cache.run(server)
-            
+    await cluster.run(server)
