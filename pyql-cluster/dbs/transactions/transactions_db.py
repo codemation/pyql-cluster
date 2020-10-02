@@ -1,14 +1,6 @@
 # database - type sqlite3
 async def run(server):
-    import sys, os
-    from fastapi.testclient import TestClient
-    from fastapi.websockets import WebSocket
-    import uvloop, asyncio
-    
-    #asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    #event_loop = asyncio.get_event_loop()
-    #server.event_loop = event_loop
-
+    import os
     log = server.log
 
     print(f"databse_db event_loop: {server.event_loop}")
@@ -46,18 +38,6 @@ async def run(server):
         await setup.attach_tables(server)
         log.info("finished attach_tables")
         return {"message": "database attached successfully"}
-
-    @server.websocket_route("/attach_transactions")
-    async def attach_databases(websocket: WebSocket):
-        await websocket.accept()
-        response = await database_attach()
-        await websocket.send_json({"message": log.info(response)})
-        await websocket.close()
-    def trigger_attach_dbs():
-        client = TestClient(server)
-        with client.websocket_connect("/attach_transactions") as websocket:
-            return websocket.receive_json()
-
 
     response = await transactions_attach()
     log.info(f"database_attach result: {response}")

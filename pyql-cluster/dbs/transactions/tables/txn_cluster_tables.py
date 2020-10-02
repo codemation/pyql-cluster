@@ -2,16 +2,17 @@
 async def db_attach(server):
     db = server.data['transactions']    
     log = server.log
-    await db.create_table(
-       'txn_cluster_tables', 
-       [
-           ('name', str, 'UNIQUE'), # <data_cluster_uuid><table_name>
-           ('txn_cluster_id', str),
-           ('last_tx_timestamp', float)
-       ],
-       'name',
-       cache_enabled=True
-    )
+    if not 'txn_cluster_tables' in db.tables:
+        await db.create_table(
+        'txn_cluster_tables', 
+        [
+            ('name', str, 'UNIQUE'), # <data_cluster_uuid><table_name>
+            ('txn_cluster_id', str),
+            ('last_tx_timestamp', float)
+        ],
+        'name',
+        cache_enabled=True
+        )
     
 
     async def create_txn_cluster_table(cluster_id, name):
