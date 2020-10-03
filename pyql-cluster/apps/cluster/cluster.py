@@ -2032,9 +2032,15 @@ async def run(server):
         }
         await cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
 
-        # add two random existing endpoints to new cluster
-        for _ in range(2):
+        existing_to_be_added = {'ids': set(), 'existing': []}
+
+        # add two unique and random existing endpoints to new cluster
+        while len(existing_to_be_added['ids']) < 2:
             existing = random.choice(txn_clusters)
+            if not existing['endpoints.uuid'] in existing_to_be_added['ids']:
+                existing_to_be_added['ids'].add(existing['endpoints.uuid'])
+                existing_to_be_added['existing'].append(existing)
+        for existing in existing_to_be_added['existing']:
             data = {
                 'id': str(uuid.uuid1()),
                 'uuid': existing['endpoints.uuid'],
