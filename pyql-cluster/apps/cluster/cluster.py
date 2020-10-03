@@ -1933,11 +1933,10 @@ async def run(server):
             lambda x,y: x if x[1] < y[1] else y, 
             data_and_txn_clusters_count.items()
         )[0]
-        
-        for cluster_map in data_and_txn_clusters:
-            if cluster_map['txn_cluster_id'] == cluster_id:
-                trace(f"finished - txn_cluster: {cluster_map}")
-                return cluster_map
+
+        for txn_cluster in txn_clusters:
+            if txn_cluster['id'] == cluster_id:
+                return txn_cluster
 
     @server.trace
     async def join_cluster_pyql_bootstrap(config, **kw):
@@ -2144,8 +2143,8 @@ async def run(server):
 
         new_cluster_to_txn_map = {
             'data_cluster_id': cluster_id,
-            'txn_cluster_name': txn_cluster['txn_cluster_name'],
-            'txn_cluster_id': txn_cluster['txn_cluster_id'] # await get_txn_cluster_to_join()
+            'txn_cluster_name': txn_cluster['name'],
+            'txn_cluster_id': txn_cluster['id'] # await get_txn_cluster_to_join()
         }
         join_txn_cluster_result = await cluster_table_change(
             pyql, 
