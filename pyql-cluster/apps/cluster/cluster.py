@@ -5,6 +5,7 @@ async def run(server):
     import time, uuid, random
     from random import randrange
     import json, os
+    from functools import reduce
     from collections import Counter
 
     from fastapi import Request
@@ -1927,7 +1928,11 @@ async def run(server):
         
         trace(f'data_and_txn_clusters_count: - {data_and_txn_clusters_count}')
 
-        cluster_id = min(data_and_txn_clusters_count)
+        # get txn cluster id with least members
+        cluster_id = reduce(
+            lambda x,y: x if x[1] < y[1] else y, 
+            data_and_txn_clusters_count.items()
+        )
         
         for cluster_map in data_and_txn_clusters:
             if cluster_map['txn_cluster_id'] == cluster_id:
