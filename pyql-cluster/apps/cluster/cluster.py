@@ -1924,6 +1924,8 @@ async def run(server):
         for txn_cluster in txn_clusters:
             if not txn_cluster['id'] in data_and_txn_clusters_count:
                 data_and_txn_clusters_count[txn_cluster['id']] = 0
+        
+        trace(f'data_and_txn_clusters_count: - {data_and_txn_clusters_count}')
 
         cluster_id = min(data_and_txn_clusters_count)
         
