@@ -1903,13 +1903,28 @@ async def run(server):
         trace = kw['trace']
         trace(f"starting")
 
+        txn_clusters = await server.clusters.clusters.select(
+            '*',
+            where={
+                'type': 'log'
+            }
+        )
         data_and_txn_clusters = await server.clusters.data_to_txn_cluster.select('*')
+        # need to iterate through server.clusters.custers type=log tables
+        # and build data_and_txn_clusters_count based on this when deciding txn
+        # cluster to join
+
         data_and_txn_clusters_count = Counter()
         for cluster_map in data_and_txn_clusters:
             txn_cluster_id = cluster_map['txn_cluster_id']
             if not txn_cluster_id in data_and_txn_clusters_count:
                 data_and_txn_clusters_count[txn_cluster_id] = 0
             data_and_txn_clusters_count[txn_cluster_id] +=1
+        # add all txn clusterss with 0 members
+        for txn_cluster in txn_clusters:
+            if not txn_cluster['id'] in data_and_txn_clusters_count:
+                data_and_txn_clusters_count[txn_cluster['id']] = 0
+
         cluster_id = min(data_and_txn_clusters_count)
         
         for cluster_map in data_and_txn_clusters:
