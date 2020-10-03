@@ -1932,7 +1932,7 @@ async def run(server):
         cluster_id = reduce(
             lambda x,y: x if x[1] < y[1] else y, 
             data_and_txn_clusters_count.items()
-        )
+        )[0]
         
         for cluster_map in data_and_txn_clusters:
             if cluster_map['txn_cluster_id'] == cluster_id:
