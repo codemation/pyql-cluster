@@ -3019,10 +3019,7 @@ async def run(server):
                 sync_table_results[endpoint['uuid']] = {'status': 200}
         trace(f"sync_table_results: {sync_table_results}")
 
-        # begin cut-over
-        if not f'{pyql_under}_tables' in table:
-            await table_pause(cluster, table, 'start', **kw)
-            await asyncio.sleep(5)
+
 
         if len(table_copy['table_copy']) > 0:
             # pull changes 
@@ -3043,10 +3040,21 @@ async def run(server):
             **kw
         )
 
-        trace(f"{cluster} {table} - in-cutover - table_changes: - {table_changes}")
+        is_paused = False
+        if 'data' in table_changes and len(table_changes['data']) < 50:
+            # begin cut-over
+            if not f'{pyql_under}_tables' in table:
+                await table_pause(cluster, table, 'start', **kw)
+                is_paused = True
+                #await asyncio.sleep(5)
+
+
+        trace(f"{cluster} {table} - is_paused: {is_paused} - table_changes: - {len(table_changes['data'])}")
 
         while len(table_changes['data']) > 0:
-
+            if not is_paused and len(table_changes['data']) < 50:
+                await table_pause(cluster, table, 'start', **kw)
+                is_paused = True
             sync_changes_requests = {}
             for _endpoint in sync_table_results:
                 if not sync_table_results[_endpoint]['status'] == 200:
@@ -3086,7 +3094,7 @@ async def run(server):
                 **kw
             )
 
-            trace(f"{cluster} {table} - in-cutover - table_changes: - {table_changes}")
+            trace(f"{cluster} {table} - is_paused: {is_paused} - table_changes: - {len(table_changes['data'])}")
 
         else:
             sync_changes_results = {}
