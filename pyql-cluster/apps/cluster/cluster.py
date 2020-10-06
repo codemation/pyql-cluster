@@ -3468,7 +3468,7 @@ async def run(server):
 
                 sync_requests[epuuid] = {
                     'path': f"http://{path}/db/{db}/table/{table}/sync",
-                    'data': /,
+                    'data': table_copy,
                     'timeout': 2.0,
                     'headers': await get_auth_http_headers('remote', token=token),
                     'session': await get_endpoint_sessions(epuuid, **kw)
