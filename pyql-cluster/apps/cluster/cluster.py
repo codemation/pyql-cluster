@@ -2940,6 +2940,8 @@ async def run(server):
         new_or_stale_endpoints.update(table_endpoints['new'])
         new_or_stale_endpoints.update(table_endpoints['stale'])
 
+        is_paused = False
+
         trace(f"started - new_or_stale_endpoints: {new_or_stale_endpoints} - alive_endpoints: {alive_endpoints} ")
 
         ## create table 
@@ -2979,6 +2981,7 @@ async def run(server):
 
         if f'{pyql_under}_tables' in table:
             await table_pause(cluster, table, 'start', **kw)
+            is_paused = True
             await asyncio.sleep(5)
         # get copy
         table_copy = await cluster_table_copy(cluster, table, copy_only=True, **kw)
@@ -3040,8 +3043,6 @@ async def run(server):
             **kw
         )
 
-        is_paused = False
-        
         trace(f"{cluster} {table} - is_paused: {is_paused} - table_changes: - {len(table_changes['data'])}")
 
         while not is_paused or len(table_changes['data']) > 0:
