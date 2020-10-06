@@ -3051,6 +3051,16 @@ async def run(server):
                 is_paused = True
                 trace(f"{cluster} {table} - starting pause as only {len(table_changes['data'])} changes - then sleeping")
                 await asyncio.sleep(5)
+
+                table_changes = await table_select(
+                    cluster,
+                    table,
+                    data=select_data,
+                    **kw
+                )
+            
+            if len(table_changes['data']) == 0:
+                continue
             sync_changes_requests = {}
             for _endpoint in sync_table_results:
                 if not sync_table_results[_endpoint]['status'] == 200:
