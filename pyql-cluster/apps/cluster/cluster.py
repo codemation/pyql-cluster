@@ -3041,19 +3041,15 @@ async def run(server):
         )
 
         is_paused = False
-        if 'data' in table_changes and len(table_changes['data']) < 50:
-            # begin cut-over
-            if not f'{pyql_under}_tables' in table:
-                await table_pause(cluster, table, 'start', **kw)
-                is_paused = True
-                #await asyncio.sleep(5)
-
+        
         trace(f"{cluster} {table} - is_paused: {is_paused} - table_changes: - {len(table_changes['data'])}")
 
-        while not is_paused and len(table_changes['data']) > 0:
+        while not is_paused or len(table_changes['data']) > 0:
             if not is_paused and len(table_changes['data']) < 50:
                 await table_pause(cluster, table, 'start', **kw)
                 is_paused = True
+                trace(f"{cluster} {table} - starting pause as only {len(table_changes['data'])} changes - then sleeping")
+                await asyncio.sleep(5)
             sync_changes_requests = {}
             for _endpoint in sync_table_results:
                 if not sync_table_results[_endpoint]['status'] == 200:
