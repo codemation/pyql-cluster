@@ -3048,10 +3048,9 @@ async def run(server):
                 is_paused = True
                 #await asyncio.sleep(5)
 
-
         trace(f"{cluster} {table} - is_paused: {is_paused} - table_changes: - {len(table_changes['data'])}")
 
-        while len(table_changes['data']) > 0:
+        while not is_paused and len(table_changes['data']) > 0:
             if not is_paused and len(table_changes['data']) < 50:
                 await table_pause(cluster, table, 'start', **kw)
                 is_paused = True
@@ -3060,7 +3059,7 @@ async def run(server):
                 if not sync_table_results[_endpoint]['status'] == 200:
                     continue
                 endpoint = new_or_stale_endpoints[_endpoint]
-        
+
                 db = endpoint['db_name']
                 path = endpoint['path']
                 epuuid = endpoint['uuid']
@@ -3074,7 +3073,7 @@ async def run(server):
                     'session': await get_endpoint_sessions(epuuid, **kw)
                 }
             sync_changes_results = await async_request_multi(
-                sync_requests, 
+                sync_changes_requests, 
                 'POST', 
                 loop=loop
             )
@@ -3469,7 +3468,7 @@ async def run(server):
 
                 sync_requests[epuuid] = {
                     'path': f"http://{path}/db/{db}/table/{table}/sync",
-                    'data': table_copy,
+                    'data': /,
                     'timeout': 2.0,
                     'headers': await get_auth_http_headers('remote', token=token),
                     'session': await get_endpoint_sessions(epuuid, **kw)
