@@ -140,8 +140,8 @@ async def run(server):
         """
         creates default running workers on app start
         """
-        for _ in range(2):
-            await add_worker(0.001, 'flush')
+        #for _ in range(2):
+        await add_worker(0.001, 'flush')
         for _ in range(4):
             await add_worker(0.001, 'txn_signals')
             await add_worker(5, 'tasks')
