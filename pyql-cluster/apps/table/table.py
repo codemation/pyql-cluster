@@ -294,8 +294,6 @@ async def run(server):
                 continue
             """
 
-            #server.pending_txns[txn_timestamp].append(_txn)
-            server.pending_txns['last_txn_time'] = txn_timestamp
 
             coros_to_gather = []
             for action, data in txn['txn'].items():
