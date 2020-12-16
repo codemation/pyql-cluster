@@ -11,7 +11,7 @@ async def run(server):
 
     
     DB_HOST = os.environ.get('TXN_DB_HOST')
-    TXN_RPC_PORT = os.environ.get('TXN_RPC_PORT')
+    RPC_PORT = os.environ.get('TXN_RPC_PORT')
     RPC_SECRET = os.environ.get('TXN_RPC_SECRET')
     RPC_PATH = os.environ.get('RPC_PATH')
 

@@ -17,6 +17,15 @@ async def run(server):
 
     DB_NAME = os.environ.get('PYQL_DB_NAME')
 
+    if not DB_NAME:
+        DB_NAME = 'cluster'
+    if not DB_HOST:
+        DB_HOST = 'localhost'
+    if not RPC_PORT:
+        RPC_PORT = int(os.environ['PYQL_PORT'] + 1)
+
+        
+
     log = server.log
     
     server.data[DB_NAME] = await EasyRpcProxyDatabase.create(
