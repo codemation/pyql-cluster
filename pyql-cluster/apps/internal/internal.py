@@ -2,7 +2,7 @@
 async def run(server):
     import uuid
     log = server.log
-    from fastapi import Request
+    from fastapi import Request, Depends
 
     async def db_check(database):
         db = server.data[database]
@@ -30,7 +30,7 @@ async def run(server):
     
     async def internal_job_add(job):
         job_id = str(uuid.uuid1())
-        await server.clusters.internaljobs.insert(**{
+        await server.data['cluster'].tables['internaljobs'].insert(**{
             'id': job_id,
             'name': job['job'],
             'status': 'queued',
@@ -39,7 +39,7 @@ async def run(server):
     server.internal_job_add = internal_job_add
 
     @server.api_route('/internal/job/{id}/{action}', methods=['POST'])
-    async def internal_job_queue_action(id: str, action: str, request: Request):
+    async def internal_job_queue_action(id: str, action: str, request: Request, token: dict = Depends(server.verify_token)):
         return await internal_job_queue_action(id, action,  request=await server.process_request(request))
     @server.is_authenticated('local')
     async def internal_job_queue_action(id, action, **kw):
@@ -49,10 +49,10 @@ async def run(server):
         log.warning(f"job_queue_action {job_id} - {action}")
         try:
             if action == 'finished':
-                result = await server.clusters.internaljobs.delete(where={'id': job_id})
+                result = await server.data['cluster'].tables['internaljobs'].delete(where={'id': job_id})
                 log.warning(f"finished result {result}")
             if action == 'queued':
-                await server.clusters.internaljobs.update(status='queued', where={'id': job_id})
+                await server.data['cluster'].tables['internaljobs'].update(status='queued', where={'id': job_id})
             return {"message": f"{action} on {job_id} completed successfully"}
         except Exception as e:
             return {
@@ -61,18 +61,18 @@ async def run(server):
     server.job_queue_action = job_queue_action
 
     @server.api_route('/internal/job')
-    async def internal_job_queue_pull_api(request: Request):
+    async def internal_job_queue_pull_api(request: Request, token: dict = Depends(server.verify_token)):
         return await internal_job_queue_pull( request=await server.process_request(request))
 
     @server.is_authenticated('local')
     async def internal_job_queue_pull(**kw):
         return await job_queue_pull(**kw)
     async def job_queue_pull(**kw):
-        jobs = await server.clusters.internaljobs.select('id', where={'status': 'queued'})
+        jobs = await server.data['cluster'].tables['internaljobs'].select('id', where={'status': 'queued'})
         if len(jobs) > 0:
             for job in jobs:
-                await server.clusters.internaljobs.update(status='running', where={'id': job['id'], 'status': 'queued'})
-                reserved = await server.clusters.internaljobs.select('*', where={'id': job['id'], 'status': 'running'})
+                await server.data['cluster'].tables['internaljobs'].update(status='running', where={'id': job['id'], 'status': 'queued'})
+                reserved = await server.data['cluster'].tables['internaljobs'].select('*', where={'id': job['id'], 'status': 'running'})
                 log.warning(f"job_queue_pull reserved job: {reserved}")
                 if len(reserved) == 1:
                     reserved_config = reserved[0]['config']
@@ -82,14 +82,14 @@ async def run(server):
     server.job_queue_pull = job_queue_pull
 
     @server.api_route('/internal/jobs')
-    async def internal_list_job_queue(request: Request):
+    async def internal_list_job_queue(request: Request, token: dict = Depends(server.verify_token)):
         return await internal_list_job_queue( request=await server.process_request(request))
     @server.is_authenticated('local')
     async def internal_list_job_queue(**kw):
         return {'jobs': server.jobs}
 
     @server.api_route('/internal/db/check')
-    async def internal_db_check_api(request: Request):
+    async def internal_db_check_api(request: Request, token: dict = Depends(server.verify_token)):
         return await internal_db_check_auth( request=await server.process_request(request))
 
     @server.is_authenticated('local')
@@ -104,7 +104,7 @@ async def run(server):
     server.internal_db_check = internal_db_check
 
     @server.api_route('/internal/db/{database}/status')
-    async def internal_db_status_api(database: str, request: Request):
+    async def internal_db_status_api(database: str, request: Request, token: dict = Depends(server.verify_token)):
         return await internal_db_status(database,  request=await server.process_request(request))
 
     @server.is_authenticated('local')

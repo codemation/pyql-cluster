@@ -3,20 +3,18 @@ async def run(server):
 
     #### Create HTTPException Handler
     from fastapi import HTTPException, Request
+    from easyrpc.server import EasyRpcServer
     import json, uuid, asyncio, random
 
     log = server.log
 
     # Reset SETUP_ID
     await server.env.set_item('SETUP_ID', 'UNSET')
-    await asyncio.sleep(10)
 
     server.setup_id = str(uuid.uuid1())
-    #random_sleep_count = random.randrange(20)
-    #log.warning(f"startup sleep {server.setup_id}, - sleeping for {random_sleep_count} seconds")
-    #await asyncio.sleep(random_sleep_count)
 
     env_setup_id = await server.env['SETUP_ID']
+
     log.warning(f"ENV SETUP ID: {env_setup_id}")
     if await server.env['SETUP_ID'] in [None, 'UNSET']:
         await server.env.set_item('SETUP_ID', server.setup_id)
@@ -47,13 +45,11 @@ async def run(server):
             request.headers, 
             request.method, 
             json_body
-            )
+        )
     server.process_request = process_request
 
-    pass # apps start here
+
     async def check_db_table_exist(database,table):
-        if not database in server.data:
-            await server.db_check(database)
         if database in server.data:
             if not table in server.data[database].tables:
                 await server.db_check(database)
@@ -67,7 +63,14 @@ async def run(server):
 
 
     from apps.auth import auth
-    await auth.run(server)       
+    await auth.run(server)
+
+    server.rpc = EasyRpcServer(
+        server, 
+        f'/ws/pyql-cluster', 
+        server_secret=await server.env['PYQL_LOCAL_SERVICE_TOKEN'],
+        logger=log
+    ) 
 
     from apps.select import select
     await select.run(server)            
@@ -89,3 +92,8 @@ async def run(server):
       
     from apps.cluster import cluster
     await cluster.run(server)
+
+    from apps.intracluster import intracluster
+    await intracluster.run(server)            
+            
+    

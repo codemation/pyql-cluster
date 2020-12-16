@@ -1,14 +1,19 @@
 # update
 async def run(server):
-    from fastapi import Request
+    from fastapi import Request, Depends
+    from pydantic import BaseModel
+
+
 
     @server.api_route('/db/{database}/table/{table}/update', methods=['POST'])
-    async def db_update_api(database: str, table: str, request: Request,  params: dict = None):
-        return await db_update(database, table, params=params, request=await server.process_request(request))
+    async def db_update(database: str, table: str, request: Request,  params: dict = None, token: dict = Depends(server.verify_token)):
+        return await db_update_auth(database, table, params=params, request=await server.process_request(request))
     @server.is_authenticated('local')
-    async def db_update(database, table, params=None, **kw):
-        return await update_func(database, table, params, **kw)
-    async def update_func(database, table, params=None, **kw):
+    async def db_update_auth(database, table, params=None, **kw):
+        return await update(database, table, params, **kw)
+
+    @server.rpc.origin(namespace=server.PYQL_NODE_ID)
+    async def update(database, table, params=None, **kw):
         message, rc = await server.check_db_table_exist(database,table)
         if not rc == 200:
             server.http_exception(rc, message)
@@ -22,4 +27,4 @@ async def run(server):
         response = await table.update(**params['set'], where=params['where'])
         return {"message": "OK"}
         
-    server.actions['update'] = update_func
+    server.actions['update'] = update

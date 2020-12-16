@@ -1,12 +1,19 @@
 # insert
 async def run(server):
     import asyncio
-    from fastapi import Request
-    from typing import Union
+    from fastapi import Request, Depends
+    from pydantic import BaseModel
+    from typing import Union, List, Dict
     log = server.log
 
     @server.api_route('/db/{database}/table/{table}/insert', methods=['POST'])
-    async def insert_func_api(database: str, table: str, params: Union[dict, list], request: Request):
+    async def insert_func_api(
+        database: str, 
+        table: str, 
+        request: Request,
+        params: Union[dict, List[dict]] = {'col1': 'val1', 'col2': 'val2'}, 
+        token: dict = Depends(server.verify_token)
+    ):
         return await insert_func(database, table, params, request=await server.process_request(request))
 
     @server.is_authenticated('local')
@@ -20,6 +27,7 @@ async def run(server):
                     error = f"insert error - invalid type {type(item)} provided inside list params item - {item}"
                     server.http_exception(400, log.error(error))
 
+    @server.rpc.origin(namespace=server.PYQL_NODE_ID)
     async def insert(database, table, params, **kw):
         message, rc = await server.check_db_table_exist(database,table)
         if 'params' in params:
@@ -56,11 +64,6 @@ async def run(server):
 
             # Single Insertion
             else:
-                for k,v in params.items(): 
-                    if not k in table.columns:
-                        error = f"invalid key provided '{k}' not found in table {table.name}, valid keys {[col for col in table.columns]}"
-                        log.error(error)
-                        server.http_exception(400, error)
                 try:
                     insert_result = await table.insert(**params)
                 except Exception as e:

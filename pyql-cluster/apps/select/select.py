@@ -1,15 +1,29 @@
 # select
 async def run(server):
-    from fastapi import Request
+    from fastapi import Request, Depends
+    from typing import Optional
+    from pydantic import BaseModel
+
+    class Select(BaseModel):
+        selection: list = ['*', 'col1', 'col2', 'col3']
+        where: Optional[dict] = {'col1': 'val'}
 
     log = server.log
     @server.api_route('/db/{database}/table/{table}/select', methods=['GET', 'POST'])
-    async def select_func_api(database: str, table: str, request: Request, params: dict = None):
+    async def select_func_api(
+        database: str, 
+        table: str, 
+        request: Request, 
+        params: Select = None, 
+        token: dict = Depends(server.verify_token)
+    ):
         return await select_func(database, table, params=params,  request=await server.process_request(request))
     @server.is_authenticated('local')
     async def select_func(database, table, **kw):
         request = kw['request']
         return await select(database, table, method=request.method, **kw)
+    
+    @server.rpc.origin(namespace=server.PYQL_NODE_ID)
     async def select(database,table, params=None, method='GET', **kw):
         message, rc = await server.check_db_table_exist(database,table)
         if not rc == 200:

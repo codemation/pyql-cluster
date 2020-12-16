@@ -1,6 +1,8 @@
 # table
 async def run(server):
-    from fastapi import Request
+    from fastapi import Request, Depends
+    from pydantic import BaseModel
+    from typing import List, Optional
     import asyncio
     import time
     import uuid
@@ -11,6 +13,7 @@ async def run(server):
     server.flush_table_tasks = {}
     server.pending_txns = {}
 
+    """
     @server.api_route('/db/{database}/cache/{timestamp}')
     async def get_db_cache_by_timestamp_api(database: str, timestamp: float, request: Request):
         return await get_db_cache_by_timestamp(database, timestamp, request=await server.process_request(request))
@@ -36,9 +39,10 @@ async def run(server):
             'cache_enabled': cache_enabled,
             'cache': server.data[database].cache.cache if cache_enabled else {}
             }
+    """
 
     @server.api_route('/db/{database}/tables')
-    async def get_all_tables_api(database, request: Request):
+    async def get_all_tables_api(database, request: Request, token: dict = Depends(server.verify_token)):
         return await get_all_tables(database,  request=await server.process_request(request))
     @server.is_authenticated('local')
     async def get_all_tables(database, **kw):
@@ -59,8 +63,53 @@ async def run(server):
             ) 
         return {"tables": tables_config}
 
+    class ForeignKeyConfig(BaseModel):
+        table: str = '<ref_table_name>'
+        ref: str = '<ref_table_column>'
+        mods: str = 'ON UPDATE CASCADE'
+
+    class ForeignKey(BaseModel):
+        col_name: ForeignKeyConfig
+
+    class Table(BaseModel):
+        name: str
+        columns: List[List] = [
+            [
+                'col_name', 
+                "int|str|bool|float|bytes", 
+                "NOT NULL|UNIQUE|AUTOINCREMENT"
+            ],
+        ]
+        prim_key: str
+        foreign_keys: Optional[ForeignKey]
+        cache_enabled: bool = True
+
+    @server.api_route('/db/{database}/table/create', methods=['POST'])
+    async def db_create_table_func(
+        database: str, 
+        config: Table, 
+        request: Request,
+        token: str = Depends(server.verify_token)
+    ):
+        return await create_table_auth(database, dict(config), request=await server.process_request(request))
+
+    @server.is_authenticated('local')
+    async def create_table_auth(database, config, **kw):
+        return await create_table(database, config, **kw)
+    
+    @server.rpc.origin(namespace=server.PYQL_NODE_ID)
+    async def create_table(database, config, **kw):
+        if database in server.data:
+            return await server.data[database].create_table(**config)
+        server.http_exception(404, f"database {database} not found")
+
+
+
+
+
+
     @server.api_route('/db/{database}/table/{table}', methods=['GET', 'PUT', 'POST'])
-    async def db_table_api(database: str, table: str, request: Request, params: dict = None):
+    async def db_table_api(database: str, table: str, request: Request, params: dict = None, token: dict = Depends(server.verify_token)):
         return await db_table(database, table, params=params,  request=await server.process_request(request))
     @server.is_authenticated('local')
     async def db_table(database, table, **kw):
@@ -81,6 +130,8 @@ async def run(server):
     async def db_table_key(database, table, key, **kw):
         request = kw['request']
         return await table_key(database, table, key, method=request.method, **kw)
+    
+    @server.rpc.origin(namespace=server.PYQL_NODE_ID)
     async def table_key(database, table, key, method='GET', **kw):
         primary_key = server.data[database].tables[table].prim_key
         if method == 'GET':
@@ -104,7 +155,7 @@ async def run(server):
     async def db_table_key_delete(database, table, key, val):
         return await server.actions['delete'](database, table, {'where': {key: val}})
 
-
+    """
     @server.api_route('/db/{database}/table/{table}/cache')
     async def db_get_table_cache_api(database: str, table: str, request: Request):
         return await db_get_table_cache(
@@ -119,10 +170,10 @@ async def run(server):
             'cache_enabled': cache_enabled,
             'cache': server.data[database].tables[table].cache.cache if cache_enabled else {}
             }
-
+    """
 
     @server.api_route('/db/{database}/table/{table}/copy')
-    async def db_get_table_copy_api(database: str, table: str, request: Request):
+    async def db_get_table_copy_api(database: str, table: str, request: Request, token: dict = Depends(server.verify_token)):
         return await db_get_table_copy_auth(database, table,  request=await server.process_request(request))
 
     @server.is_authenticated('local')
@@ -145,36 +196,25 @@ async def run(server):
     server.get_table_copy = get_table_copy
 
     @server.api_route('/db/{database}/table/{table}/config')
-    async def db_get_table_config_api(database: str, table: str, request: Request):
+    async def db_get_table_config_api(database: str, table: str, request: Request, token: dict = Depends(server.verify_token)):
         return await db_get_table_config(database, table,  request=await server.process_request(request))
 
     @server.is_authenticated('local')
     async def db_get_table_config(database,table, **kw):
         return await get_table_config(database, table, **kw)
 
+    @server.rpc.origin(namespace=server.PYQL_NODE_ID)
     async def get_table_config(database, table, **kw):
         message, rc = await server.check_db_table_exist(database, table)
         if not rc == 200:
             server.http_exception(rc, message)
         table = server.data[database].tables[table]
-        response = {
-            table.name: {
-                "columns": [ {
-                    "name": col.name,
-                    "type": str(col.type.__name__), 
-                    "mods": col.mods } for k,col in table.columns.items()],
-                "primary_key": table.prim_key,
-                "foreign_keys": table.foreign_keys,
-                "cache_enabled": table.cache_enabled,
-                "max_cache_len": table.max_cache_len
-            }        
-        }
-        return response
+        return await table.get_schema()
             
     server.get_table_config = get_table_config
 
     @server.api_route('/db/{database}/table/{table}/create', methods=['POST'])
-    async def database_table_create_api(database, table, config: dict, request: Request):
+    async def database_table_create_api(database, table, config: dict, request: Request, token: dict = Depends(server.verify_token)):
         return await database_table_create(database, table, config, request=await server.process_request(request))
 
     @server.is_authenticated('local')
@@ -191,16 +231,17 @@ async def run(server):
     }
     """
     @server.api_route('/db/{database}/table/{table}/flush', methods=['POST'])
-    async def database_table_flush(database: str, table: str,  flush_path: dict, request: Request):
-        return await table_flush_auth(database, table, flush_path, request=await server.process_request(request))
+    async def database_table_flush(database: str, table: str,  flush_cfg: dict, request: Request, token: dict = Depends(server.verify_token)):
+        return await table_flush_auth(database, table, flush_cfg, request=await server.process_request(request))
 
     @server.is_authenticated('local')
-    async def table_flush_auth(database: str, table: str,  flush_path: dict, **kw):
-        return await table_flush_trigger(database, table, flush_path, **kw)
+    async def table_flush_auth(database: str, table: str,  flush_cfg: dict, **kw):
+        return await table_flush_trigger(database, table, flush_cfg, **kw)
 
-    async def table_flush_trigger(database: str, table: str,  flush_path: dict, **kw):
+    @server.rpc.origin(namespace=server.PYQL_NODE_ID)    
+    async def table_flush_trigger(database: str, table: str,  flush_cfg: dict, **kw):
         async def table_flush_task():
-            return await table_flush(database, table, flush_path, **kw)
+            return await table_flush(database, table, flush_cfg, **kw)
         
         # flush tasks can over-ride each other, since each flush operation pulls 
         # subsequently more each time
@@ -221,7 +262,7 @@ async def run(server):
             return {"table_flush_task_result": result}
 
         if count < 31:
-            server.flush.append(
+            await server.flush.put(
                 flush_job # table_flush_task # awaited via flush workers
             )
             log.warning(f"added a flush op for {database} {table} - {count} / 30")
@@ -231,25 +272,7 @@ async def run(server):
         return {"message": f"table flush triggered"}
     server.table_flush_trigger = table_flush_trigger
 
-    async def table_flush(database: str, table: str, flush_path: dict, **kw):
-        """
-        while True:
-            # pull last txn time 
-            last_txn_time = await server.data[PYQL_TABLE_DB].tables['pyql'].select(
-                'last_txn_time',
-                where={
-                    'table_name': table
-                }
-            )
-            last_txn_time = last_txn_time[0]['last_txn_time']
-            
-            if 'last_txn_time' in server.pending_txns:
-                if server.pending_txns['last_txn_time'] > last_txn_time:
-                    log.warning(f"table flush pending for newer txns, waiting to retry")
-                    await asyncio.sleep(0.02)
-                    continue
-            break
-        """
+    async def table_flush(database: str, table: str, flush_cfg: dict, **kw):
         # pull last txn time 
         last_txn_time = await server.data[PYQL_TABLE_DB].tables['pyql'].select(
             'last_txn_time',
@@ -261,17 +284,12 @@ async def run(server):
                 
         log.warning(f"table_flush - table {table} pulling using last_txn_time {last_txn_time}")
         # Using flush_path - pull txns newer than the latest txn
-        new_txns, rc  = await server.probe(
-            flush_path["tx_cluster_path"],
-            token=flush_path['token'],
-            method='POST',
-            data={
-                "select": ["timestamp", "txn"],
-                "where": [
-                    ["timestamp", ">", last_txn_time]
-                ]
-            }
-        )
+
+        endpoint = flush_cfg['tx_cluster_endpoint']
+        tx_cluster_id = flush_cfg['tx_cluster_id']
+        tx_table = flush_cfg['tx_table']
+        new_txns = await server.rpc_endpoints[endpoint]['table_select'](tx_cluster_id, tx_table)
+
         if not 'data' in new_txns:
             return log.error(f"ERROR encountered in table_flush - {new_txns} - releasing lock")
         new_txns = new_txns['data']
@@ -279,21 +297,11 @@ async def run(server):
         update_last_txn_time = None
         flush_results = []
         for txn in new_txns:
-
             """
             in case of duplicate flush ops
             prevent same txn from being run
             """
             txn_timestamp = txn['timestamp']
-            """
-            _txn = txn['txn']
-            if not txn_timestamp in server.pending_txns:
-                server.pending_txns[txn_timestamp] = []
-            
-            if _txn in server.pending_txns[txn_timestamp]:
-                continue
-            """
-
 
             coros_to_gather = []
             for action, data in txn['txn'].items():
@@ -320,13 +328,15 @@ async def run(server):
             }
 
     @server.api_route('/db/{database}/table/{table}/sync', methods=['POST'])
-    async def sync_table_func_api(database: str, table: str, data_to_sync: dict, request: Request):
-        return await sync_table_func(database, table, data_to_sync, request=await server.process_request(request))
+    async def sync_table_func_api(database: str, table: str, data_to_sync: dict, request: Request, token: dict = Depends(server.verify_token)):
+        return await sync_table_auth(database, table, data_to_sync, request=await server.process_request(request))
 
     @server.is_authenticated('local')
-    async def sync_table_func(database, table, data_to_sync, **kw):
-        if not database in server.data:
-            await server.db_check(database)
+    async def sync_table_auth(database, table, data_to_sync, **kw):
+        return await sync_table(database, table, data_to_sync)
+
+    @server.rpc.origin(namespace=server.PYQL_NODE_ID)
+    async def sync_table(database, table, data_to_sync, **kw):
         if not database in server.data:
             server.http_exception(500, log.error(f"{database} not found in endpoint"))
         if not table in server.data[database].tables:
@@ -355,77 +365,5 @@ async def run(server):
             }
 
     @server.api_route('/db/{database}/table/{table}/{key}', methods=['GET', 'POST', 'DELETE'])
-    async def db_table_key_api(database: str, table: str, key: str, request: Request, params: dict = None):
+    async def db_table_key_api(database: str, table: str, key: str, request: Request, params: dict = None, token: dict = Depends(server.verify_token)):
         return await db_table_key(database, table, key, params=params,  request=await server.process_request(request))
-
-
-    @server.api_route('/db/{database}/table/create', methods=['POST'])
-    async def db_create_table_func(database: str, config: dict, request: Request):
-        return await create_table_func(database, config, request=await server.process_request(request))
-
-    @server.is_authenticated('local')
-    async def create_table_func(database, config, **kw):
-        return await create_table(database, config, **kw)
-    async def create_table(database, config, **kw):
-        if database in server.data:
-            db = server.data[database]
-            table_config = config
-            convert = {'str': str, 'int': int, 'blob': bytes, 'float': float, 'bool': bool}
-            columns = []
-            for table_name in table_config:
-                if table_name in db.tables:
-                    log.warning(f'table {table_name} already exists - trying anyway')
-                    try:
-                        await server.data[database].run(f'drop table {table_name}')
-                    except Exception as e:
-                        log.exception(f'table create exception pre-dropping table {table_name}')
-                tb_config = table_config[table_name]
-                if not "columns" in tb_config:
-                    server.http_exception(
-                        400, 
-                        log.error(
-                            f"""missing new table config {'"columns": [{"name": "<name>", "type": "<type>", "mods": "<mods>"}, ..]'}"""
-                        )
-                    )
-                
-                for col in tb_config["columns"]:
-                    if not col['type'] in convert:
-                        server.http_exception(
-                            400,
-                            log.error(
-                                f"""invalid type {col['type']} provided in column {col['name']}. use: {convert}"""
-                            )
-                        )
-                    columns.append((col['name'], convert[col['type']], col['mods']))
-                col_names = [c[0] for c in columns]
-                if not "primary_key" in tb_config:
-                   server.http_exception(
-                       400,
-                       log.error(f'missing new table config "primary_key": <column_name>')
-                    )
-                if not tb_config["primary_key"] in col_names:
-                    error = f'provided primary_key {tb_config["primary_key"]} is not a column with "columns": {col_names}'
-                    server.http_exception(400, log.error(error))
-                if 'foreign_keys' in table_config[table_name] and isinstance(tb_config['foreign_keys'], dict):
-                    for local_key, foreign_key in tb_config['foreign_keys'].items():
-                        if not local_key in col_names:
-                            server.http_exception(
-                                400,
-                                log.error(
-                                    f"local_key {local_key} is not a valid column for foreign_key {foreign_key}"
-                                    )
-                            )
-                else:
-                    tb_config['foreign_keys'] = None
-                # All required table configuration has been provided, Creating table.
-
-                await db.create_table(
-                    table_name, 
-                    columns,
-                    tb_config["primary_key"],
-                    foreign_keys=tb_config["foreign_keys"],
-                    cache_enabled=tb_config['cache_enabled'] if 'cache_enabled' in tb_config else False,
-                    max_cache_len=tb_config['max_cache_len'] if 'max_cache_len' in tb_config else 125
-                    )
-                await server.db_check(database)
-                return {"message": log.warning(f"""table {table_name} created successfully """)}
