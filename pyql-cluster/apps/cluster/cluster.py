@@ -10,9 +10,8 @@ async def run(server):
     from typing import Union, Optional, List, Dict
     from fastapi import Request, Depends
     from pydantic import BaseModel
-    from aiohttp import ClientSession
 
-    from apps.cluster.asyncrequest import async_request_multi, async_get_request, async_post_request
+    
     from apps.cluster import tracer
 
     from apps.cluster.bootstrap import run as bootstrap

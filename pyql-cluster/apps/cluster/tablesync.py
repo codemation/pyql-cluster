@@ -318,7 +318,7 @@ async def run(server):
         else:
             select_data = None
 
-        table_changes = await table_select(
+        table_changes = await server.table_select(
             cluster,
             table,
             data=select_data,
@@ -334,7 +334,7 @@ async def run(server):
                 trace(f"{cluster} {table} - starting pause as only {len(table_changes['data'])} changes - then sleeping")
                 await asyncio.sleep(5)
 
-                table_changes = await table_select(
+                table_changes = await server.table_select(
                     cluster,
                     table,
                     data=select_data,
@@ -367,7 +367,7 @@ async def run(server):
                     ['timestamp', '>', latest_timestamp]
                 ]
             }
-            table_changes = await table_select(
+            table_changes = await server.table_select(
                 cluster,
                 table,
                 data=select_data,
@@ -449,7 +449,7 @@ async def run(server):
                             ['timestamp', '>', latest_state_timestamp]
                         ]
                     }
-                    latest_state_changes = await table_select(
+                    latest_state_changes = await server.table_select(
                         cluster,
                         table,
                         data=state_select_data,
