@@ -8,14 +8,16 @@ async def run(server):
         return f
 
     # cron job run
-    server.tasks.append(
-        get_factory_coro('cron')
-    )
+    @server.cron(15)
+    async def check_cron_jobs():
+        await server.job_check_and_run('cron')
+
     # sync job run
-    server.tasks.append(
-        get_factory_coro('syncjob')
-    )
+    @server.cron(15)
+    async def check_sync_jobs():
+        await server.job_check_and_run('syncjob')
+
     # job run 
-    server.tasks.append(
-        get_factory_coro('job')
-    )
+    @server.cron(15)
+    async def check_jobs():
+        await server.job_check_and_run('job')

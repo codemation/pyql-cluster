@@ -63,8 +63,6 @@ async def run(server):
         await server.job_queue_action(job_id, 'queued')
         return message
 
+    @server.cron(15)
     async def server_get_and_process_job():
         return await get_and_process_job()
-    server.tasks.append(
-        server_get_and_process_job
-    )
