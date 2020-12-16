@@ -1,9 +1,7 @@
 # pyql-rest
 def run(server):
     import os
-    from fastapi.testclient import TestClient
-    from fastapi.websockets import WebSocket
-    import uvloop, asyncio, random
+    import uvloop, asyncio, random, time
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     event_loop = asyncio.get_event_loop()
     server.event_loop = event_loop
@@ -50,8 +48,9 @@ def run(server):
 
     log = server.log
     
+    @server.on_event('startup')
     async def cluster_setup():
-
+        await asyncio.sleep(time.time() % 4)
         from dbs import setup as db_setup # TOO DOO -Change func name later
         await db_setup.run(server) # TOO DOO - Change func name later
         from apps import setup
@@ -59,15 +58,3 @@ def run(server):
         from events import setup as event_setup
         await event_setup.run(server)
         return {"message": log.info("cluster setup completed")}
-
-    @server.websocket_route("/cluster_setup")
-    async def attach_databases(websocket: WebSocket):
-        await websocket.accept()
-        response = await cluster_setup()
-        await websocket.send_json({"message": log.info(response)})
-        await websocket.close()
-    def trigger_cluster_setup():
-        client = TestClient(server)
-        with client.websocket_connect("/cluster_setup") as websocket:
-            return websocket.receive_json()
-    trigger_cluster_setup()

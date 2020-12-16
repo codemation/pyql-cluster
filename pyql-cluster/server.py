@@ -40,9 +40,9 @@ else:
         os.environ['PYQL_DEBUG'] = 'True'
     else:
         # Triggered by uvicorn
-        os.environ['PYQL_NODE'] = '192.168.1.8'
+        os.environ['PYQL_NODE'] = '192.168.1.11'
         os.environ['PYQL_PORT'] = '8090'
-        os.environ['PYQL_CLUSTER_SVC'] = '192.168.1.8:8090'
+        os.environ['PYQL_CLUSTER_SVC'] = '192.168.1.11:8090'
         os.environ['PYQL_CLUSTER_ACTION'] = 'init'
         os.environ['PYQL_DEBUG'] = 'True'
 
