@@ -1,8 +1,7 @@
 aiopyql
-aiohttp
 pyjwt
-fastapi
 uvicorn
 uvloop
 requests
 easyrpc
+python-multipart
