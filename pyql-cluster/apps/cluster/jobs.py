@@ -44,7 +44,7 @@ async def run(server):
         trace=kw['trace']
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
-        jobs = await server.table_select(pyql, 'jobs', method='GET', **kw)
+        jobs = await server.cluster_table_select(pyql, 'jobs', method='GET', **kw)
         jobs = jobs['data']
         for job in jobs:
             if not job['next_run_time'] == None:
@@ -139,7 +139,7 @@ async def run(server):
         }
         start_time, max_timeout = time.time(), 20.0
         while time.time() - start_time < max_timeout:
-            job_check = await server.table_select(pyql, 'jobs', data=job_select, method='POST', **kw)
+            job_check = await server.cluster_table_select(pyql, 'jobs', data=job_select, method='POST', **kw)
             if len(job_check['data']) == 0:
                 return {"message": trace(f"failed to reserve job {job['id']}, no longer exists")}
             trace(f"job_check: {job_check}")
@@ -195,7 +195,7 @@ async def run(server):
         if not job_type == 'cron':
             job_select['where']['node'] = None
         trace("starting to pull list of jobs")
-        job_list = await server.table_select(
+        job_list = await server.cluster_table_select(
             pyql, 'jobs', data=job_select, method='POST', quorum=quorum, **kw)
         if not job_list:
             return {"message": trace("unable to pull jobs at this time")}
@@ -254,7 +254,7 @@ async def run(server):
             update_from = {'where': {'id': job_id}}
             if job_type == 'cron':
                 cron_select = {'select': ['id', 'config'], 'where': {'id': job_id}}
-                job = await server.table_select(pyql, 'jobs', data=cron_select, method='POST', **kw)
+                job = await server.cluster_table_select(pyql, 'jobs', data=cron_select, method='POST', **kw)
                 job = job['data'][0]
                 update_from['set'] = {
                     'node': None, 
@@ -330,7 +330,7 @@ async def run(server):
         if job_type == 'cron':
             job_insert['next_run_time'] = str(float(time.time()) + job['config']['interval'])
         else:
-            job_check = await server.table_select(
+            job_check = await server.cluster_table_select(
                 pyql, 'jobs', 
                 data={'select': ['id'], 'where': {'name': job['job']}},
                 method='POST',
