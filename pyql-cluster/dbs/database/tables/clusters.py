@@ -7,14 +7,14 @@ async def db_attach(server):
     await db.create_table(
         'clusters',
         [
-            ('id', str, 'UNIQUE NOT NULL'),
-            ('name', str),
-            ('owner', str), # UUID of auth user who created cluster 
-            ('access', str), # {"alllow": ['uuid1', 'uuid2', 'uuid3']}
-            ('type', str), # 'data|log'
-            ('key', str),
-            ('created_by_endpoint', str),
-            ('create_date', str)
+            ['id', 'str', 'UNIQUE NOT NULL'],
+            ['name', 'str'],
+            ['owner', 'str'], # UUID of auth user who created cluster 
+            ['access', 'str'], # {"alllow": ['uuid1', 'uuid2', 'uuid3']}
+            ['type', 'str'], # 'data|log'
+            ['key', 'str'],
+            ['created_by_endpoint', 'str'],
+            ['create_date', 'str']
         ],
         'id',
         cache_enabled=True

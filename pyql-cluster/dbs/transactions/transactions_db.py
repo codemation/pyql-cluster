@@ -1,43 +1,40 @@
 # database - type sqlite3
 async def run(server):
-    import os
+    import os, time
+    from easyrpc.tools.database import EasyRpcProxyDatabase
+
+    if os.environ.get('PYQL_CLUSTER_MODE') == 'test':
+        os.environ['TXN_DB_HOST'] = 'localhost'
+        os.environ['TXN_RPC_PORT'] = '8192'
+        os.environ['TXN_DB_NAME'] = 'transactions'
+        os.environ['TXN_RPC_SECRET'] = 'abcd1234'
+
+    
+    DB_HOST = os.environ.get('TXN_DB_HOST')
+    TXN_RPC_PORT = os.environ.get('TXN_RPC_PORT')
+    RPC_SECRET = os.environ.get('TXN_RPC_SECRET')
+    RPC_PATH = os.environ.get('RPC_PATH')
+
+    DB_NAME = os.environ.get('TXN_DB_NAME')
+
+    if not DB_NAME:
+        DB_NAME = 'transactions'
+    if not DB_HOST:
+        DB_HOST = 'localhost'
+    if not RPC_PORT:
+        RPC_PORT = int(os.environ['PYQL_PORT'] + 2)
+
     log = server.log
+    
+    server.data[DB_NAME] = await EasyRpcProxyDatabase.create(
+        DB_HOST, 
+        RPC_PORT, 
+        f'/ws/{DB_NAME}' if not RPC_PATH else RPC_PATH, 
+        server_secret=RPC_SECRET,
+        namespace=DB_NAME,
+        debug=True
+    )
 
-    print(f"databse_db event_loop: {server.event_loop}")
-
-    @server.api_route('/internal/db/attach')
-    async def transactions_attach_api():
-        return await database_attach()
-    async def transactions_attach():
-        config=dict()
-        os.environ['DB_NAME'] = 'transactions' # TODO - Add to env variables config later
-        db_name = 'transactions'
-        if 'PYQL_TYPE' in os.environ:
-            if os.environ['PYQL_TYPE'] == 'K8S' or os.environ['PYQL_TYPE'] == 'DOCKER':
-                db_location = os.environ['PYQL_VOLUME_PATH']
-                config['database'] = f'{db_location}/{db_name}'
-        else:
-            with open('.cmddir', 'r') as projDir:
-                for project_path in projDir:
-                    config['database'] = f'{project_path}dbs/transactions/{db_name}'
-        config['logger'] = log
-        if server.PYQL_DEBUG == True:
-            config['debug'] = True
-
-        from aiopyql import data
-        from . import setup
-        log.info("finished imports")
-        server.data[db_name] = await data.Database.create(
-            **config,
-            loop=server.event_loop 
-            )
-        # enable database cache
-        server.data[db_name].enable_cache()
-
-        log.info("finished dbsetup")
-        await setup.attach_tables(server)
-        log.info("finished attach_tables")
-        return {"message": "database attached successfully"}
-
-    response = await transactions_attach()
-    log.info(f"database_attach result: {response}")
+    from . import setup
+    await setup.attach_tables(server)
+    log.info(f"finished attach_tables in db {DB_NAME}")

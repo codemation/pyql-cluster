@@ -5,12 +5,12 @@ async def db_attach(server):
     await db.create_table(
         'endpoints',
         [
-            ('id', str, 'UNIQUE NOT NULL'),
-            ('uuid', str),
-            ('db_name', str),
-            ('path', str),
-            ('token', str),
-            ('cluster', str)
+            ['id', 'str', 'UNIQUE NOT NULL'],
+            ['uuid', 'str'],
+            ['db_name', 'str'],
+            ['path', 'str'],
+            ['token', 'str'],
+            ['cluster', 'str']
         ],
         'id',
         cache_enabled=True

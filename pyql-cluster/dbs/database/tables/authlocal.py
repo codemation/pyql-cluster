@@ -5,13 +5,12 @@ async def db_attach(server):
         return
     await db.create_table(
        'authlocal', [
-           ('id', str, 'UNIQUE NOT NULL'), 
-           ('username', str, 'UNIQUE NOT NULL'), 
-           ('type', str),
-           ('password', str),
+           ['id', 'str', 'UNIQUE NOT NULL'], 
+           ['username', 'str', 'UNIQUE NOT NULL'], 
+           ['type', 'str'],
+           ['password', 'str'],
        ],
        'id',
        cache_enabled=True
     )
     return # Enter db.create_table statement here
-            

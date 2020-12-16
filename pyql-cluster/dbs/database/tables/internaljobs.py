@@ -4,10 +4,10 @@ async def db_attach(server):
         await db.run('drop table internaljobs')
     await db.create_table(
        'internaljobs', [
-           ('id', str, 'UNIQUE NOT NULL'),
-           ('name', str, 'UNIQUE NOT NULL'),
-           ('status', str), 
-           ('config', str)
+           ['id', 'str', 'UNIQUE NOT NULL'],
+           ['name', 'str', 'UNIQUE NOT NULL'],
+           ['status', 'str'], 
+           ['config', 'str']
        ],
        'id',
        cache_enabled=True

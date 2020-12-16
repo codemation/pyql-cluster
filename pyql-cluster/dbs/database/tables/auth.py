@@ -6,12 +6,12 @@ async def db_attach(server):
         return
     await db.create_table(
        'auth', [
-           ('id', str, 'UNIQUE NOT NULL'), 
-           ('username', str, 'UNIQUE'),
-           ('email', str, 'UNIQUE'),
-           ('type', str), # admin / service / user
-           ('password', str),
-           ('parent', str) # uuid of parent, if service account or sub user account
+           ['id', 'str', 'UNIQUE NOT NULL'], 
+           ['username', 'str', 'UNIQUE'],
+           ['email', 'str', 'UNIQUE'],
+           ['type', 'str'], # admin / service / user
+           ['password', 'str'],
+           ['parent', 'str'] # uuid of parent, if service account or sub user account
         ],
         'id',
         cache_enabled=True

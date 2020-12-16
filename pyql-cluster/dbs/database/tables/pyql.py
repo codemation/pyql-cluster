@@ -10,17 +10,17 @@ async def db_attach(server):
             await db.create_table(
             'pyql', 
             [
-                ('uuid', str), 
-                ('database', str),
-                ('table_name', str),
-                ('last_txn_uuid', str), 
-                ('last_txn_time', float),
-                ('lock_id', str)
+                ['uuid', 'str'], 
+                ['database', 'str'],
+                ['table_name', 'str'],
+                ['last_txn_uuid', 'str'], 
+                ['last_txn_time', 'float'],
+                ['lock_id', 'str']
             ],
             'table_name',
             cache_enabled=True
             )
-            db_uuid = str(uuid.uuid1())
+            db_uuid = server.PYQL_NODE_ID
             insert_coros = []
             for tb in server.data[database].tables:
                 insert_coros.append(db.tables['pyql'].insert(
