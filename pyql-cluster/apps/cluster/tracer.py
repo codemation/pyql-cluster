@@ -67,5 +67,6 @@ def get_tracer(logger):
             else:
                 kwargs['trace'] = Tracer(func_name, kwargs['trace'], logger=logger)
             return func(*args, **kwargs)
+        traced.__name__ = func.__name__
         return traced
     return trace
