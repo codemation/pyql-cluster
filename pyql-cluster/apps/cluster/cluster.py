@@ -773,13 +773,22 @@ async def run(server):
             except Exception as e:
                 errors.append({endpoint['name']: trace.exception(f"exception encountered with {endpoint}")})
                 continue
-
-    @server.api_route('/cluster/{cluster}/table/{table}', methods=['GET', 'PUT', 'POST'])
-    async def cluster_table(
+    
+    @server.api_route('/cluster/{cluster}/table/{table}')
+    async def cluster_table_get(
         cluster: str, 
         table:str, 
         request: Request, 
-        data: dict = None,
+        token: dict = Depends(server.verify_token)
+    ):
+        return await cluster_table_auth(cluster, table request=await server.process_request(request))
+
+    @server.api_route('/cluster/{cluster}/table/{table}', methods=['PUT', 'POST'])
+    async def cluster_table_add(
+        cluster: str, 
+        table:str, 
+        request: Request, 
+        data: Insert,
         token: dict = Depends(server.verify_token)
     ):
         return await cluster_table_auth(cluster, table, data=data,  request=await server.process_request(request))
@@ -1094,8 +1103,6 @@ async def run(server):
     server.cluster_table_update = table_update
     server.clusterjobs['table_update'] = table_update
             
-
-
     class Insert(BaseModel):
         column1: str = 'value1'
         column2: str = 'value2'
