@@ -416,7 +416,7 @@ async def run(server):
                         return {
                             epuuid: await server.rpc_endpoints[epuuid]['update'](
                                 db,
-                                'state'
+                                'state',
                                 params=mark_stale
                             )
                         }
