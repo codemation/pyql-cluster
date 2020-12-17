@@ -56,6 +56,29 @@ async def run(server):
     class PyqlUuid(BaseModel):
         PYQL_UUID: str
 
+    class Insert(BaseModel):
+        column1: str = 'value1'
+        column2: str = 'value2'
+
+    class Query(BaseModel):
+        select: List[str] = ['*']
+        where: Optional[dict] = {'column': 'value'}
+
+    class Update(BaseModel):
+        set: dict = {'col': 'val'}
+        where: dict = {'col': 'val'}
+
+    class KeyUpdate(BaseModel):
+        column1: str = 'value1'
+        column2: str = 'value2'
+
+    class Select(BaseModel):
+        selection: List[str] = ['col1', 'col2', 'col3']
+        where: Optional[dict] = {'col1': 'val'}
+
+    class Delete(BaseModel):
+        where: dict = {'col': 'val'}
+
     @server.api_route('/pyql/setup', methods=['POST'])
     async def cluster_set_pyql_id_api(pyql_id: PyqlUuid, request: Request):
         return await cluster_set_pyql_id(dict(pyql_id),  request=await server.process_request(request))
@@ -912,9 +935,7 @@ async def run(server):
             "message": trace(f"cluster {cluster} table {table} created - finished")
             }
 
-    class Query(BaseModel):
-        select: List[str] = ['*']
-        where: Optional[dict] = {'column': 'value'}
+
 
     @server.api_route('/cluster/{cluster}/table/{table}/select', methods=['GET','POST'])
     async def cluster_table_select_api(
@@ -1072,9 +1093,7 @@ async def run(server):
     async def cluster_table_config(cluster, table, **kw):
         return await endpoint_probe(cluster, table, method='GET', path=f'config', **kw)
 
-    class Update(BaseModel):
-        set: dict = {'col': 'val'}
-        where: dict = {'col': 'val'}
+
 
     @server.api_route('/cluster/{cluster}/table/{table}/update', methods=['POST'])
     async def cluster_table_update_api(
@@ -1103,9 +1122,7 @@ async def run(server):
     server.cluster_table_update = table_update
     server.clusterjobs['table_update'] = table_update
             
-    class Insert(BaseModel):
-        column1: str = 'value1'
-        column2: str = 'value2'
+
     @server.api_route('/cluster/{cluster}/table/{table}/insert', methods=['POST'])
     async def cluster_table_insert_api(
         cluster: str, 
@@ -1127,13 +1144,6 @@ async def run(server):
         return await cluster_table_change(cluster, table, 'insert',  data, **kw)
     server.cluster_table_insert = table_insert
 
-    class Select(BaseModel):
-        selection: List[str] = ['col1', 'col2', 'col3']
-        where: Optional[dict] = {'col1': 'val'}
-
-    class Delete(BaseModel):
-        where: dict = {'col': 'val'}
-
     @server.api_route('/cluster/{cluster}/table/{table}/delete', methods=['POST'])
     async def cluster_table_delete_api(
         cluster: str, 
@@ -1154,11 +1164,6 @@ async def run(server):
     @server.trace
     async def table_delete(cluster, table, data, **kw):
         return await cluster_table_change(cluster, table, 'delete', data, **kw)
-
-    class KeyUpdate(BaseModel):
-        column1: str = 'value1'
-        column2: str = 'value2'
-
 
     @server.api_route('/cluster/{cluster}/table/{table}/{key}')
     async def cluster_table_get_by_key(
