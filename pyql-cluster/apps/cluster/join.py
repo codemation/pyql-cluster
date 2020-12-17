@@ -333,7 +333,7 @@ async def run(server):
         request: Request,
         token: dict = Depends(server.verify_token),
     ):
-        return await join_cluster_auth(cluster_name, config,  request=await server.process_request(request))
+        return await join_cluster_auth(cluster_name, config, request=await server.process_request(request))
 
     @server.is_authenticated('cluster')
     @server.trace
@@ -425,5 +425,5 @@ async def run(server):
                 config,
                 **kw,
             )
-        return {"message": trace.warning(f"join cluster {cluster_name} for endpoint {config['name']} completed successfully")}, 200
+        return {"message": trace.warning(f"join cluster {cluster_name} for endpoint {config['name']} completed successfully")}
     server.join_cluster = join_cluster
