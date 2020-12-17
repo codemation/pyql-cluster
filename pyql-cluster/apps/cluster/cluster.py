@@ -665,7 +665,6 @@ async def run(server):
             async def log_insert():
                 trace(f"starting log_insert for txn {txn}")
                 try:
-                    """
                     if ep_uuid == server.PYQL_NODE_ID:
                         trace(f"log_insert: LOCAL")
                         return {
@@ -676,7 +675,6 @@ async def run(server):
                             )
                         }
                     trace(f"log_insert: REMOTE")
-                    """
                     return {
                         ep_uuid: await server.rpc_endpoints[ep_uuid]['insert'](
                             db, 
