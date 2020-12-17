@@ -955,22 +955,21 @@ async def run(server):
             }
 
 
-
     @server.api_route('/cluster/{cluster}/table/{table}/select', methods=['GET','POST'])
-    async def cluster_table_select_api(
+    async def cluster_table_select(
         cluster: str, 
         table: str, 
         request: Request, 
         query: Query = None,
         token: dict = Depends(server.verify_token)
     ):
-        return await cluster_table_select(cluster, table, data=data,  request=await server.process_request(request))
+        return await cluster_table_select_auth(cluster, table, data=query, request=await server.process_request(request))
 
     @server.state_and_quorum_check
     @server.is_authenticated('cluster')
     @server.cluster_name_to_uuid
     @server.trace
-    async def cluster_table_select(cluster, table, data=None, **kw):
+    async def cluster_table_select_auth(cluster, table, data=None, **kw):
         trace = kw['trace']
         request = kw['request']
         try:
