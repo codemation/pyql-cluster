@@ -32,6 +32,7 @@ async def run(server):
                         data=job['data'], 
                         token=job['join_token'], 
                         timeout=30)
+                    log.warning(f"join_cluster: {message} - rc: {rc}")
                 else:
                     log.warning(f"adding job {job} to cluster jobs queue")
                     message = await server.clusterjobs['jobs_add'](job)
