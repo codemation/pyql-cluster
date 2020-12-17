@@ -20,7 +20,7 @@ async def run(server):
             # ('created_by_endpoint', str),
             # ('create_date', str)
             admin_id = kw['authorization']
-            service_id = server.data['cluster'].tables['auth'].select(
+            service_id = await server.data['cluster'].tables['auth'].select(
                 'id', 
                 where={'parent': admin_id})
             service_id = service_id[0]['id']
