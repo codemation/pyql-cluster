@@ -295,10 +295,14 @@ async def run(server):
 
         if is_pyql_bootstrapped and not is_new_endpoint:
             trace(f"Not bootrapping cluster, not a new endpoint, starting tablesync_mgr")
-            await tablesync_mgr(trace=trace)
+            await server.tablesync_mgr(trace=trace)
+        if config['uuid'] == server.PYQL_NODE_ID:
+            return trace(f"Detected this is an initial boostrapping cluster, finishing")
 
         host, port = config['path'].split(':')
         # setup rpc connection to node
+
+        trace(f"triggering cluster_add_rpc_endpoint")
         await server.cluster_add_rpc_endpoint(
             host, 
             port,
@@ -310,6 +314,7 @@ async def run(server):
         # using rpc connection - complete setup
 
         # set PYQL_UUID
+        trace(f"triggering set PYQL_UUID")
         await server.rpc_endpoints[config['uuid']]['set_pyql_id'](
             {'PYQL_UUID': cluster_id }
         )
