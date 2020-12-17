@@ -68,7 +68,7 @@ async def run(server):
             'created_by_endpoint': config['name'],
             'create_date': f'{datetime.now().date()}'
             }
-        await cluster_table_change(pyql, 'clusters', 'insert', data, **kw)
+        await server.cluster_table_change(pyql, 'clusters', 'insert', data, **kw)
 
         # add new endpoint to new cluster
 
@@ -80,7 +80,7 @@ async def run(server):
             'token': config['token'],
             'cluster': new_txn_cluster
         }
-        await cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
+        await server.cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
 
         existing_to_be_added = {'ids': set(), 'existing': []}
 
@@ -99,7 +99,7 @@ async def run(server):
                 'token': existing['endpoints.token'],
                 'cluster': new_txn_cluster
             }
-            await cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
+            await server.cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
     server.pyql_create_txn_cluster = pyql_create_txn_cluster
 
     @server.trace

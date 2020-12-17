@@ -68,7 +68,7 @@ async def run(server):
             else:
                 if job['status'] == 'queued':
                     # add start_time to check if job is stuck
-                    await cluster_table_change(
+                    await server.cluster_table_change(
                         pyql, 'jobs', 'update', 
                         {'set': {
                             'start_time': time.time()}, 
@@ -125,7 +125,7 @@ async def run(server):
             if rollback:
                 job_update['reservation'] = reservation
 
-            result = await cluster_table_change(pyql, 'jobs', 'update', job_update, **kw)
+            result = await server.cluster_table_change(pyql, 'jobs', 'update', job_update, **kw)
             op = 'reserve' if not rollback else 'rollback'
             return trace(f"{op} completed for job {job['id']} with result {result}")
         _ = await reserve_or_rollback()
@@ -265,8 +265,8 @@ async def run(server):
                 else:
                     update_from['set']['next_run_time'] = str(time.time() + 25.0)
                     trace.error(f"error pulling cron job {job_id} - proceeding to mark finished")
-                return await cluster_table_change(pyql, 'jobs', 'update', update_from, **kw) 
-            return await cluster_table_change(pyql, 'jobs', 'delete', update_from, **kw)
+                return await server.cluster_table_change(pyql, 'jobs', 'update', update_from, **kw) 
+            return await server.cluster_table_change(pyql, 'jobs', 'delete', update_from, **kw)
         if status == 'running' or status == 'queued':
             update_set = {'last_error': {}, 'status': status}
             for k,v in job_info.items():
@@ -282,7 +282,7 @@ async def run(server):
                     update_where['set']['next_run_time'] = str(time.time())
             else:
                 update_where['set']['start_time'] = str(time.time())
-            return await cluster_table_change(pyql, 'jobs', 'update', update_where, **kw)
+            return await server.cluster_table_change(pyql, 'jobs', 'update', update_where, **kw)
 
     @server.api_route('/cluster/{job_type}/add', methods=['POST'])
     async def cluster_jobs_add(job_type: str, config: dict, request: Request, token: dict = Depends(server.verify_token)):
@@ -350,7 +350,7 @@ async def run(server):
                     'job_id': job_check[0]['id']
                 }
 
-        response = await cluster_table_change(pyql, 'jobs', 'insert', job_insert, **kw)
+        response = await server.cluster_table_change(pyql, 'jobs', 'insert', job_insert, **kw)
         trace.warning(f"cluster {job_type} add for job {job} finished - {response}")
         return {
             "message": f"job {job} added to jobs queue - {response}",

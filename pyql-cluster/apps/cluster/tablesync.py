@@ -88,7 +88,7 @@ async def run(server):
                     **kw
                 )
         else:
-            await cluster_table_change(pyql, 'state', 'update', update_set_in_sync, **kw)
+            await server.cluster_table_change(pyql, 'state', 'update', update_set_in_sync, **kw)
             #cluster_table_update(pyql, 'state', update_set_in_sync)
         trace.warning(f"table_sync_recovery completed selecting an endpoint as in_sync -  {latest['endpoint']} - need to requeue job and resync remaining nodes")
         return {"message": trace("table_sync_recovery completed")}
@@ -396,7 +396,7 @@ async def run(server):
                 continue
             if not f'{pyql_under}_state' in table:
                 def get_state_change():
-                    return cluster_table_change(
+                    return server.cluster_table_change(
                         pyql,
                         'state',
                         'update',
@@ -415,7 +415,7 @@ async def run(server):
                     )
             else:
                 async def get_state_change():
-                    state_change = await cluster_table_change(
+                    state_change = await server.cluster_table_change(
                         pyql,
                         'state',
                         'update',
@@ -558,7 +558,7 @@ async def run(server):
                     }
             }
             mark_loaded.append(
-                cluster_table_change(
+                server.cluster_table_change(
                     pyql,
                     'state',
                     'update',
@@ -775,7 +775,7 @@ async def run(server):
             if not flush_results[endpoint]['status'] == 200:
                 continue
             state_update_results.append(
-                await cluster_table_change(
+                await server.cluster_table_change(
                     pyql,
                     'state',
                     'update',
