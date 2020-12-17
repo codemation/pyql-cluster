@@ -1340,13 +1340,11 @@ async def run(server):
         }
     }
 
-    if await server.env['SETUP_ID'] == server.setup_id:
-        await server.internal_job_add(join_cluster_job)
-
-
     if 'PYQL_CLUSTER_JOIN_TOKEN' in os.environ and os.environ['PYQL_CLUSTER_ACTION'] == 'join':
         join_cluster_job['join_token'] = os.environ['PYQL_CLUSTER_JOIN_TOKEN']
 
+    if await server.env['SETUP_ID'] == server.setup_id:
+        await server.internal_job_add(join_cluster_job)
 
     if len(endpoints) == 1 or os.environ['PYQL_CLUSTER_ACTION'] == 'init':
         ready_and_quorum = True
