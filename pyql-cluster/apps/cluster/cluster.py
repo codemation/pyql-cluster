@@ -661,6 +661,7 @@ async def run(server):
             ep_uuid = log_endpoint['uuid']
 
             async def log_insert():
+                trace(f"starting {log_insert}")
                 try:
                     return {
                         ep_uuid: await server.rpc_endpoints[ep_uuid]['insert'](db, log_table, txn)
