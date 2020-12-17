@@ -79,7 +79,7 @@ async def run(server):
         # cluster table
         cluster_data = await get_clusters_data()
         await execute_request(localhost, 'cluster', 'clusters',
-            'insert', clusterData)
+            'insert', cluster_data)
 
         await server.data['cluster'].tables['clusters'].insert(
             **cluster_data
@@ -104,7 +104,7 @@ async def run(server):
         for table in config['tables']:
             for name, cfg in table.items():
                 await server.data['cluster'].tables['state'].insert(
-                    **get_state_data(name, clusterData['id'])
+                    **get_state_data(name, cluster_data['id'])
                 )
         trace.info("finished bootstrap")
     server.bootstrap_cluster = bootstrap_cluster
