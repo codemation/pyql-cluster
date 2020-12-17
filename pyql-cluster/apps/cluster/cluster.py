@@ -668,7 +668,7 @@ async def run(server):
                     if ep_uuid == server.PYQL_NODE_ID:
                         trace(f"log_insert: LOCAL")
                         return {
-                            ep_uuid: server.actions['insert'](
+                            ep_uuid: await server.actions['insert'](
                                 db,
                                 log_table,
                                 txn
