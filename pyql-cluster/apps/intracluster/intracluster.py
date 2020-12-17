@@ -60,7 +60,7 @@ async def run(server):
         """
         invokes 'add_rpc_endpoint' on all proxy connection registered in server.rcp_endpoints
         """        
-        for endpoint in server.rpc_endpoints:
+        for endpoint in server.rpc_endpoints.copy():
             try:
                 await server.rpc_endpoints[endpoint]['add_rpc_endpoint'](
                     host, port, path, secret, namespace
