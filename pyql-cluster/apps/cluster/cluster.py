@@ -131,6 +131,23 @@ async def run(server):
         return ep_results
 
 
+    async def gather_items(list_of_coroutines: list):
+        """
+        converts a list of gathered
+
+        list_of_coroutines:
+             should contain initialized coroutines which return a key-value pair
+        """
+        results_list = await asyncio.gather(
+            *list_of_coroutines,
+            return_exceptions=True
+        )
+        results = {}
+        for result in results_list:
+            for k,v in result.items():
+                results[k] = v
+        return results
+    server.gather_items = gather_items
 
    
     @server.api_route('/cluster/{cluster}/table/{table}/path')
@@ -309,6 +326,7 @@ async def run(server):
         table_endpoints = await get_table_endpoints(pyql, table, **kw)
 
         state_change_requests = {}
+        state_change_requests = []
 
         for endpoint in table_endpoints['loaded']:
             _endpoint = table_endpoints['loaded'][endpoint]
@@ -317,6 +335,22 @@ async def run(server):
             token = _endpoint['token']
             epuuid = _endpoint['uuid']
 
+            async def state_change():
+                try:
+                    return {
+                        epuuid: await server.rpc_endpoints[epuuid][action](
+                            db,
+                            table,
+                            params=request_data
+                        )
+                    }
+                except Exception as e:
+                    return {
+                        epuuid: {'error': log.exception(f"error with state_change - {repr(e)}")}
+                    }
+            state_change_requests.append(state_change())
+
+            """
             state_change_requests[endpoint] = {
                 'path': f"http://{path}/db/{db}/table/{table}/{action}",
                 'data': request_data,
@@ -324,16 +358,13 @@ async def run(server):
                 'headers': await server.get_auth_http_headers('remote', token=token),
                 'session': await server.get_endpoint_sessions(epuuid, **kw)
             }
-        state_change_results = await async_request_multi(
-            state_change_requests, 
-            'POST', 
-            loop=loop
-        )
+            """
+        state_change_results = await gather_items(state_change_requests)
 
         status = {'success': [], 'fail': []}
         for _endpoint in state_change_results:
             endpoint = table_endpoints['loaded'][_endpoint]
-            if state_change_results[_endpoint]['status'] == 200:
+            if not 'error' in state_change_results[_endpoint]:
                 status['success'].append(endpoint)
                 continue
             status['fail'].append(endpoint)
@@ -372,13 +403,29 @@ async def run(server):
                 continue
 
             ## state table ##
-            state_mark_stale = {}
+            #state_mark_stale = {}
+            state_mark_stale = []
             for endpoint in status['success']:
                 path = endpoint['path']
                 db = endpoint['db_name']
                 token = endpoint['token']
                 epuuid = endpoint['uuid']
 
+                async def set_state_stale():
+                    try:
+                        return {
+                            epuuid: await server.rpc_endpoints[epuuid]['update'](
+                                db,
+                                'state'
+                                params=mark_stale
+                            )
+                        }
+                    except Exception as e:
+                        return {
+                            epuuid: {'error': log.exception(f"error with state_change - {repr(e)}")}
+                        }
+                state_mark_stale.append(set_state_stale())
+                """
                 state_mark_stale[epuuid] = {
                     'path': f"http://{path}/db/{db}/table/state/update",
                     'data': mark_stale,
@@ -386,11 +433,8 @@ async def run(server):
                     'headers': await server.get_auth_http_headers('remote', token=token),
                     'session': await server.get_endpoint_sessions(epuuid, **kw)
                 }
-            state_mark_stale_results = await async_request_multi(
-                state_change_requests, 
-                'POST', 
-                loop=loop
-            )
+                """
+            state_mark_stale_results = await gather_items(state_mark_stale)
             trace(f"state_mark_stale_results: {state_mark_stale_results}")
         return {
             "state_change_results": state_change_results, 
@@ -490,7 +534,10 @@ async def run(server):
                     )
                 )
 
-            flush_tasks_results = await asyncio.gather(*flush_tasks, return_exceptions=True)
+            flush_tasks_results = await asyncio.gather(
+                *flush_tasks, 
+                return_exceptions=True
+            )
             trace(f"flush_tasks_results: {flush_tasks_results}")
             
             # handle flush trigger failures by marking stale
@@ -599,7 +646,8 @@ async def run(server):
 
             log_inserts.append(log_insert())
 
-        log_insert_results = await asyncio.gather(*log_inserts, return_exceptions=True)
+        log_insert_results = await gather_items(log_inserts)
+
         trace(f"log_insert_results: {log_insert_results}")
 
         pass_fail = Counter({'pass': 0, 'fail': 0})
@@ -816,7 +864,7 @@ async def run(server):
             create_requests.append(
                 cluster_table_create()
             )
-        create_results = await asyncio.gather(*create_requests, return_exceptions=True)
+        create_results = await gather_items(create_requests)
 
         # add tables to pyql tables
 
