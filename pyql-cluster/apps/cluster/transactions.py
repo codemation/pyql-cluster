@@ -1,4 +1,5 @@
 async def run(server):
+    import uuid
     import asyncio
     from functools import reduce
     from datetime import datetime

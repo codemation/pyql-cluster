@@ -1,5 +1,5 @@
 async def run(server):
-    import os
+    import os, uuid
     from datetime import datetime
 
     log = server.log
