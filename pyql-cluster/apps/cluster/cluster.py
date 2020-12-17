@@ -267,6 +267,7 @@ async def run(server):
         table_endpoints['cluster_type'] = _cluster['type']
         trace.warning(f"result {table_endpoints}")
         return table_endpoints
+    server.get_table_endpoints = get_table_endpoints
 
     @server.trace
     def get_endpoint_url(path, action, **kw):
@@ -660,24 +661,35 @@ async def run(server):
             db = log_endpoint['db_name']
             path = log_endpoint['path']
             ep_uuid = log_endpoint['uuid']
-            """
+            
             async def log_insert():
                 trace(f"starting log_insert for txn {txn}")
                 try:
+                    if ep_uuid == server.PYQL_NODE_ID:
+                        trace(f"log_insert: LOCAL")
+                        return {
+                            ep_uuid: server.actions['insert'](
+                                db,
+                                log_table,
+                                txn
+                            )
+                        }
+                    trace(f"log_insert: REMOTE")
+                    return {
+                        ep_uuid: await server.rpc_endpoints[ep_uuid]['insert'](
+                            db, 
+                            log_table, 
+                            txn
+                        )
+                    }
                 except Exception as e:
-                    return {ep_uuid: {'error': trace.exception(f"error with log_insert")}}
-            """
-            log_insert_results[ep_uuid] = await server.rpc_endpoints[ep_uuid]['insert'](
-                db, 
-                log_table, 
-                txn
-            )
+                    return {ep_uuid: {'error': trace.error(f"error with log_insert")}}
 
-            #log_inserts.append(log_insert())
+            log_inserts.append(log_insert())
 
         #log_insert_results = await asyncio.gather(*log_inserts)
 
-        #log_insert_results = await gather_items(log_inserts)
+        log_insert_results = await gather_items(log_inserts)
 
         trace(f"log_insert_results: {log_insert_results}")
 
