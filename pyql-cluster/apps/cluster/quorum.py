@@ -173,6 +173,7 @@ async def run(server):
             'results': results
             }
     server.clusterjobs['cluster_quorum_check'] = cluster_quorum_check
+    server.cluster_quorum_check = cluster_quorum_check
 
     @server.rpc.origin(namespace=server.PYQL_NODE_ID)
     @server.trace

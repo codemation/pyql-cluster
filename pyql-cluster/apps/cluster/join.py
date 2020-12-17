@@ -324,7 +324,7 @@ async def run(server):
         
         trace.warning(f"completed auth setup for new pyql endpoint: result {result}")
         # Trigger quorum update
-        await cluster_quorum_check(trace=trace)
+        await server.cluster_quorum_check(trace=trace)
         return trace("join_cluster_pyql_finish_setup - completed")
     @server.api_route('/cluster/{cluster_name}/join', methods=['POST'])
     async def join_cluster_api(
