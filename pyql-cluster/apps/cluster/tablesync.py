@@ -124,11 +124,11 @@ async def run(server):
         for table in tables:
             cluster = table['cluster']
             table_name = table['name']
-            endpoints = await get_table_endpoints(cluster, table_name, **kw)
+            endpoints = await server.get_table_endpoints(cluster, table_name, **kw)
             if not len(endpoints['loaded'].keys()) > 0:
                 trace.error(f"this should not happen, detected all endpoints for {cluster} {table_name} are not loaded")
                 await table_sync_recovery(cluster, table_name, **kw)
-                endpoints = await get_table_endpoints(cluster, table_name, **kw)
+                endpoints = await server.get_table_endpoints(cluster, table_name, **kw)
 
             new_or_stale_endpoints = endpoints['new']
             new_or_stale_endpoints.update(endpoints['stale'])
@@ -621,7 +621,7 @@ async def run(server):
         trace(f"starting for cluster: {cluster} table {table}")
 
         # get list of table endpoints that are not 'loaded'
-        table_endpoints = await get_table_endpoints(cluster, table, **kw)
+        table_endpoints = await server.get_table_endpoints(cluster, table, **kw)
         cluster_type = table_endpoints['cluster_type']
 
         new_or_stale_endpoints = table_endpoints['new']
