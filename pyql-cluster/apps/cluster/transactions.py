@@ -1,5 +1,5 @@
 async def run(server):
-
+    import asyncio
     from functools import reduce
     from datetime import datetime
     from fastapi import Request, Depends

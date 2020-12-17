@@ -1,4 +1,5 @@
 async def run(server):
+    import asyncio
     from fastapi import Request, Depends
 
     log = server.log
