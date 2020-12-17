@@ -7,7 +7,7 @@ async def run(server):
 
     log = server.log
 
-    @server.trace
+    @server.trace   
     async def pyql_join_txn_cluster(config: dict, **kw):
         trace = kw['trace']
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
@@ -369,7 +369,7 @@ async def run(server):
             kw['authorization'] = admin_id[0]['id']
 
         if not is_pyql_bootstrapped and cluster_name == 'pyql':
-            await join_cluster_pyql_bootstrap(
+            await server.join_cluster_pyql_bootstrap(
                 config, **kw
             )
             service_id = await server.data['cluster'].tables['auth'].select(

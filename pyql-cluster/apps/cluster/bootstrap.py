@@ -168,3 +168,4 @@ async def run(server):
                 'txn_cluster_name': pyql_txns_id
             }
         )
+    server.join_cluster_pyql_bootstrap = join_cluster_pyql_bootstrap
