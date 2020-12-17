@@ -781,7 +781,7 @@ async def run(server):
         request: Request, 
         token: dict = Depends(server.verify_token)
     ):
-        return await cluster_table_auth(cluster, table request=await server.process_request(request))
+        return await cluster_table_auth(cluster, table, request=await server.process_request(request))
 
     @server.api_route('/cluster/{cluster}/table/{table}', methods=['PUT', 'POST'])
     async def cluster_table_add(
