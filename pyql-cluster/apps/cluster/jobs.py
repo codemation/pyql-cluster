@@ -417,58 +417,60 @@ async def run(server):
         return {"result": result}
         
     server.job_check_and_run = job_check_and_run
+    
+    @server.on_event('startup')
+    async def jobs_startup():
+        if await server.env['SETUP_ID'] == server.setup_id:
 
-    if await server.env['SETUP_ID'] == server.setup_id:
-
-        if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
-            #Job to trigger cluster_quorum()
-            """
-            init_quorum = {
-                "job": "init_quorum",
-                "job_type": "cluster",
-                "method": "POST",
-                "action": 'cluster_quorum_update',
-                "path": "/pyql/quorum",
-                "config": {}
-            }
-            """
-            init_mark_ready_job = {
-                "job": "init_mark_ready",
-                "job_type": "cluster",
-                "method": "POST",
-                "path": "/cluster/pyql/ready",
-                "config": {'ready': True}
-            }
-            # Create Cron Jobs inside init node
-            cron_jobs = []
-            if not os.environ.get('PYQL_TYPE') == 'K8S':
-                #await server.internal_job_add(init_quorum)
-                #server.internal_job_add(initMarkReadyJob)
-                cron_jobs.append({
-                    'job': 'cluster_quorum_check',
-                    'job_type': 'cron',
-                    "action": 'cluster_quorum_check',
-                    "config": {"interval": 15}
-                })
-            for i in [30,90]:
-                cron_jobs.append({
-                    'job': f'tablesync_check_{i}',
-                    'job_type': 'cron',
-                    "action": 'tablesync_mgr',
-                    "config": {"interval": i}
-                })
-                cron_jobs.append({
-                    'job': f'cluster_job_cleanup_{i}',
-                    'job_type': 'cron',
-                    'action': 'jobmgr_cleanup',
-                    'config': {'interval': i}
-                })
-            for job in cron_jobs:
-                new_cron_job = {
-                    "job": f"add_cron_job_{job['job']}",
-                    "job_type": 'cluster',
-                    "action": "jobs_add",
-                    "config": job,
+            if os.environ['PYQL_CLUSTER_ACTION'] == 'init':
+                #Job to trigger cluster_quorum()
+                """
+                init_quorum = {
+                    "job": "init_quorum",
+                    "job_type": "cluster",
+                    "method": "POST",
+                    "action": 'cluster_quorum_update',
+                    "path": "/pyql/quorum",
+                    "config": {}
                 }
-                log.warning(f"adding job {job['job']} to internaljobs queue")
-                await server.internal_job_add(new_cron_job)
+                """
+                init_mark_ready_job = {
+                    "job": "init_mark_ready",
+                    "job_type": "cluster",
+                    "method": "POST",
+                    "path": "/cluster/pyql/ready",
+                    "config": {'ready': True}
+                }
+                # Create Cron Jobs inside init node
+                cron_jobs = []
+                if not os.environ.get('PYQL_TYPE') == 'K8S':
+                    #await server.internal_job_add(init_quorum)
+                    #server.internal_job_add(initMarkReadyJob)
+                    cron_jobs.append({
+                        'job': 'cluster_quorum_check',
+                        'job_type': 'cron',
+                        "action": 'cluster_quorum_check',
+                        "config": {"interval": 15}
+                    })
+                for i in [30,90]:
+                    cron_jobs.append({
+                        'job': f'tablesync_check_{i}',
+                        'job_type': 'cron',
+                        "action": 'tablesync_mgr',
+                        "config": {"interval": i}
+                    })
+                    cron_jobs.append({
+                        'job': f'cluster_job_cleanup_{i}',
+                        'job_type': 'cron',
+                        'action': 'jobmgr_cleanup',
+                        'config': {'interval': i}
+                    })
+                for job in cron_jobs:
+                    new_cron_job = {
+                        "job": f"add_cron_job_{job['job']}",
+                        "job_type": 'cluster',
+                        "action": "jobs_add",
+                        "config": job,
+                    }
+                    log.warning(f"adding job {job['job']} to internaljobs queue")
+                    await server.internal_job_add(new_cron_job)
