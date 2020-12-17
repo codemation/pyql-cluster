@@ -135,7 +135,7 @@ async def run(server):
                     }
         quorum = await server.data['cluster'].tables['quorum'].select('*')
         # Check which pyql_endpoints are alive   
-        alive_endpoints = await get_alive_endpoints(pyql_endpoints, **kw)
+        alive_endpoints = await server.get_alive_endpoints(pyql_endpoints, **kw)
         alive_endpoints_nodes = [server.PYQL_NODE_ID]
         for endpoint in alive_endpoints:
             alive_endpoints_nodes.append(endpoint)
@@ -199,7 +199,7 @@ async def run(server):
         trace(f"last_quorum  - {last_quorum}")
 
         # check alive endpoints
-        alive_endpoints = await get_alive_endpoints(pyql_endpoints, **kw)
+        alive_endpoints = await server.get_alive_endpoints(pyql_endpoints, **kw)
         trace(f"alive_endpoints - {alive_endpoints}")
 
         # build list of in_quorum & missing nodes

@@ -129,6 +129,7 @@ async def run(server):
         ep_results = [ep['uuid'] for ep in ep_results]
         trace.warning(f"get_alive_endpoints finished - {ep_results}")
         return ep_results
+    server.get_alive_endpoints = get_alive_endpoints
 
 
     async def gather_items(list_of_coroutines: list):
