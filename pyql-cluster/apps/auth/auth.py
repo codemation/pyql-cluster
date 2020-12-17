@@ -314,7 +314,7 @@ async def run(server):
             set_key = await set_token_key('cluster', r)
             log.warning(set_key)
         else:
-            key = await server.rpc_endpoints[source_node]['service_token_key']()
+            key = await server.rpc_endpoints[source_node]['service_token_key']('cluster')
             await set_token_key('cluster', key)
         return f"set_service_token completed"
 
