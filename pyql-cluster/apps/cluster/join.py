@@ -49,7 +49,7 @@ async def run(server):
                     'token': config['token'],
                     'cluster': cluster
                 }
-                await server.server.cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
+                await server.cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
 
                 # need to create state entries for new endpoints
                 # for each table in log_cluster - create state entry for new endpoint
@@ -64,7 +64,7 @@ async def run(server):
                         'uuid': config['database']['uuid'], # used for syncing logs
                         'last_mod_time': 0.0
                     }
-                    await server.server.cluster_table_change(pyql, 'state', 'insert', data, **kw)
+                    await server.cluster_table_change(pyql, 'state', 'insert', data, **kw)
 
 
 
@@ -93,7 +93,7 @@ async def run(server):
             'created_by_endpoint': config['name'],
             'create_date': f'{datetime.now().date()}'
             }
-        create_result = await server.server.cluster_table_change(pyql, 'clusters', 'insert', data, **kw)
+        create_result = await server.cluster_table_change(pyql, 'clusters', 'insert', data, **kw)
         trace(f"create cluster result: {create_result}")
 
         # Adding new Cluster to data_to_txn_cluster
@@ -107,7 +107,7 @@ async def run(server):
             'txn_cluster_name': txn_cluster['name'],
             'txn_cluster_id': txn_cluster['id'] # await get_txn_cluster_to_join()
         }
-        join_txn_cluster_result = await server.server.cluster_table_change(
+        join_txn_cluster_result = await server.cluster_table_change(
             pyql, 
             'data_to_txn_cluster', 
             'insert', 
@@ -148,7 +148,7 @@ async def run(server):
 
             trace(f"adding new endpoint with id: {new_endpoint_id} {config['database']}")
 
-            await server.server.cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
+            await server.cluster_table_change(pyql, 'endpoints', 'insert', data, **kw)
 
         else:
             #update endpoint latest path info - if different
@@ -170,10 +170,10 @@ async def run(server):
                     where=update_set['where']
                 )
             else:
-                await server.server.cluster_table_change(pyql, 'endpoints', 'update', update_set, **kw)
+                await server.cluster_table_change(pyql, 'endpoints', 'update', update_set, **kw)
                 if cluster_id == await server.env['PYQL_UUID']:
                     trace(f"existing endpoint detected for multi-node cluster, marking new endpoint tables 'stale'")
-                    await server.server.cluster_table_change(
+                    await server.cluster_table_change(
                         pyql, 'state', 'update', 
                         {
                             'set': {
@@ -230,7 +230,7 @@ async def run(server):
                         'consistency': table_name in config['consistency'],
                         'is_paused': False
                     }
-                    await server.server.cluster_table_change(pyql, 'tables', 'insert', data, **kw)
+                    await server.cluster_table_change(pyql, 'tables', 'insert', data, **kw)
                     if not (cluster_id == pyql and table_name in ['jobs', 'state', 'tables']):
                         cluster_id_under = '_'.join(cluster_id.split('-'))
                         await server.cluster_txn_table_create(
@@ -277,7 +277,7 @@ async def run(server):
                         'last_mod_time': 0.0
                     }
                     trace(f"adding new table endpoint: {data}")
-                    await server.server.cluster_table_change(pyql, 'state', 'insert', data, **kw)
+                    await server.cluster_table_change(pyql, 'state', 'insert', data, **kw)
         trace(f"finished")
     @server.trace
     async def join_cluster_pyql_finish_setup(
