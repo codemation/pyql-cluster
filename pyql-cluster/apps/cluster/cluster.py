@@ -653,29 +653,29 @@ async def run(server):
         )
         #log_inserts = {}
         log_inserts = []
+        log_insert_results = {}
         for endpoint in table_endpoints['loaded']:
             log_endpoint = table_endpoints['loaded'][endpoint]
             token = log_endpoint['token']
             db = log_endpoint['db_name']
             path = log_endpoint['path']
             ep_uuid = log_endpoint['uuid']
-
+            """
             async def log_insert():
                 trace(f"starting log_insert for txn {txn}")
                 try:
-                    return {
-                        ep_uuid: await server.rpc_endpoints[ep_uuid]['insert'](
-                            db, 
-                            log_table, 
-                            txn
-                        )
-                    }
                 except Exception as e:
                     return {ep_uuid: {'error': trace.exception(f"error with log_insert")}}
+            """
+            log_insert_results[ep_uuid] = await server.rpc_endpoints[ep_uuid]['insert'](
+                db, 
+                log_table, 
+                txn
+            )
 
-            log_inserts.append(log_insert())
+            #log_inserts.append(log_insert())
 
-        log_insert_results = await asyncio.gather(*log_inserts)
+        #log_insert_results = await asyncio.gather(*log_inserts)
 
         #log_insert_results = await gather_items(log_inserts)
 
