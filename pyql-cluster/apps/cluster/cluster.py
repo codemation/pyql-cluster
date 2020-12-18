@@ -362,6 +362,14 @@ async def run(server):
 
             async def state_change():
                 try:
+                    if epuuid == server.PYQL_NODE_ID:
+                        return {
+                            epuuid: await server.actions[action](
+                                db,
+                                table,
+                                params=request_data
+                            )
+                        }
                     return {
                         epuuid: await server.rpc_endpoints[epuuid][action](
                             db,
@@ -438,6 +446,14 @@ async def run(server):
 
                 async def set_state_stale():
                     try:
+                        if epuuid == server.PYQL_NODE_ID:
+                            return {
+                                epuuid: await server.actions['update'](
+                                    db,
+                                    'state',
+                                    params=mark_stale
+                                )
+                            }
                         return {
                             epuuid: await server.rpc_endpoints[epuuid]['update'](
                                 db,
