@@ -131,6 +131,7 @@ async def run(server):
         table_endpoints = await get_table_endpoints(cluster_id, table, **kw)
         alive_endpoints = await get_alive_endpoints(table_endpoints['loaded'], **kw)
         return random.choice(alive_endpoints)
+    server.get_random_alive_table_endpoint = get_random_alive_table_endpoint
 
 
     @server.trace
@@ -1108,6 +1109,7 @@ async def run(server):
             'table_copy': table_copy, 
             'last_txn_time': last_txn_time
             }
+    server.cluster_table_copy = cluster_table_copy
                 
     @server.api_route('/cluster/{cluster}/table/{table}/config', methods=['GET'])
     async def cluster_table_config_api(
@@ -1296,6 +1298,7 @@ async def run(server):
             await asyncio.sleep(kw['delay_after_pause'])
         trace.warning(f'cluster_table_pause {cluster} {table} pause {pause} result: {result}')
         return result
+    server.table_pause = table_pause
         
     @server.trace
     async def table_endpoint(cluster, table, endpoint, config=None, **kw):

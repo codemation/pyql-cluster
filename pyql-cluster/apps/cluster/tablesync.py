@@ -271,11 +271,11 @@ async def run(server):
             trace(f"{cluster} {table} create_table_results: {create_table_results}")
 
         if f'{pyql_under}_tables' in table:
-            await table_pause(cluster, table, 'start', **kw)
+            await server.table_pause(cluster, table, 'start', **kw)
             is_paused = True
             await asyncio.sleep(5)
         # get copy
-        table_copy = await cluster_table_copy(cluster, table, copy_only=True, **kw)
+        table_copy = await server.cluster_table_copy(cluster, table, copy_only=True, **kw)
 
         trace(f"{cluster} {table} - table_copy: - {table_copy}")
 
@@ -331,7 +331,7 @@ async def run(server):
 
         while not is_paused or len(table_changes['data']) > 0:
             if not is_paused and len(table_changes['data']) < 50:
-                await table_pause(cluster, table, 'start', **kw)
+                await server.table_pause(cluster, table, 'start', **kw)
                 is_paused = True
                 trace(f"{cluster} {table} - starting pause as only {len(table_changes['data'])} changes - then sleeping")
                 await asyncio.sleep(5)
@@ -475,7 +475,7 @@ async def run(server):
             trace(f"pyql tables txn table detected, waiting 5 sec before un-pausing table")
             await asyncio.sleep(5)
         # end cut-over
-        await table_pause(cluster, table, 'stop', **kw)
+        await server.table_pause(cluster, table, 'stop', **kw)
 
         return {
             "sync_table_results": sync_table_results,
@@ -500,7 +500,7 @@ async def run(server):
         # table should have been created for new endpoints already
 
         # issue / start cutover
-        pause_table = await table_pause(pyql, table, 'start', **kw)
+        pause_table = await server.table_pause(pyql, table, 'start', **kw)
         trace(f"pause_table starting - {pause_table}")
         await asyncio.sleep(2)
 
@@ -521,7 +521,7 @@ async def run(server):
             
             # avoid pulling table copy twice
             if table_copy == None:
-                table_copy = await cluster_table_copy(
+                table_copy = await server.cluster_table_copy(
                     pyql, 
                     table, 
                     copy_only=True,
@@ -588,7 +588,7 @@ async def run(server):
         
 
         # post sync - unpause
-        unpause_table = await table_pause(pyql, table, 'stop', **kw)
+        unpause_table = await server.table_pause(pyql, table, 'stop', **kw)
         trace(f"unpause_table - {unpause_table}")
         return {
             "sync_table_results": sync_table_results,
@@ -704,7 +704,7 @@ async def run(server):
                 
                 # avoid pulling table config twice
                 if table_copy == None:
-                    table_copy = await cluster_table_copy(
+                    table_copy = await server.cluster_table_copy(
                         cluster, 
                         table, 
                         **kw
@@ -743,7 +743,7 @@ async def run(server):
         )
 
         flush_config = {
-            "tx_cluster_endpoint": await get_random_alive_table_endpoint(txn_cluster_id, tx_table, **kw),
+            "tx_cluster_endpoint": await server.get_random_alive_table_endpoint(txn_cluster_id, tx_table, **kw),
             "tx_cluster_id": txn_cluster_id,
             "tx_table": tx_table
         }
@@ -817,7 +817,7 @@ async def run(server):
                         break
                 # no tables for endpoint are in_sync false - mark endpoint ready = True
                 if ready:
-                    await update_cluster_ready(path=path, ready=True, **kw)
+                    await server.update_cluster_ready(path=path, ready=True, **kw)
 
         return {"state_update_results": state_update_results, "flush_results": flush_results}
 
