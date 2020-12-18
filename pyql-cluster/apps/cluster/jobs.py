@@ -246,6 +246,7 @@ async def run(server):
     async def cluster_job_update(job_type, job_id, status, **kw):
         return await job_update(job_type, job_id, status, **kw)
 
+    @server.trace
     async def job_update(job_type, job_id, status, job_info={}, **kw):
         pyql = await server.env['PYQL_UUID'] if not 'pyql' in kw else kw['pyql']
         kw['loop'] = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
