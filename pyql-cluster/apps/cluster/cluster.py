@@ -330,6 +330,8 @@ async def run(server):
         pyql = await server.env['PYQL_UUID']
         loop = asyncio.get_running_loop() if not 'loop' in kw else kw['loop']
 
+        trace(f"started for pyql table {table} action: {action} - request_data: {request_data}")
+
         if not force:
             # check if table is paused
             cur_wait, max_wait = 0.01, 10.0
