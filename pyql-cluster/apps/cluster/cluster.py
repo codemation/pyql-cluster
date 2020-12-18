@@ -1128,6 +1128,7 @@ async def run(server):
     @server.trace
     async def cluster_table_config(cluster, table, **kw):
         return await endpoint_probe(cluster, table, method='GET', path=f'config', **kw)
+    server.cluster_table_config = cluster_table_config
 
 
 

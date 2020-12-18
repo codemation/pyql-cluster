@@ -253,7 +253,7 @@ async def run(server):
                 new_endpoint = table_endpoints['new'][_new_endpoint]
                 
                 # avoid pulling table config twice
-                table_config = await cluster_table_config(
+                table_config = await server.cluster_table_config(
                     cluster, table, **kw
                     ) if table_config == None else table_config 
             
@@ -661,7 +661,7 @@ async def run(server):
                 new_endpoint = table_endpoints['new'][_new_endpoint]
                 
                 # avoid pulling table config twice
-                table_config = await cluster_table_config(
+                table_config = await server.cluster_table_config(
                     cluster, table, **kw
                     ) if table_config == None else table_config 
             
