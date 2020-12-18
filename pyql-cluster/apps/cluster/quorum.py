@@ -110,6 +110,7 @@ async def run(server):
         return await server.probe(f"http://{path}/cluster/pyql/ready", method='POST', data={'ready': ready}, **kw)
 
     server.clusterjobs['update_cluster_ready'] = update_cluster_ready
+    server.update_cluster_ready = update_cluster_ready
 
 
     @server.api_route('/pyql/quorum/check', methods=['POST'])
