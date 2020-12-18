@@ -671,16 +671,28 @@ async def run(server):
                 epuuid = new_endpoint['uuid']
                 token = new_endpoint['token']
                 
+                async def create_table():
+                    try:
+                        return {
+                            epuuid: await server.rpc_endpoints[epuuid]['create_table'](
+                                **table_config
+                            )
+                        }
+                    except Exception as e:
+                        return {
+                            epuuid: {
+                                'error': trace.exception(f"error with create_table")
+                            }
+                        }
                 create_requests.append(
-                    server.rpc_endpoints[epuuid]['create_table'](db, table_config)
+                    create_table()
                 )
                 
-
-            create_table_results = await asyncio.gather(*create_requests, return_exceptions=True)
+            create_table_results = await server.gather_items(create_requests)
             trace(f"{cluster} {table} {job} create_table_results: {create_table_results}")
 
             for endpoint in create_table_results:
-                if not create_table_results[endpoint]['status'] == 200:
+                if 'error' in create_table_results[endpoint]:
                     del table_endpoints['new'][endpoint]
 
 
