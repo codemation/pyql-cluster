@@ -50,10 +50,9 @@ async def run(server):
         try:
             if action == 'finished':
                 result = await server.data['cluster'].tables['internaljobs'].delete(where={'id': job_id})
-                log.warning(f"finished result {result}")
             if action == 'queued':
                 await server.data['cluster'].tables['internaljobs'].update(status='queued', where={'id': job_id})
-            return {"message": f"{action} on {job_id} completed successfully"}
+            return {"message": log.warning(f"{action} on {job_id} completed successfully")}
         except Exception as e:
             return {
                 "message": log.exception(f"error when performing {action} on job_id {job_id}")
