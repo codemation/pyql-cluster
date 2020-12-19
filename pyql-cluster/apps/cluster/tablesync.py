@@ -775,7 +775,7 @@ async def run(server):
             epuuid = endpoint['uuid']
 
             flush_requests.append(
-                server.rpc_endpoints[epuuid][table_flush_trigger](db, table, flush_config)
+                server.rpc_endpoints[epuuid]['table_flush_trigger'](db, table, flush_config)
             )
             
         flush_results = await asyncio.gather(*flush_requests, return_exceptions=True)
