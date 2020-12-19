@@ -555,7 +555,7 @@ async def run(server):
             if table == 'state':
                 # Allowing only 1 state table sync per job, to avoid state mismatches
                 break
-        sync_table_results = await asyncio.gather_items(sync_requests)
+        sync_table_results = await server.gather_items(sync_requests)
 
         trace(f"sync_table_results: {sync_table_results}")
 
