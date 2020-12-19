@@ -797,7 +797,7 @@ async def run(server):
         state_updates = []
         state_update_results = []
         for endpoint in flush_results:
-            if 'error' in flush_requests[endpoint]:
+            if 'error' in flush_results[endpoint]:
                 continue
             state_update_results.append(
                 await server.cluster_table_change(
