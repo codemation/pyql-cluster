@@ -593,7 +593,7 @@ async def run(server):
                 epuuid = _endpoint['uuid']
 
                 mark_loaded.append(
-                    server.rcp_endpoints[epuuid]['update'](db, table, set_loaded)
+                    server.rpc_endpoints[epuuid]['update'](db, table, set_loaded)
                 )
 
         mark_loaded_results = await asyncio.gather(
