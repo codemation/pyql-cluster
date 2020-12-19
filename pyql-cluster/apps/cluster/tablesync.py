@@ -774,18 +774,30 @@ async def run(server):
             path = endpoint['path']
             epuuid = endpoint['uuid']
 
+            async def flush_trigger():
+                try:
+                    return {
+                        epuuid: server.rpc_endpoints[epuuid]['table_flush_trigger'](
+                            db, table, flush_config
+                            )
+                        }
+                except Exception as e:
+                    return {
+                        epuuid: {'error': trace.exception(f"error with table_flush_trigger")}
+                    }
+
             flush_requests.append(
-                server.rpc_endpoints[epuuid]['table_flush_trigger'](db, table, flush_config)
+                flush_trigger()
             )
             
-        flush_results = await asyncio.gather(*flush_requests, return_exceptions=True)
+        flush_results = await server.gather_items(flush_requests)
         trace(f"{cluster} {table} {job} flush_results: {flush_results}")
 
         # mark table endpoint loaded
         state_updates = []
         state_update_results = []
         for endpoint in flush_results:
-            if not flush_results[endpoint]['status'] == 200:
+            if 'error' in flush_requests[endpoint]:
                 continue
             state_update_results.append(
                 await server.cluster_table_change(
