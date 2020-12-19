@@ -144,6 +144,9 @@ async def run(server):
         endpoint_check = []
         for _endpoint in endpoints:
             endpoint = _endpoint if isinstance(endpoints, list) else endpoints[_endpoint]
+            if not endpoint['uuid'] in server.rpc_endpoints:
+                trace(f"endpoint: {endpoint['uuid']} not found in rpc_endpoints")
+                continue
             trace(f"checking {endpoint}")
             endpoint_check.append(
                 server.rpc_endpoints[endpoint['uuid']]['node']()
