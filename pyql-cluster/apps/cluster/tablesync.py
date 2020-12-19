@@ -675,7 +675,8 @@ async def run(server):
                     try:
                         return {
                             epuuid: await server.rpc_endpoints[epuuid]['create_table'](
-                                **table_config
+                                db,
+                                table_config[table]
                             )
                         }
                     except Exception as e:
