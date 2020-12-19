@@ -513,7 +513,7 @@ async def run(server):
 
         table_copy = None
 
-        sync_requests = {} 
+        sync_requests = []
         for _endpoint in new_or_stale_endpoints:
             if not _endpoint in alive_endpoints:
                 continue
@@ -532,21 +532,36 @@ async def run(server):
             path = endpoint['path']
             epuuid = endpoint['uuid']
 
+            async def sync_table():
+                try:
+                    return {
+                        epuuid: await server.rpc_endpoints[epuuid]['sync_table'](
+                            db,
+                            table_config[table]
+                        )
+                    }
+                except Exception as e:
+                    return {
+                        epuuid: {
+                            'error': trace.exception(f"error with sync_table")
+                        }
+                    }
+
             sync_requests.append(
-                server.rpc_endpoints[epuuid]['sync_table'](db, table, table_copy)
+                sync_table()
             )
 
             if table == 'state':
                 # Allowing only 1 state table sync per job, to avoid state mismatches
                 break
-        sync_table_results = await asyncio.gather(*sync_requests, return_exceptions=True)
+        sync_table_results = await server.gather_items(sync_requests)
 
         trace(f"sync_table_results: {sync_table_results}")
 
         # mark loaded
         mark_loaded = []
         for endpoint in sync_table_results:
-            if not sync_table_results[endpoint]['status'] == 200:
+            if 'error' in sync_table_results[endpoint]:
                 continue
             set_loaded = {
                 'set': {
