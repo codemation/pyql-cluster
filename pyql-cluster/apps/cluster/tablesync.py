@@ -777,7 +777,7 @@ async def run(server):
             async def flush_trigger():
                 try:
                     return {
-                        epuuid: server.rpc_endpoints[epuuid]['table_flush_trigger'](
+                        epuuid: await server.rpc_endpoints[epuuid]['table_flush_trigger'](
                             db, table, flush_config
                             )
                         }
