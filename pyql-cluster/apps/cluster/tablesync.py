@@ -266,7 +266,10 @@ async def run(server):
                 epuuid = new_endpoint['uuid']
 
                 create_requests.append(
-                    server.rpc_endpoints[epuuid]['create_table'](table_config)
+                    server.rpc_endpoints[epuuid]['create_table'](
+                        db,
+                        table_config
+                    )
                 )
 
             create_table_results = await asyncio.gather(*create_requests, return_exceptions=True)
@@ -697,6 +700,7 @@ async def run(server):
                     try:
                         return {
                             epuuid: await server.rpc_endpoints[epuuid]['create_table'](
+                                db,
                                 table_config
                             )
                         }

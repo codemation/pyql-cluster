@@ -928,6 +928,7 @@ async def run(server):
                 try:
                     return {
                         epuuid: await server.rpc_endpoints[epuuid]['create_table'](
+                            db,
                             config
                         )
                     }
