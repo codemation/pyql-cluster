@@ -916,6 +916,7 @@ async def run(server):
             '*',
             where={'cluster': cluster}
         )
+        config['name'] = table
 
         ep_requests = {}
         create_requests = []

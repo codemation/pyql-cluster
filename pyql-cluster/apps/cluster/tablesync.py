@@ -253,9 +253,12 @@ async def run(server):
                 new_endpoint = table_endpoints['new'][_new_endpoint]
                 
                 # avoid pulling table config twice
-                table_config = await server.cluster_table_config(
-                    cluster, table, **kw
-                    ) if table_config == None else table_config 
+                if not table_config:
+                    table_config = await server.cluster_table_config(
+                        cluster, table, **kw
+                    )
+                    table_config = table_config[table]
+                    table_config['name'] = table
             
                 # trigger table creation on new_endpoint
                 db = new_endpoint['db_name']
@@ -263,7 +266,7 @@ async def run(server):
                 epuuid = new_endpoint['uuid']
 
                 create_requests.append(
-                    server.rpc_endpoints[epuuid]['create_table'](db, table_config)
+                    server.rpc_endpoints[epuuid]['create_table'](table_config)
                 )
 
             create_table_results = await asyncio.gather(*create_requests, return_exceptions=True)
@@ -677,10 +680,13 @@ async def run(server):
                 new_endpoint = table_endpoints['new'][_new_endpoint]
                 
                 # avoid pulling table config twice
-                table_config = await server.cluster_table_config(
-                    cluster, table, **kw
-                    ) if table_config == None else table_config 
-            
+                if not table_config:
+                    table_config = await server.cluster_table_config(
+                        cluster, table, **kw
+                    )
+                    table_config = table_config[table]
+                    table_config['name'] = table
+
                 # trigger table creation on new_endpoint
                 db = new_endpoint['db_name']
                 path = new_endpoint['path']
@@ -691,7 +697,6 @@ async def run(server):
                     try:
                         return {
                             epuuid: await server.rpc_endpoints[epuuid]['create_table'](
-                                db,
                                 table_config[table]
                             )
                         }
