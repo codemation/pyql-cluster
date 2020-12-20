@@ -298,11 +298,23 @@ async def run(server):
                 path = endpoint['path']
                 epuuid = endpoint['uuid']
 
+                async def table_copy():
+                    try:
+                        return {
+                            epuuid: await server.rpc_endpoints[epuuid]['sync_table'](
+                                db, table, table_copy
+                            )
+                        }
+                    except Exception as e:
+                        return {
+                            epuuid: {'error': trace.exception(f"error with table_copy")}
+                        }
+
                 sync_requests.append(
-                    server.rpc_endpoints[epuuid]['sync_table'](db, table, table_copy)
+                    table_copy()
                 )
 
-            sync_table_results = await asyncio.gather(*sync_requests, return_exceptions=True)
+            sync_table_results = await server.gather_items(sync_requests)
         else:
             sync_table_results = {}
             for _endpoint in new_or_stale_endpoints:
@@ -353,19 +365,33 @@ async def run(server):
                 continue
             sync_changes_requests = []
             for _endpoint in sync_table_results:
-                if not sync_table_results[_endpoint]['status'] == 200:
+                if 'error' in sync_table_results[_endpoint]:
                     continue
+
                 endpoint = new_or_stale_endpoints[_endpoint]
 
                 db = endpoint['db_name']
                 path = endpoint['path']
                 epuuid = endpoint['uuid']
 
+                async def sync_changes():
+                    try:
+                        return {
+                            epuuid: await server.rpc_endpoints[epuuid]['insert'](
+                                db, table, params=table_changes['data']
+                            )
+                        }
+                    except Exception as e:
+                        return {
+                            epuuid: {'error': trace.exception(f"error with sync_changes")}
+                        }
+
+
                 sync_changes_requests.append(
-                    server.rpc_endpoints[epuuid]['insert'](db, table, params=table_changes['data'])
+                    sync_changes()
                 )
 
-            sync_changes_results = await asyncio.gather(*sync_changes_requests, return_exceptions=True)
+            sync_changes_results = await server.gather_items(sync_changes_requests)
 
             # check for new changes
             latest_timestamp = table_changes['data'][-1]['timestamp']
@@ -398,7 +424,7 @@ async def run(server):
         state_updates = []
 
         for endpoint in sync_changes_results:
-            if not sync_changes_results[endpoint]['status'] == 200:
+            if 'error' in sync_changes_results[endpoint]:
                 continue
             if not f'{pyql_under}_state' in table:
                 def get_state_change():
