@@ -98,15 +98,13 @@ async def run(server):
         return await create_table(database, config, **kw)
     
     @server.rpc.origin(namespace=server.PYQL_NODE_ID)
+    @server.trace
     async def create_table(database, config, **kw):
+        trace = kw['trace']
         if database in server.data:
+            trace(f"called for {database} with config: {config}")
             return await server.data[database].create_table(**config)
         server.http_exception(404, f"database {database} not found")
-
-
-
-
-
 
     @server.api_route('/db/{database}/table/{table}', methods=['GET', 'PUT', 'POST'])
     async def db_table_api(database: str, table: str, request: Request, params: dict = None, token: dict = Depends(server.verify_token)):
