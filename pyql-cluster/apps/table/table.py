@@ -100,7 +100,7 @@ async def run(server):
     @server.rpc.origin(namespace=server.PYQL_NODE_ID)
     async def create_table(database, config, **kw):
         if database in server.data:
-            log.warning(f"called for {database} with config: {config}")
+            log.warning(f"create_table - called for {database} with config: {config}")
             return await server.data[database].create_table(**config)
         server.http_exception(404, f"database {database} not found")
 
@@ -336,10 +336,11 @@ async def run(server):
         if not database in server.data:
             server.http_exception(500, log.error(f"{database} not found in endpoint"))
         if not table in server.data[database].tables:
-            await server.db_check(database)
-        if not table in server.data[database].tables:
             server.http_exception(400, log.error(f"{table} not found in database {database}"))
+
         table_config = await get_table_config(database, table)
+        table_config = table_config[table]
+        table_config['name'] = table
 
         message = await create_table(database, table_config)
         log.warning(f"table /sync create_table_func response {message}")
